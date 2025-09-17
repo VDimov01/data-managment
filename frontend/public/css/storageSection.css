@@ -1,0 +1,109 @@
+.storage-section {
+  margin-top: 20px;
+}
+
+.storage-form-wrapper {
+  position: relative;
+  margin-top: 30px;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.storage-form h3 {
+  margin-bottom: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group select {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.save-btn {
+  padding: 10px 16px;
+  background-color: #28a745;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.save-btn:hover {
+  background-color: #218838;
+}
+
+/* Storage Inventory Table */
+.storage-table-wrapper {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.storage-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  min-width: 600px;
+}
+
+.storage-table th,
+.storage-table td {
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  text-align: center;
+}
+
+.storage-table th {
+  background-color: #f8f8f8;
+}
+
+.sell-btn {
+  padding: 5px 10px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.sell-btn:hover {
+  background-color: #d32f2f;
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #fff;
+  border: 2px solid #ccc;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  line-height: 1;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.close-btn:hover {
+  background: #f0f0f0;
+}

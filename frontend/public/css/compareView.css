@@ -1,0 +1,148 @@
+/* Container */
+.compare-view {
+  padding: 30px;
+  background-color: #f5f7fa;
+  min-height: 100vh;
+}
+
+/* Title */
+.compare-title {
+  margin-bottom: 25px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #222;
+}
+
+/* Layout: Grid + Sticky Panel */
+.catalog-layout {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+}
+
+/* Catalog Grid */
+.catalog-section {
+  flex: 1;
+}
+
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px;
+}
+
+/* Sticky Panel */
+.sticky-compare-panel {
+  position: sticky;
+  top: 30px;
+  width: 280px;
+  padding: 20px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.sticky-compare-panel h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.sticky-compare-panel .empty-msg {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+
+.sticky-compare-panel ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 15px 0;
+}
+
+.sticky-compare-panel li {
+  font-size: 14px;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Compare Button */
+.compare-button {
+  width: 100%;
+  padding: 10px 15px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+.compare-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.compare-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Comparison Section */
+.comparison-section {
+  margin-top: 30px;
+}
+
+.clear-button {
+  width: 100%;
+  padding: 10px 15px;
+  margin-top: 10px;
+  background-color: #d11111;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+.clear-button:hover:not(:disabled) {
+  background-color: #8c0108;
+}
+
+.clear-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.back-button {
+  margin-top: 20px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.back-button:hover {
+  background-color: #1976d2;
+}
+
+/* Responsive for Mobile */
+@media (max-width: 992px) {
+  .catalog-layout {
+    flex-direction: column;
+  }
+
+  .sticky-compare-panel {
+    position: relative;
+    width: 100%;
+    margin-top: 20px;
+  }
+}

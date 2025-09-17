@@ -1,0 +1,15 @@
+@import '../public/css/reset.css';
+@import '../public/css/login.css';
+@import '../public/css/dashboard.css';
+@import '../public/css/compareView.css';
+@import '../public/css/carComparison.css';
+@import '../public/css/availableCars.css';
+@import '../public/css/storageSection.css';
+@import '../public/css/clientsSection.css';
+@import '../public/css/contractsSection.css';
+@import '../public/css/brochuresSectionOld.css';
+@import '../public/css/carForm.css';
+@import '../public/css/customers.css';
+@import '../public/css/brochures.css';
+@import '../public/css/customer-brochures.css';
+@import '../public/css/compare-admin.css'

@@ -1,0 +1,36 @@
+# Service account & config (do not commit real keys)
+config/*
+!config/.gitkeep
+!config/service-account.SAMPLE.json
+# (optional) keep docs about config:
+!config/README.md
+
+# Local uploads/temp
+uploads/
+tmp/
+
+# Node modules
+node_modules/
+
+# Builds / caches
+dist/
+build/
+*.tsbuildinfo
+.eslintcache
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env (ignore all variants, keep template)
+.env
+.env.*
+!.env.example
+
+# Keys & certs (extra belt-and-suspenders)
+*.pem
+*.key
+*.crt

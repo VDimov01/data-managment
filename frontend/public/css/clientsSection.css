@@ -1,0 +1,91 @@
+.clients-section {
+  padding: 20px;
+}
+
+.toggle-buttons {
+  margin-bottom: 15px;
+}
+
+.toggle-buttons button {
+  margin-right: 10px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  background: #f0f0f0;
+  transition: 0.2s;
+}
+
+.toggle-buttons button.active {
+  background: #2196f3;
+  color: white;
+}
+
+.client-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.client-form input {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+}
+
+.form-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #28a745;
+  color: white;
+  transition: 0.2s;
+}
+
+.form-actions button:hover {
+  background: #218838;
+}
+
+.form-actions .cancel-btn {
+  background: #f44336;
+}
+
+.clients-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  min-width: 700px;
+}
+
+.clients-table th,
+.clients-table td {
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  text-align: center;
+}
+
+.clients-table th {
+  background: #f8f8f8;
+}
+
+.delete-btn {
+  margin-left: 5px;
+  padding: 5px 10px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.delete-btn:hover {
+  background: #d32f2f;
+}

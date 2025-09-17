@@ -1,0 +1,214 @@
+/* Container */
+.cust-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+/* Toolbar */
+.cust-toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.cust-toolbar-left {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cust-toolbar-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.cust-input {
+  flex: 1;
+  min-width: 220px;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.cust-tabs {
+  display: inline-flex;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.cust-tab {
+  padding: 8px 12px;
+  background: #fff;
+  border: none;
+  border-right: 1px solid #e5e7eb;
+  cursor: pointer;
+}
+.cust-tab:last-child { border-right: none; }
+.cust-tab.active {
+  background: #eef6ff;
+  font-weight: 700;
+}
+
+/* Select & Buttons */
+.cust-select {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+.cust-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+}
+.cust-btn.primary {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+.cust-btn.danger {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+}
+.cust-icon-btn {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* Messages */
+.cust-msg { padding: 10px; color: #444; }
+.cust-msg.error { color: #b91c1c; }
+
+/* Table */
+.cust-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #eee;
+  border-radius: 10px;
+}
+.cust-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.cust-table th, .cust-table td {
+  border-bottom: 1px solid #f2f2f2;
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+.cust-table th { background: #fafafa; }
+.cust-empty {
+  text-align: center; color: #777;
+}
+.cust-name { font-weight: 600; }
+.cust-sub { color: #666; font-size: 12px; }
+.cust-uuid { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12px; }
+
+/* Badges */
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+.badge-company { background: #fff7ed; border-color: #fed7aa; }
+.badge-indiv { background: #eff6ff; border-color: #bfdbfe; }
+
+/* Actions */
+.cust-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Footer / Pager */
+.cust-foot { font-size: 12px; color: #666; padding: 8px; }
+.cust-pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+.cust-pager-text { color: #444; }
+
+/* Modal */
+.cust-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 1000;
+}
+.cust-modal {
+  width: 100%;
+  max-width: 880px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  overflow: hidden;
+}
+.cust-modal.small { max-width: 480px; }
+
+.cust-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.cust-form {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cust-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cust-field input, .cust-field select, .cust-field textarea {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+.cust-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.cust-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cust-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Errors */
+.cust-err { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; padding: 8px 10px; border-radius: 8px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .cust-toolbar { grid-template-columns: 1fr; }
+  .cust-grid { grid-template-columns: 1fr; }
+  .cust-table th, .cust-table td { white-space: normal; }
+}

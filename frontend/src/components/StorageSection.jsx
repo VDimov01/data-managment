@@ -1,0 +1,299 @@
+import { useState, useEffect, useMemo } from "react";
+import { fetchVehicles } from "../services/api";
+import AvailableEditions from "./AvailableEditions";
+import Modal from "./Modal";
+import VehicleCreateForm from "./VehicleCreateForm";
+
+const STATUSES = ['InTransit','Available','Reserved','Sold','Service','Demo'];
+
+export default function StorageSection() {
+  const apiBase = "http://localhost:5000";
+
+  const [open, setOpen] = useState(false);
+  const [editionForVehicle, setEditionForVehicle] = useState(null);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [vehicleForEdit, setVehicleForEdit] = useState(null);
+
+  const [vehicleEntries, setVehicleEntries] = useState([]);
+  const [deletingIds, setDeletingIds] = useState(new Set()); // NEW
+
+  // --- Filters ---
+  const [qModel, setQModel] = useState("");
+  const [qColor, setQColor] = useState("");
+  const [qCity, setQCity] = useState("");
+  const [status, setStatus] = useState("");
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+
+  // --- Pagination ---
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const fetchVehiclesEntries = async () => {
+    try {
+      const vehicleData = await fetchVehicles();
+      setVehicleEntries(vehicleData || []);
+    } catch (err) {
+      console.error("Error fetching vehicles:", err);
+    }
+  };
+  useEffect(() => { fetchVehiclesEntries(); }, []);
+
+  // Debounce search
+  const [qModelDeb, setQModelDeb] = useState("");
+  const [qColorDeb, setQColorDeb] = useState("");
+  const [qCityDeb, setQCityDeb] = useState("");
+  useEffect(() => { const t = setTimeout(()=>setQModelDeb(qModel.trim().toLowerCase()), 250); return ()=>clearTimeout(t); }, [qModel]);
+  useEffect(() => { const t = setTimeout(()=>setQColorDeb(qColor.trim().toLowerCase()), 250); return ()=>clearTimeout(t); }, [qColor]);
+  useEffect(() => { const t = setTimeout(()=>setQCityDeb(qCity.trim().toLowerCase()), 250); return ()=>clearTimeout(t); }, [qCity]);
+  useEffect(() => { setPage(1); }, [qModelDeb, qColorDeb, qCityDeb, status, priceMin, priceMax, pageSize]);
+
+  // Filter
+  const filtered = useMemo(() => {
+    const min = priceMin === "" ? null : Number(priceMin);
+    const max = priceMax === "" ? null : Number(priceMax);
+    return (vehicleEntries || []).filter((e) => {
+      const make = (e.maker || e.make || "").toLowerCase();
+      const model = (e.model || "").toLowerCase();
+      const edition = (e.edition || e.edition_name || "").toLowerCase();
+      const city = (e.shop_city || e.city || "").toLowerCase();
+      const ext = (e.exterior_color || "").toLowerCase();
+      const intl = (e.interior_color || "").toLowerCase();
+      const price = e.asking_price == null ? null : Number(e.asking_price);
+      const st = (e.status || "");
+
+      if (qModelDeb) {
+        if (!`${make} ${model} ${edition}`.includes(qModelDeb)) return false;
+      }
+      if (qColorDeb) {
+        if (!ext.includes(qColorDeb) && !intl.includes(qColorDeb)) return false;
+      }
+      if (qCityDeb) {
+        if (!city.includes(qCityDeb)) return false;
+      }
+      if (status && st !== status) return false;
+      if (min != null && Number.isFinite(min)) {
+        if (!(price != null && Number.isFinite(price) && price >= min)) return false;
+      }
+      if (max != null && Number.isFinite(max)) {
+        if (!(price != null && Number.isFinite(price) && price <= max)) return false;
+      }
+      return true;
+    });
+  }, [vehicleEntries, qModelDeb, qColorDeb, qCityDeb, status, priceMin, priceMax]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const start = (page - 1) * pageSize;
+  const pageItems = filtered.slice(start, start + pageSize);
+  const fmtPrice = (v) => (v == null ? "Няма" : `${Number(v).toFixed(2)} лв.`);
+
+  // NEW: delete handler
+  const handleDeleteVehicle = async (row) => {
+    const vid = row.vehicle_id || row.id;
+    if (!vid) return;
+    const title = `${row.maker || row.make} ${row.model} ${row.edition || row.edition_name || ""} (${row.vin})`;
+    if (!window.confirm(`Изтриване на автомобил:\n\n${title}\n\nТова действие е необратимо.`)) return;
+
+    setDeletingIds(prev => new Set(prev).add(vid));
+    try {
+      const res = await fetch(`${apiBase}/api/vehicles/${vid}`, { method: 'DELETE' });
+      if (res.status === 204) {
+        // Remove from local state (no refetch needed)
+        setVehicleEntries(prev => prev.filter(v => (v.vehicle_id || v.id) !== vid));
+      } else {
+        const data = await res.json().catch(()=>({}));
+        alert(data?.error || 'Неуспешно изтриване.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Мрежова грешка при изтриване.');
+    } finally {
+      setDeletingIds(prev => { const n = new Set(prev); n.delete(vid); return n; });
+    }
+  };
+
+  return (
+    <div className="storage-section">
+      <h2>Менежиране на наличност</h2>
+
+      <div>
+        <h2>Vehicles — Create from edition</h2>
+        <AvailableEditions
+          apiBase={apiBase}
+          showAddVehicle={true}
+          hideDefaultActions={true}
+          onAddVehicle={(edition) => { setEditionForVehicle(edition); setOpen(true); }}
+        />
+
+        {/* Create modal */}
+        <Modal open={open} title="Create Vehicle" onClose={() => { setOpen(false); setEditionForVehicle(null); }}>
+          {editionForVehicle && (
+            <VehicleCreateForm
+              apiBase={apiBase}
+              edition={editionForVehicle}
+              onCreated={() => { fetchVehiclesEntries(); setOpen(false); setEditionForVehicle(null); }}
+              onClose={() => { setOpen(false); setEditionForVehicle(null); }}
+            />
+          )}
+        </Modal>
+
+        {/* Edit modal */}
+        <Modal open={openEdit} title="Edit Vehicle" onClose={() => { setOpenEdit(false); setVehicleForEdit(null); }}>
+          {vehicleForEdit && (
+            <VehicleCreateForm
+              apiBase={apiBase}
+              vehicle={vehicleForEdit}
+              mode="edit"
+              onUpdated={() => fetchVehiclesEntries()}
+              onClose={() => { setOpenEdit(false); setVehicleForEdit(null); }}
+            />
+          )}
+        </Modal>
+      </div>
+
+      {/* Filters */}
+      <h2 style={{ marginTop: "30px" }}>Текуща наличност</h2>
+      <div style={{ display:'grid', gap:8, gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr 1fr auto', alignItems:'center', marginBottom:10 }}>
+        <input placeholder="Марка / модел / версия…" value={qModel} onChange={(e) => setQModel(e.target.value)} />
+        <input placeholder="Цвят (ext/int)…" value={qColor} onChange={(e) => setQColor(e.target.value)} />
+        <input placeholder="Град…" value={qCity} onChange={(e) => setQCity(e.target.value)} />
+        <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="">Статус (всички)</option>
+          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <input type="number" placeholder="Мин. цена" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
+        <input type="number" placeholder="Макс. цена" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
+        <div style={{ display:'flex', gap:6 }}>
+          <select title="Редове на страница" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+            {[10,20,50,100].map(n => <option key={n} value={n}>{n}/стр.</option>)}
+          </select>
+          <button type="button" onClick={() => {
+            setQModel(""); setQColor(""); setQCity("");
+            setStatus(""); setPriceMin(""); setPriceMax("");
+            setPage(1);
+          }}>
+            Изчисти
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="storage-table-wrapper" style={{ overflowX:'auto' }}>
+        <table className="storage-table" style={{ width:'100%', borderCollapse:'collapse' }}>
+          <thead>
+            <tr>
+              <th>Автомобил</th>
+              <th>VIN</th>
+              <th>Цвят</th>
+              <th>Цена</th>
+              <th>Магазин</th>
+              <th>Град</th>
+              <th>Адрес</th>
+              <th>Статус</th>
+              <th>Действие</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.length === 0 && (
+              <tr>
+                <td colSpan={9} style={{ textAlign: "center", padding: "10px" }}>
+                  Няма автомобили по зададените филтри.
+                </td>
+              </tr>
+            )}
+            {pageItems.map((entry) => {
+              const vid = entry.vehicle_id || entry.id; // normalize
+              const isDel = deletingIds.has(vid);
+              return (
+                <tr key={vid}>
+                  <td>{entry.maker || entry.make} {entry.model} {entry.edition || entry.edition_name || ""}</td>
+                  <td>{entry.vin}</td>
+                  <td>
+                    {(entry.exterior_color || "")}
+                    {entry.interior_color ? ` + ${entry.interior_color}` : ""}
+                  </td>
+                  <td>{fmtPrice(entry.asking_price)}</td>
+                  <td>{entry.shop_name}</td>
+                  <td>{entry.shop_city || entry.city}</td>
+                  <td>{entry.shop_address || entry.address}</td>
+                  <td>{entry.status}</td>
+                  <td style={{ whiteSpace:'nowrap', display:'flex', gap:6 }}>
+                    <button type="button" onClick={() => { setVehicleForEdit(entry); setOpenEdit(true); }} disabled={isDel}>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteVehicle(entry)}
+                      disabled={isDel}
+                      style={{ color:'#b30000' }}
+                    >
+                      {isDel ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {/* Pager */}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8 }}>
+          <div style={{ fontSize:12, color:'#666' }}>
+            Показани {filtered.length === 0 ? 0 : start + 1}–{Math.min(start + pageSize, filtered.length)} от {filtered.length}
+          </div>
+          <Pager
+            page={page}
+            totalPages={totalPages}
+            onPrev={() => setPage(p => Math.max(1, p - 1))}
+            onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+            onJump={(n) => setPage(n)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Pager({ page, totalPages, onPrev, onNext, onJump }) {
+  const pages = [];
+  const maxBtns = 7;
+  if (totalPages <= maxBtns) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    const left = Math.max(2, page - 1);
+    const right = Math.min(totalPages - 1, page + 1);
+    pages.push(1);
+    if (left > 2) pages.push("…");
+    for (let i = left; i <= right; i++) pages.push(i);
+    if (right < totalPages - 1) pages.push("…");
+    pages.push(totalPages);
+  }
+
+  return (
+    <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+      <button type="button" onClick={onPrev} disabled={page <= 1}>Предишна</button>
+      {pages.map((p, i) =>
+        p === "…" ? (
+          <span key={`e${i}`} style={{ padding:'2px 6px', color:'#777' }}>…</span>
+        ) : (
+          <button
+            key={p}
+            type="button"
+            onClick={() => onJump(p)}
+            style={{
+              padding:'4px 8px',
+              border:'1px solid #ddd',
+              borderRadius:6,
+              background: p === page ? '#eef6ff' : '#fff',
+              fontWeight: p === page ? 700 : 400
+            }}
+          >
+            {p}
+          </button>
+        )
+      )}
+      <button type="button" onClick={onNext} disabled={page >= totalPages}>Следваща</button>
+    </div>
+  );
+}
