@@ -258,7 +258,7 @@ function ComparePreview({ data }) {
 
 function formatVal(v, dt, unit) {
   if (v == null) return "—";
-  if (dt === "boolean") return v ? "Yes" : "No";
+  if (dt === "boolean") return v ? '✅' : '❌';
   if (dt === "int" || dt === "decimal") return unit ? `${v} ${unit}` : String(v);
   return String(v);
 }
