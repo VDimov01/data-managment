@@ -6,6 +6,69 @@ const { getPool, withTransaction } = require('../db');
 const pool = getPool();
 
 /** Helpers */
+
+// --- helpers to coerce values the same way your compare code does ---
+
+function labelFromCode(code) {
+  // "HEADLIGHT_LOW_BEAM_TYPE" -> "Headlight Low Beam Type"
+  return String(code)
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (m, c) => c.toUpperCase());
+}
+
+function coerceForOutput(dt, raw) {
+  if (raw == null) return null;
+  if (dt === 'boolean') return !!raw;
+  if (dt === 'int') {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+    const z = Math.trunc(n);
+    return z === 0 ? null : z; // skip zero
+  }
+  if (dt === 'decimal') {
+    const x = Number(raw);
+    if (!Number.isFinite(x)) return null;
+    return Math.abs(x) < 1e-9 ? null : x; // skip ~0
+  }
+  // text (empty trimmed → null)
+  const s = String(raw).trim();
+  return s ? s : null;
+}
+
+function safeParseJsonMaybe(x) {
+  if (!x) return null;
+  if (Buffer.isBuffer(x)) {
+    try { return JSON.parse(x.toString('utf8')); } catch { return null; }
+  }
+  if (typeof x === 'string') {
+    try { return JSON.parse(x); } catch { return null; }
+  }
+  if (typeof x === 'object') return x;
+  return null;
+}
+
+/** Load specs_json + specs_i18n for many editions, return Map(edition_id -> {json, i18n}) */
+async function loadSpecsMap(conn, edIds) {
+  if (!edIds.length) return new Map();
+  const ph = edIds.map(() => '?').join(',');
+  const [rows] = await conn.query(
+    `SELECT edition_id, specs_json, specs_i18n
+       FROM edition_specs
+      WHERE edition_id IN (${ph})`,
+    edIds
+  );
+  const m = new Map();
+  for (const r of rows) {
+    m.set(r.edition_id, {
+      json:  safeParseJsonMaybe(r.specs_json)  || {},
+      i18n:  safeParseJsonMaybe(r.specs_i18n)  || {}
+    });
+  }
+  return m;
+}
+
+
 async function resolveEditionIds(conn, brochureId) {
   // fetch brochure
   const [[b]] = await conn.query(
@@ -45,178 +108,219 @@ async function resolveEditionIds(conn, brochureId) {
   return eds.map(x => x.edition_id);
 }
 
-async function computeCompare(conn, editionIds, onlyDifferences = 0) {
-  if (!editionIds.length) return { editions: [], rows: [] };
+async function computeCompare(conn, edIds, onlyDiff, lang = 'bg') {
+  if (!edIds.length) return { editions: [], rows: [] };
+  const ph = edIds.map(() => '?').join(',');
 
-  // 1) edition metadata
-  const placeholders = editionIds.map(() => '?').join(',');
+  // 1) Header (editions)
   const [eds] = await conn.query(
-    `SELECT e.edition_id, e.name AS edition_name, my.year, mo.name AS model_name, m.name AS make_name
-       FROM edition e
-       JOIN model_year my ON e.model_year_id = my.model_year_id
-       JOIN model mo ON my.model_id = mo.model_id
-       JOIN make m ON mo.make_id = m.make_id
-      WHERE e.edition_id IN (${placeholders})
-      ORDER BY m.name, mo.name, my.year, e.name`,
-    editionIds
+    `SELECT 
+       e.edition_id, e.name AS edition_name,
+       my.year, mo.name AS model_name, m.name AS make_name
+     FROM edition e
+     JOIN model_year my ON my.model_year_id = e.model_year_id
+     JOIN model      mo ON mo.model_id      = my.model_id
+     JOIN make       m  ON m.make_id        = mo.make_id
+     WHERE e.edition_id IN (${ph})
+     ORDER BY m.name, mo.name, my.year DESC, e.name`,
+    edIds
+  );
+  const editions = eds.map(r => ({
+    edition_id: r.edition_id,
+    edition_name: r.edition_name,
+    year: r.year,
+    model_name: r.model_name,
+    make_name: r.make_name
+  }));
+
+  // 2) Attribute definitions (we want full list + display hints)
+  const [defs] = await conn.query(
+    `SELECT attribute_id, code, name, name_bg, unit, data_type, category,
+            COALESCE(display_group, category) AS display_group,
+            COALESCE(display_order, 9999)     AS display_order
+       FROM attribute`
+  );
+  const byCode = new Map(defs.map(d => [d.code, d]));
+
+  // 3) Effective EAV values (inherits via view)
+  const [eav] = await conn.query(
+    `SELECT 
+       v.edition_id, a.attribute_id, a.code, a.name, a.name_bg, a.unit, a.data_type, a.category,
+       v.value_numeric, v.value_text, v.value_boolean, v.value_enum_id,
+       aev.code AS enum_code,
+       CASE WHEN v.value_enum_id IS NULL THEN NULL
+            WHEN ? = 'en' THEN aev.label_en ELSE aev.label_bg END AS enum_label
+     FROM v_effective_edition_attributes v
+     JOIN attribute a ON a.attribute_id = v.attribute_id
+     LEFT JOIN attribute_enum_value aev ON aev.enum_id = v.value_enum_id
+     WHERE v.edition_id IN (${ph})`,
+    [lang, ...edIds]
   );
 
-  // 2) attributes + values for all included editions
-  const [vals] = await conn.query(
-    `SELECT ea.edition_id, a.attribute_id, a.code, a.name, a.name_bg, a.unit, a.data_type, a.category,
-            ea.value_numeric, ea.value_text, ea.value_boolean
-       FROM edition_attribute ea
-       JOIN attribute a ON a.attribute_id = ea.attribute_id
-      WHERE ea.edition_id IN (${placeholders})
-      ORDER BY a.category, a.name`,
-    editionIds
-  );
-
-  // 3) build row map: attribute -> values per edition
-  const attrMap = new Map();
-  for (const v of vals) {
-    const key = v.attribute_id;
-    if (!attrMap.has(key)) {
-      attrMap.set(key, {
-        attribute_id: v.attribute_id,
-        code: v.code,
-        name: v.name,
-        name_bg: v.name_bg,
-        unit: v.unit,
-        data_type: v.data_type,
-        category: v.category,
-        values: {} // edition_id -> normalized value
-      });
-    }
-    const row = attrMap.get(key);
-    let val = null;
-    if (v.data_type === 'boolean') val = v.value_boolean == null ? null : !!v.value_boolean;
-    else if (v.data_type === 'text') val = v.value_text;
-    else val = v.value_numeric;
-    row.values[v.edition_id] = val;
-  }
-
-  let rows = Array.from(attrMap.values()).sort((a, b) => (a.category || '').localeCompare(b.category || '') || (a.name || '').localeCompare(b.name || ''));
-
-  if (onlyDifferences) {
-    rows = rows.filter(r => {
-      const all = eds.map(e => r.values[e.edition_id] ?? null);
-      return new Set(all.map(x => JSON.stringify(x))).size > 1;
-    });
-  }
-
-  return { editions: eds, rows };
-}
-
-// pseudo/express handler core needed for the lock route
-async function resolveBrochurePayload(conn, brochureIdOrUuid, { byUuid = false } = {}) {
-  // 1) Load brochure
-  const [brows] = await conn.query(
-    byUuid
-      ? 'SELECT * FROM brochure WHERE public_uuid = ?'
-      : 'SELECT * FROM brochure WHERE brochure_id = ?',
-    [brochureIdOrUuid]
-  );
-  if (!brows.length) throw new Error('Brochure not found');
-  const b = brows[0];
-
-  // 2) If snapshot, return the frozen JSON
-  if (b.is_snapshot && b.snapshot_json) {
-    return JSON.parse(b.snapshot_json);
-  }
-
-  // 3) Resolve EDITIONS to compare
-  let editions = [];
-  if (b.selection_mode === 'ALL_YEARS') {
-    const [rows] = await conn.query(`
-      SELECT e.edition_id, e.name AS edition_name,
-             my.year, mo.name AS model_name, m.name AS make_name
-      FROM edition e
-      JOIN model_year my ON e.model_year_id = my.model_year_id
-      JOIN model mo      ON my.model_id = mo.model_id
-      JOIN make  m       ON mo.make_id = m.make_id
-      WHERE mo.model_id = ?
-      ORDER BY m.name, mo.name, my.year, e.name
-    `, [b.model_id]);
-    editions = rows;
-
-  } else if (b.selection_mode === 'YEARS') {
-    const [rows] = await conn.query(`
-      SELECT e.edition_id, e.name AS edition_name,
-             my.year, mo.name AS model_name, m.name AS make_name
-      FROM brochure_year by2
-      JOIN model_year my ON by2.model_year_id = my.model_year_id
-      JOIN edition e     ON e.model_year_id   = my.model_year_id
-      JOIN model mo      ON my.model_id       = mo.model_id
-      JOIN make  m       ON mo.make_id        = m.make_id
-      WHERE by2.brochure_id = ?
-      ORDER BY m.name, mo.name, my.year, e.name
-    `, [b.brochure_id]);
-    editions = rows;
-
-  } else { // EDITIONS
-    const [rows] = await conn.query(`
-      SELECT e.edition_id, e.name AS edition_name,
-             my.year, mo.name AS model_name, m.name AS make_name
-      FROM brochure_edition be
-      JOIN edition e     ON be.edition_id = e.edition_id
-      JOIN model_year my ON e.model_year_id = my.model_year_id
-      JOIN model mo      ON my.model_id = mo.model_id
-      JOIN make  m       ON mo.make_id = m.make_id
-      WHERE be.brochure_id = ?
-      ORDER BY m.name, mo.name, my.year, e.name
-    `, [b.brochure_id]);
-    editions = rows;
-  }
-
-  // 4) Build compare rows (attributes → values per edition)
-  if (editions.length === 0) return { editions: [], rows: [] };
-
-  const ids = editions.map(ed => ed.edition_id);
-  const placeholders = ids.map(() => '?').join(',');
-  const [attrRows] = await conn.query(
-    `
-    SELECT a.attribute_id, a.code, a.name, a.name_bg, a.unit, a.category, a.data_type,
-           ea.edition_id,
-           ea.value_numeric, ea.value_text, ea.value_boolean
-    FROM attribute a
-    JOIN edition_attribute ea ON ea.attribute_id = a.attribute_id
-    WHERE ea.edition_id IN (${placeholders})
-    ORDER BY a.category, a.name
-    `,
-    ids
-  );
-
-  // pivot attributes
-  const byAttr = new Map();
-  for (const r of attrRows) {
-    if (!byAttr.has(r.attribute_id)) {
-      byAttr.set(r.attribute_id, {
-        attribute_id: r.attribute_id,
-        code: r.code,
-        name: r.name,
-        name_bg: r.name_bg,
-        unit: r.unit,
-        data_type: r.data_type,
-        category: r.category,
+  // rowMap[code] = { code, name, name_bg, unit, data_type, category, values:{[ed]:val}}
+  const rowMap = new Map();
+  const ensureRow = (def) => {
+    if (!rowMap.has(def.code)) {
+      rowMap.set(def.code, {
+        code: def.code,
+        name: def.name,
+        name_bg: def.name_bg,
+        unit: def.unit,
+        data_type: def.data_type,
+        category: def.category,
         values: {}
       });
     }
-    const v = (r.data_type === 'boolean')
-      ? (r.value_boolean === null ? null : !!r.value_boolean)
-      : (r.data_type === 'text')
-        ? r.value_text
-        : r.value_numeric;
-    byAttr.get(r.attribute_id).values[r.edition_id] = v;
+    return rowMap.get(def.code);
+  };
+
+  // Seed with EAV (this takes precedence over JSON if both exist)
+  for (const r of eav) {
+    const def = byCode.get(r.code) || r; // tolerate missing defs
+    const row = ensureRow(def);
+
+    let val = null;
+    if (def.data_type === 'enum') {
+      val = r.enum_label || r.enum_code || null;
+    } else if (def.data_type === 'text') {
+      val = coerceForOutput('text', r.value_text);
+    } else if (def.data_type === 'boolean') {
+      val = coerceForOutput('boolean', r.value_boolean);
+    } else if (def.data_type === 'int') {
+      val = coerceForOutput('int', r.value_numeric);
+    } else if (def.data_type === 'decimal') {
+      val = coerceForOutput('decimal', r.value_numeric);
+    }
+
+    if (val !== null) row.values[r.edition_id] = val;
   }
 
-  const rows = Array.from(byAttr.values());
+  // 4) Load JSON sidecar for these editions and overlay
+const specsMap = await loadSpecsMap(conn, edIds);
+for (const ed of editions) {
+  const edId = ed.edition_id;
+  const spec = specsMap.get(edId);
+  if (!spec) continue;
 
-  // optionally hide all-null attributes here (frontend already does it)
-  // rows = rows.filter(row => ids.some(id => row.values[id] != null));
+  const root = spec.json || {};
+  const i18n = spec.i18n || {};
+  const attr = (root.attributes || {});
+  const bag  = ((i18n?.[lang] || {}).attributes || {});
 
-  return { editions, rows };
+  for (const code of Object.keys(attr)) {
+    // existing def from DB, or build a synthetic one from JSON
+    let def = byCode.get(code);
+    const rec = attr[code] || {};
+    const dt  = rec.dt || def?.data_type || 'text';
+    const u   = rec.u ?? def?.unit ?? null;
+
+    if (!def) {
+      def = {
+        // synthetic definition so it can render
+        attribute_id: null,
+        code,
+        name: labelFromCode(code),         // fallback (pretty label comes from DB if present)
+        name_bg: labelFromCode(code),      // fallback BG label (add to `attribute` later for nicer names)
+        unit: u,
+        data_type: dt,
+        category: 'Other',
+        display_group: 'Other',
+        display_order: 9999,
+      };
+      byCode.set(code, def);
+    }
+
+    const row = ensureRow(def);
+
+    // if EAV already filled a value for this edition/code, keep it
+    const already = Object.prototype.hasOwnProperty.call(row.values, edId) && row.values[edId] !== null;
+    if (already) continue;
+
+    // prefer BG i18n for text if available
+    let v = rec.v;
+    if (dt === 'text' && bag && bag[code] != null) v = bag[code];
+
+    const coerced = coerceForOutput(dt, v);
+    if (coerced !== null) {
+      row.values[edId] = coerced;
+    }
+  }
 }
+
+
+  // 5) Filter rows (drop all-null; only differences if requested)
+  const rowsOut = [];
+  for (const row of rowMap.values()) {
+    const vals = editions.map(e => row.values[e.edition_id] ?? null);
+    const allNull = vals.every(v => v === null);
+    if (allNull) continue;
+
+    if (onlyDiff) {
+      const first = JSON.stringify(vals[0]);
+      const differs = vals.some(v => JSON.stringify(v) !== first);
+      if (!differs) continue;
+    }
+    rowsOut.push(row);
+  }
+
+  // 6) Sort by display_group → display_order → name
+  rowsOut.sort((a, b) => {
+    const da = byCode.get(a.code), db = byCode.get(b.code);
+    const g  = String(da?.display_group || da?.category || '').localeCompare(String(db?.display_group || db?.category || ''));
+    if (g) return g;
+    const o  = (da?.display_order ?? 9999) - (db?.display_order ?? 9999);
+    if (o) return o;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+
+  return { editions, rows: rowsOut };
+}
+
+
+
+async function resolveBrochurePayload(conn, brochureId) {
+  // load brochure + selection
+  const [[b]] = await conn.query(
+    `SELECT brochure_id, make_id, model_id, selection_mode, only_differences, language
+       FROM brochure
+      WHERE brochure_id = ?`,
+    [brochureId]
+  );
+  if (!b) throw new Error('Brochure not found');
+
+  let edIds = [];
+  if (b.selection_mode === 'ALL_YEARS') {
+    const [eds] = await conn.query(
+      `SELECT e.edition_id
+         FROM edition e
+         JOIN model_year my ON my.model_year_id=e.model_year_id
+        WHERE my.model_id = ?
+        ORDER BY my.year DESC, e.name`,
+      [b.model_id]
+    );
+    edIds = eds.map(r => r.edition_id);
+  } else if (b.selection_mode === 'YEARS') {
+    const [yrs] = await conn.query(`SELECT model_year_id FROM brochure_year WHERE brochure_id=?`, [b.brochure_id]);
+    const yearIds = yrs.map(r => r.model_year_id);
+    if (yearIds.length) {
+      const ph = yearIds.map(() => '?').join(',');
+      const [eds] = await conn.query(
+        `SELECT e.edition_id
+           FROM edition e
+          WHERE e.model_year_id IN (${ph})
+          ORDER BY e.edition_id`,
+        yearIds
+      );
+      edIds = eds.map(r => r.edition_id);
+    }
+  } else if (b.selection_mode === 'EDITIONS') {
+    const [eds] = await conn.query(`SELECT edition_id FROM brochure_edition WHERE brochure_id=? ORDER BY edition_id`, [b.brochure_id]);
+    edIds = eds.map(r => r.edition_id);
+  }
+
+  return computeCompare(conn, edIds, !!b.only_differences, b.language || 'bg');
+}
+
 
 // POST /api/brochures
 // Body: { title, description?, make_id, model_id,
@@ -260,7 +364,7 @@ router.post('/', async (req, res) => {
       // Snapshot now?
       if (snapshot) {
         const edIds = await resolveEditionIds(conn, brochureId);
-        const compare = await computeCompare(conn, edIds, only_differences ? 1 : 0);
+        const compare = await computeCompare(conn, edIds, only_differences ? 1 : 0, language || 'bg');
         await conn.query(`UPDATE brochure SET snapshot_json=? WHERE brochure_id=?`, [JSON.stringify(compare), brochureId]);
       }
 
@@ -392,7 +496,7 @@ router.put('/:id', async (req, res) => {
       if (snapshot) {
         const [[b]] = await conn.query(`SELECT only_differences FROM brochure WHERE brochure_id=?`, [id]);
         const edIds = await resolveEditionIds(conn, id);
-        const compare = await computeCompare(conn, edIds, b.only_differences ? 1 : 0);
+        const compare = await computeCompare(conn, edIds, b.only_differences ? 1 : 0, b.language || 'bg');
         await conn.query(`UPDATE brochure SET snapshot_json=?, is_snapshot=1 WHERE brochure_id=?`, [JSON.stringify(compare), id]);
       } else if (snapshot === 0) {
         // switch to live
