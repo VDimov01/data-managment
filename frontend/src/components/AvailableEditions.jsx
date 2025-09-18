@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 export default function AvailableEditions({
+  refreshKey = 0,
   apiBase = "http://localhost:5000",
   initialPageSize = 10,
   onEdit,
@@ -38,7 +39,7 @@ export default function AvailableEditions({
     } catch (e) { console.error(e); setErr(e.message || "Failed to load"); }
     finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, [apiBase]);
+  useEffect(() => { load(); }, [refreshKey, apiBase]);
 
   const filtered = useMemo(() => {
     if (!term) return items;

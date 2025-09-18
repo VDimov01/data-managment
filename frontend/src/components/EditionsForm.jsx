@@ -62,9 +62,9 @@ function normalizeDriveType(input) {
 }
 
 
-export default function EditionAttributeModal({ apiBase = "http://localhost:5000", onSaved, edition = null }) {
+export default function EditionAttributeModal({ apiBase = "http://localhost:5000", onSaved, edition = null, onCreated, onUpdated }) {
   // mode: 'select' (existing) or 'create' (new)
-  const [mode, setMode] = useState('select');
+  const [mode, setMode] = useState('create');
   const [view, setView] = useState('attributes'); // 'attributes' | 'images'
 
   // --- SELECT MODE state ---
@@ -383,6 +383,10 @@ const loadEditionAttributes = async (edId) => {
     });
     const data = await r.json();
 
+    if(r.ok && data.edition_id && typeof onCreated === "function") {
+      onCreated?.(data);
+    }
+
     if (!r.ok && r.status === 409 && data.edition_id) {
       // Edition exists -> switch to it
       if (makeSel.mode === 'existing') setMakeId(String(makeSel.value));
@@ -390,6 +394,7 @@ const loadEditionAttributes = async (edId) => {
       if (yearSel.mode  === 'existing') setModelYearId(String(yearSel.value));
       setEditionId(String(data.edition_id));
       setMode('select');
+      onCreated?.(json);
       return;
     } else if (!r.ok) {
       console.error(data);
@@ -526,14 +531,13 @@ const selectedEditionObj = useMemo(
 );
 const selectedEditionName = selectedEditionObj?.name || "";
 
-console.log({ selectedMakeName, selectedModelName, selectedYear, selectedEditionName });
 
   return (
     <div>
       {/* Mode switch */}
       <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-        <button type="button" onClick={() => setMode('select')} disabled={mode==='select'}>Избери съществуващ</button>
         <button type="button" onClick={() => setMode('create')} disabled={mode==='create'}>Създай нов</button>
+        <button type="button" onClick={() => setMode('select')} disabled={mode==='select'}>Избери съществуващ</button>
       </div>
       <div style={{ display:'flex', gap:8, marginBottom:12 }}>
   <button type="button" onClick={() => setView('attributes')} disabled={view==='attributes'}>

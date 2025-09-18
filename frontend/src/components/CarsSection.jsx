@@ -10,9 +10,12 @@ import AvailableEditions from "./AvailableEditions";
 export default function CarsSection() {
   const [open, setOpen] = useState(false);
   const [editEdition, setEditEdition] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [compareIds, setCompareIds] = useState(new Set());
   const compareArray = useMemo(() => Array.from(compareIds), [compareIds]);
+
+  const handleEditionSaved = () => {setRefreshKey(k => k + 1);};
 
   const toggleSelect = (edition) => {
     setCompareIds(prev => {
@@ -44,6 +47,7 @@ export default function CarsSection() {
 
       <h2 style={{ marginTop: "20px" }}>Управление на модели и техните атрибути</h2>
       <AvailableEditions
+        refreshKey={refreshKey}
         apiBase="http://localhost:5000"
         onEdit={(edition) => { setEditEdition(edition); setOpen(true); }}
         selectedIds={compareIds}
@@ -68,6 +72,8 @@ export default function CarsSection() {
           apiBase="http://localhost:5000"
           onSaved={() => setOpen(false)}
           edition={editEdition}
+          onCreated={handleEditionSaved}
+          onUpdated={handleEditionSaved}
         />
       </Modal>
 
