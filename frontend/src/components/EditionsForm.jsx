@@ -85,6 +85,13 @@ export default function EditionAttributeModal({ apiBase = "http://localhost:5000
   const [yearSel,  setYearSel]  = useState({ mode: 'existing', value: '', newValue: '' });
   const [edSel,    setEdSel]    = useState({ mode: 'new',      value: '', newValue: '' }); // default new edition
 
+  
+  const isCreating  = mode === 'create';
+  const hasEdition  = !!editionId;
+  const showEditor  = !isCreating && hasEdition;   // only show editor when NOT creating and an edition is selected
+  const showToolbar = !isCreating;                 // toolbar (filter/source) only when not creating
+
+
   // dropdown data for CREATE MODE
   const [cModels, setCModels] = useState([]);
   const [cYears, setCYears]   = useState([]);
@@ -548,7 +555,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
   </button>
 </div>
 
-      {mode === 'create' ? (
+      {isCreating ? (
         <div style={{ border:'1px solid #eee', borderRadius:8, padding:12, marginBottom:12 }}>
           <h4 style={{ marginTop:0 }}>Create new edition</h4>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }}>
@@ -636,6 +643,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
       )}
 
       {/* Toolbar */}
+      {showToolbar && (
       <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:10 }}>
         <input placeholder="Filter (name/code/category)…" value={filter} onChange={e => setFilter(e.target.value)} style={{ flex:1 }} />
         <label style={{ display:'flex', gap:6, alignItems:'center' }}>
@@ -657,8 +665,9 @@ const selectedEditionName = selectedEditionObj?.name || "";
           Restore removed
         </button>
       </div>
+      )}
 
-      {notices.length > 0 && (
+      {!isCreating && notices.length > 0 && (
   <div style={{
     margin:'8px 0 12px', padding:'8px 10px',
     background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:8,
@@ -681,14 +690,15 @@ const selectedEditionName = selectedEditionObj?.name || "";
 )}
 
 
-      {/* Attributes editor */}
 
-      {view === 'images' ? (
-  !editionId ? (
-    <p>Select (or create) an edition first to manage images.</p>
+{view === 'images' ? (
+  // IMAGES TAB
+  isCreating ? (
+    <p>Create and select an edition first to manage images.</p>
+  ) : !hasEdition ? (
+    <p>Select an edition first to manage images.</p>
   ) : (
     <>
-      {/* Edition-level images */}
       <EditionImageUploader
         apiBase={apiBase}
         editionId={Number(editionId)}
@@ -700,68 +710,96 @@ const selectedEditionName = selectedEditionObj?.name || "";
     </>
   )
 ) : (
-  /* your existing attributes UI exactly as-is */
-  <> {!editionId ? (
-        <p>{mode === 'create' ? 'Create and select an edition to edit attributes.' : 'Select an edition to edit attributes.'}</p>
-      ) : (
-        <form onSubmit={submitSpecs}>
-                                             {/* DRIVE TYPE (enum) quick-set */}
-<div style={{ display:'flex', alignItems:'center', gap:6 }}>
-  <label style={{ fontSize:12, color:'#666' }}>Drive</label>
-  <select value={driveType} onChange={e => setDriveType(e.target.value)} title="DRIVE_TYPE">
-    {DRIVE_OPTIONS.map(opt => (
-      <option key={opt} value={opt}>{opt || '(unset)'}</option>
-    ))}
-  </select>
-</div>
-          {grouped.map(([category, items]) => {
-            const vis = items.filter(r => !r.removed && matchesFilter(r) && passSourceFilter(r));
-            const rem = items.filter(r =>  r.removed && matchesFilter(r) && passSourceFilter(r));
-            if (vis.length === 0 && rem.length === 0) return null;
+  // ATTRIBUTES TAB
+  isCreating ? (
+    <p>Create and select an edition to edit attributes.</p>
+  ) : !hasEdition ? (
+    <p>Select an edition to edit attributes.</p>
+  ) : (
+    <form onSubmit={submitSpecs}>
+      {/* DRIVE TYPE (enum) quick-set */}
+      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+        <label style={{ fontSize:12, color:'#666' }}>Drive</label>
+        <select value={driveType} onChange={e => setDriveType(e.target.value)} title="DRIVE_TYPE">
+          {DRIVE_OPTIONS.map(opt => (
+            <option key={opt} value={opt}>{opt || '(unset)'}</option>
+          ))}
+        </select>
+      </div>
 
-            return (
-              <fieldset key={category} style={{ border:'1px solid #eee', borderRadius:8, marginBottom:12 }}>
-                <legend style={{ padding:'0 8px' }}>{category}</legend>
-                <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr auto', gap:8, padding:12 }}>
-                  <div style={{ fontWeight:600 }}></div>
-                  <div style={{ fontWeight:600 }}>Стойност</div>
-                  <div style={{ fontWeight:600 }}>Мерна единица</div>
-                  <div style={{ fontWeight:600 }}>Действия</div>
-                  
-                  {vis.map(r => (
-                    <Row
-                      key={r.attribute_id || r.code}
-                      r={r}
-                      langBg={langBg}
-                      onChangeValue={(val) => setRows(prev => prev.map(x => (x.attribute_id || x.code) === (r.attribute_id || r.code) ? { ...x, value: val } : x))}
-                      onRemove={() => setRows(prev => prev.map(x => (x.attribute_id || x.code) === (r.attribute_id || r.code) ? { ...x, removed: true } : x))}
-                    />
+      {grouped.map(([category, items]) => {
+        const vis = items.filter(r => !r.removed && matchesFilter(r) && passSourceFilter(r));
+        const rem = items.filter(r =>  r.removed && matchesFilter(r) && passSourceFilter(r));
+        if (vis.length === 0 && rem.length === 0) return null;
+
+        return (
+          <fieldset key={category} style={{ border:'1px solid #eee', borderRadius:8, marginBottom:12 }}>
+            <legend style={{ padding:'0 8px' }}>{category}</legend>
+            <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr auto', gap:8, padding:12 }}>
+              <div style={{ fontWeight:600 }}></div>
+              <div style={{ fontWeight:600 }}>Стойност</div>
+              <div style={{ fontWeight:600 }}>Мерна единица</div>
+              <div style={{ fontWeight:600 }}>Действия</div>
+
+              {vis.map(r => (
+                <Row
+                  key={r.attribute_id || r.code}
+                  r={r}
+                  langBg={langBg}
+                  onChangeValue={(val) =>
+                    setRows(prev =>
+                      prev.map(x =>
+                        (x.attribute_id || x.code) === (r.attribute_id || r.code)
+                          ? { ...x, value: val }
+                          : x
+                      )
+                    )
+                  }
+                  onRemove={() =>
+                    setRows(prev =>
+                      prev.map(x =>
+                        (x.attribute_id || x.code) === (r.attribute_id || r.code)
+                          ? { ...x, removed: true }
+                          : x
+                      )
+                    )
+                  }
+                />
+              ))}
+
+              {rem.length > 0 && (
+                <div style={{ gridColumn:'1 / -1', marginTop:6 }}>
+                  <small>Removed here: </small>
+                  {rem.map(r => (
+                    <button
+                      key={`rm-${r.attribute_id || r.code}`}
+                      type="button"
+                      onClick={() =>
+                        setRows(prev =>
+                          prev.map(x =>
+                            (x.attribute_id || x.code) === (r.attribute_id || r.code)
+                              ? { ...x, removed:false }
+                              : x
+                          )
+                        )
+                      }
+                      style={{ marginRight:6 }}
+                    >
+                      ↩ {langBg ? (r.name_bg || r.name) : r.name}
+                    </button>
                   ))}
-
- 
-
-                  {rem.length > 0 && (
-                    <div style={{ gridColumn:'1 / -1', marginTop:6 }}>
-                      <small>Removed here: </small>
-                      {rem.map(r => (
-                        <button key={`rm-${r.attribute_id || r.code}`} type="button"
-                                onClick={() => setRows(prev => prev.map(x => (x.attribute_id || x.code) === (r.attribute_id || r.code) ? { ...x, removed:false } : x))}
-                                style={{ marginRight:6 }}>
-                          ↩ {langBg ? (r.name_bg || r.name) : r.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              </fieldset>
-            );
-          })}
+              )}
+            </div>
+          </fieldset>
+        );
+      })}
 
-          <div style={{ marginTop:12 }}>
-            <button type="submit">Save Attributes</button>
-          </div>
-        </form>
-      )} </>
+      <div style={{ marginTop:12 }}>
+        <button type="submit">Save Attributes</button>
+      </div>
+    </form>
+  )
 )}
 
       
