@@ -2,6 +2,37 @@
 import { useEffect, useMemo, useState } from "react";
 import EditionImageUploader from "./CarImageUploader";
 
+const FALLBACK_GROUP_ORDER = [
+  'Basic information','Car body','Electric motor','ICE','Battery & Charging',
+  'Transmission','Chassis & Steering','Wheels & Brakes','Active safety',
+  'Passive safety','Car control & Driving assist','Exterior','Interior',
+  'Intelligent connectivity','Seats','Comfort & Anti-theft systems',
+  'Digital intertainment','Air conditioner & Refrigerator','Lights',
+  'Glass & Mirrors','Intelligent systems','ADAS','Optional packages',
+  'Customized options','Individual features','Full Vehicle Warranty',
+];
+
+// Parse "NN Group Name" → { seq: Number, label: "Group Name" }.
+// Falls back to { seq: 999, label: category || "Other" } if no prefix.
+function parseDisplayGroup(displayGroup, category) {
+  if (typeof displayGroup === 'string') {
+    const m = displayGroup.match(/^\s*(\d{1,3})\s+(.*\S)\s*$/);
+    if (m) {
+      return { seq: Number(m[1]), label: m[2] };
+    }
+    // If there is no numeric prefix but a label exists, keep it and push to the end
+    if (displayGroup.trim()) return { seq: 999, label: displayGroup.trim() };
+  }
+  if (displayGroup && displayGroup.trim()) {
+  const idx = FALLBACK_GROUP_ORDER.indexOf(displayGroup.trim());
+  if (idx >= 0) return { seq: idx + 1, label: displayGroup.trim() };
+}
+  return { seq: 999, label: category || 'Other' };
+}
+
+
+
+
 // Canonical enum options (temporary; later fetch via /api/enums)
 const ENUM_OPTIONS = {
   DRIVE_TYPE: [
@@ -435,15 +466,39 @@ const loadEditionAttributes = async (edId) => {
   };
 
   // ---------- Attributes grouping ----------
+  
   const grouped = useMemo(() => {
-    const m = new Map();
-    rows.forEach(r => {
-      const cat = r.category || "Other";
-      if (!m.has(cat)) m.set(cat, []);
-      m.get(cat).push(r);
+  // bucket rows by parsed display group
+  const buckets = new Map(); // key -> { seq, label, items: [] }
+
+  rows.forEach(r => {
+    const { seq, label } = parseDisplayGroup(r.display_group, r.category);
+    const key = `${seq}::${label}`;
+    if (!buckets.has(key)) buckets.set(key, { seq, label, items: [] });
+    buckets.get(key).items.push(r);
+  });
+
+  // sort items inside each group by display_order then name/code
+  for (const g of buckets.values()) {
+    g.items.sort((a, b) => {
+      const ao = Number.isFinite(a.display_order) ? a.display_order : Number.MAX_SAFE_INTEGER;
+      const bo = Number.isFinite(b.display_order) ? b.display_order : Number.MAX_SAFE_INTEGER;
+      if (ao !== bo) return ao - bo;
+      const an = (a.name_bg || a.name || a.code || '').toString();
+      const bn = (b.name_bg || b.name || b.code || '').toString();
+      return an.localeCompare(bn);
     });
-    return Array.from(m.entries()).sort(([a],[b]) => a.localeCompare(b));
-  }, [rows]);
+  }
+
+  // sort groups by seq then label
+  const arr = Array.from(buckets.values()).sort(
+    (a, b) => (a.seq - b.seq) || a.label.localeCompare(b.label)
+  );
+
+  // adapt to renderer's [{category, items}] → [label, items]
+  return arr.map(g => [g.label, g.items]);
+}, [rows]);
+
 
   const matchesFilter = (r) => {
     if (!filter.trim()) return true;
@@ -451,7 +506,8 @@ const loadEditionAttributes = async (edId) => {
     return (r.name || "").toLowerCase().includes(q)
         || (r.name_bg || "").toLowerCase().includes(q)
         || (r.code || "").toLowerCase().includes(q)
-        || (r.category || "").toLowerCase().includes(q);
+        || (r.category || "").toLowerCase().includes(q)
+        || (r.display_group || "").toLowerCase().includes(q);
   };
 
   // Save attributes (drops null/empty/zero as per your rule)
