@@ -286,7 +286,7 @@ router.get('/:editionId/specs', async (req, res) => {
     // Pull EAV for this edition, including enum (drive type)
     const [rows] = await conn.query(
       `
-      SELECT a.attribute_id, a.code, a.data_type, a.unit,
+      SELECT a.attribute_id, a.code, a.data_type, a.unit, a.is_filterable,
              ea.value_numeric, ea.value_text, ea.value_boolean, ea.value_enum_id,
              aev.code AS enum_code,
              CASE WHEN ea.value_enum_id IS NULL THEN NULL
@@ -738,7 +738,7 @@ if (effective) {
     `
     SELECT
       a.attribute_id, a.code, a.name, a.name_bg, a.unit, a.data_type, a.category,
-      a.display_group, a.display_order,
+      a.display_group, a.display_order, a.is_filterable,
 
       v.value_numeric, v.value_text, v.value_boolean, v.value_enum_id, v.source_level,
 
@@ -777,6 +777,7 @@ if (effective) {
     category:      r.category,
     display_group: r.display_group,
     display_order: r.display_order,
+    is_filterable: !!r.is_filterable,
 
     // expose the source your UI expects
     source:        r.source_level || null,   // 'edition' | 'model_year' | 'model' | null

@@ -484,7 +484,7 @@ const submitSpecs = async (e) => {
     }
     continue; // skip JSON/EAV for enums
   }
-    const isFilterable = FILTERABLE_CODES.has(r.code);
+    const isFilterable = r.is_filterable;
     if ((r.data_type === 'int' || r.data_type === 'decimal') && isFilterable) {
       eavNumeric.push({ code: r.code, val: r.val });
       continue;
