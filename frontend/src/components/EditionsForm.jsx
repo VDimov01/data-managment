@@ -2,8 +2,18 @@
 import { useEffect, useMemo, useState } from "react";
 import EditionImageUploader from "./CarImageUploader";
 
-// ===== JSON/EAV split config =====
-const DRIVE_OPTIONS = ['', 'FWD', 'RWD', 'AWD (on-demand)', '4WD (full-time)'];
+// Canonical enum options (temporary; later fetch via /api/enums)
+const ENUM_OPTIONS = {
+  DRIVE_TYPE: [
+    { value: '',                label: '(unset)' },
+    { value: 'FWD',             label: 'FWD (Front-wheel drive)' },
+    { value: 'RWD',             label: 'RWD (Rear-wheel drive)' },
+    { value: 'AWD_ON_DEMAND',   label: 'AWD (on-demand)' },
+    { value: 'AWD_FULLTIME',    label: 'AWD (full-time / 4WD)' },
+  ]
+};
+
+
 
 // Only these are saved in EAV (numeric/boolean); the rest go to JSON.
 // (You can tweak this set anytime without touching backend.)
@@ -53,13 +63,17 @@ function coerceByType(dt, v) {
 function normalizeDriveType(input) {
   if (!input) return '';
   const r = String(input).trim().toLowerCase();
-  if (r === 'front' || r === 'front wheel drive') return 'FWD';
-  if (r === 'rear'  || r === 'rear wheel drive')  return 'RWD';
-  if (r === 'awd')  return 'AWD_ON_DEMAND';
-  if (r === '4wd' || r === '4x4') return 'AWD_FULLTIME';
+
+  if (['fwd','предно','front','front wheel drive'].includes(r)) return 'FWD';
+  if (['rwd','задно','rear','rear wheel drive'].includes(r))   return 'RWD';
+  if (['awd','awd (on-demand)','awd (при нужда)'].includes(r))  return 'AWD_ON_DEMAND';
+  if (['4wd','4x4','awd (full-time)','awd (постоянно)'].includes(r)) return 'AWD_FULLTIME';
+
+  // already canonical?
   const up = r.toUpperCase();
-  return DRIVE_OPTIONS.includes(up) ? up : '';
+  return ['FWD','RWD','AWD_ON_DEMAND','AWD_FULLTIME'].includes(up) ? up : '';
 }
+
 
 
 export default function EditionAttributeModal({ apiBase = "http://localhost:5000", onSaved, edition = null, onCreated, onUpdated }) {
@@ -118,7 +132,6 @@ const passSourceFilter = (row) => {
 };
 
 
-  // 👇 Add this effect in EditionAttributeModal.jsx
 useEffect(() => {
   if (!edition) return;
 
@@ -237,6 +250,7 @@ const loadEditionAttributes = async (edId) => {
   const jsonAttrs = specs?.json?.attributes || {};
   const jsonBG    = specs?.json_i18n?.bg?.attributes || {};
   const enums     = specs?.enums || {};
+  console.log('Loaded specs', { eavNum, eavBool, jsonAttrs, jsonBG, enums });
 
   // enum (Drive)
   if (typeof setDriveType === 'function') setDriveType(enums.DRIVE_TYPE || '');
@@ -267,9 +281,8 @@ const loadEditionAttributes = async (edId) => {
       value = ev == null ? '' : ev;
 
     } else if (a.data_type === 'enum') {
-      // DISPLAY ONLY (we edit via driveType dropdown)
-      value = a.enum_label || '';
-
+   // Prefer code (what we’ll send back), fall back to label
+      value = (a.enum_code || '').toUpperCase() || (a.enum_label || '');
     } else {
       // TEXT: prefer BG i18n JSON > JSON raw > effective text
       const fromJson = (jsonBG[a.code] ?? (jsonHas(a.code, 'text') ? String(jsonVal(a.code)) : null));
@@ -401,7 +414,7 @@ const loadEditionAttributes = async (edId) => {
       if (yearSel.mode  === 'existing') setModelYearId(String(yearSel.value));
       setEditionId(String(data.edition_id));
       setMode('select');
-      onCreated?.(json);
+      onCreated?.(data);
       return;
     } else if (!r.ok) {
       console.error(data);
@@ -461,8 +474,16 @@ const submitSpecs = async (e) => {
   const eavBoolean = [];
   const json = { attributes: {} };
   const json_i18n = { bg: { attributes: {} } }; // default language is BG
+  const enumValues = {};
 
   for (const r of active) {
+     // 1) handle enums (do NOT drop them into JSON)
+    if (r.data_type === 'enum') {
+    if (r.code === 'DRIVE_TYPE') {
+      enumValues.DRIVE_TYPE = normalizeDriveType(r.val); // already canonical? this keeps it canonical
+    }
+    continue; // skip JSON/EAV for enums
+  }
     const isFilterable = FILTERABLE_CODES.has(r.code);
     if ((r.data_type === 'int' || r.data_type === 'decimal') && isFilterable) {
       eavNumeric.push({ code: r.code, val: r.val });
@@ -484,8 +505,7 @@ const submitSpecs = async (e) => {
 
   // 3) Enum: DRIVE_TYPE (from the little dropdown)
   const enums = {};
-  const normDrive = normalizeDriveType(driveType);
-  if (normDrive) enums.DRIVE_TYPE = normDrive;
+  if (enumValues.DRIVE_TYPE) enums.DRIVE_TYPE = enumValues.DRIVE_TYPE;
 
   // 4) POST
   const payload = {
@@ -574,7 +594,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
             {/* Model (disabled if Make is new) */}
             <SelectOrCreate
               label="Model"
-              disabled={makeSel.mode === 'new'}
+              // disabled={makeSel.mode === 'new'}
               options={cModels.map(m => ({ value:String(m.model_id), label:m.name }))}
               mode={modelSel.mode}
               setMode={(m)=>setModelSel(s=>({ ...s, mode:m }))}
@@ -587,7 +607,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
             {/* Year (disabled if Model is new) */}
             <SelectOrCreate
               label="Year"
-              disabled={modelSel.mode === 'new'}
+              // disabled={modelSel.mode === 'new'}
               options={cYears.map(y => ({ value:String(y.model_year_id), label:String(y.year) }))}
               mode={yearSel.mode}
               setMode={(m)=>setYearSel(s=>({ ...s, mode:m }))}
@@ -602,7 +622,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
             {/* Edition (existing OR create new) – disabled if Year is new */}
             <SelectOrCreate
               label="Edition"
-              disabled={yearSel.mode === 'new'}
+              // disabled={yearSel.mode === 'new'}
               options={cEds.map(e => ({ value:String(e.edition_id), label:e.name }))}
               mode={edSel.mode}
               setMode={(m)=>setEdSel(s=>({ ...s, mode:m }))}
@@ -717,16 +737,6 @@ const selectedEditionName = selectedEditionObj?.name || "";
     <p>Select an edition to edit attributes.</p>
   ) : (
     <form onSubmit={submitSpecs}>
-      {/* DRIVE TYPE (enum) quick-set */}
-      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-        <label style={{ fontSize:12, color:'#666' }}>Drive</label>
-        <select value={driveType} onChange={e => setDriveType(e.target.value)} title="DRIVE_TYPE">
-          {DRIVE_OPTIONS.map(opt => (
-            <option key={opt} value={opt}>{opt || '(unset)'}</option>
-          ))}
-        </select>
-      </div>
-
       {grouped.map(([category, items]) => {
         const vis = items.filter(r => !r.removed && matchesFilter(r) && passSourceFilter(r));
         const rem = items.filter(r =>  r.removed && matchesFilter(r) && passSourceFilter(r));
@@ -746,6 +756,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
                   key={r.attribute_id || r.code}
                   r={r}
                   langBg={langBg}
+                  enumOptions={ENUM_OPTIONS}
                   onChangeValue={(val) =>
                     setRows(prev =>
                       prev.map(x =>
@@ -880,7 +891,7 @@ const sourceBadgeStyle = (s) => ({
   border: '1px solid #e5e7eb',
 });
 
-function Row({ r, langBg, onChangeValue, onRemove }) {
+function Row({ r, langBg, enumOptions = {}, onChangeValue, onRemove }) {
   const [openInfo, setOpenInfo] = useState(false);
   const label = langBg ? (r.name_bg || r.name) : r.name;
 
@@ -932,21 +943,31 @@ function Row({ r, langBg, onChangeValue, onRemove }) {
       </div>
 
       {/* Value input */}
-      {r.data_type === 'boolean' ? (
-        <select value={String(r.value ?? '')} onChange={e => onChangeValue(e.target.value)}>
-          <option value="">(null)</option>
-          <option value="true">true</option>
-          <option value="false">false</option>
-        </select>
-      ) : (
-        <input
-          type={r.data_type === 'text' ? 'text' : 'number'}
-          step={r.data_type === 'decimal' ? '0.01' : undefined}
-          placeholder={r.data_type === 'int' ? 'integer' : r.data_type === 'decimal' ? 'decimal' : 'text'}
-          value={r.value}
-          onChange={e => onChangeValue(e.target.value)}
-        />
-      )}
+{r.data_type === 'boolean' ? (
+  <select value={String(r.value ?? '')} onChange={e => onChangeValue(e.target.value)}>
+    <option value="">(null)</option>
+    <option value="true">true</option>
+    <option value="false">false</option>
+  </select>
+) : r.data_type === 'enum' && Array.isArray(enumOptions[r.code]) ? (
+  <select
+    value={String(r.value ?? '')}
+    onChange={e => onChangeValue(e.target.value)}
+    title={r.code}
+  >
+    {enumOptions[r.code].map(opt => (
+      <option key={opt.value} value={opt.value}>{opt.label}</option>
+    ))}
+  </select>
+) : (
+  <input
+    type={r.data_type === 'text' ? 'text' : 'number'}
+    step={r.data_type === 'decimal' ? '0.01' : undefined}
+    placeholder={r.data_type === 'int' ? 'integer' : r.data_type === 'decimal' ? 'decimal' : 'text'}
+    value={r.value}
+    onChange={e => onChangeValue(e.target.value)}
+  />
+)}
 
       {/* Unit + actions */}
       <input disabled value={r.unit || ''} placeholder="unit" />

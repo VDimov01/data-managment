@@ -8,7 +8,7 @@ const pool = getPool();
 /* ================ Helpers ================ */
 
 const DEFAULT_LANG = 'bg';
-const DRIVE_TYPE_ALLOWED = new Set(['FWD','RWD','AWD','4WD']); // validate payload
+const DRIVE_TYPE_ALLOWED = new Set(['FWD','RWD','AWD_ON_DEMAND','AWD_FULLTIME']);
 
 // In-memory caches to cut DB roundtrips
 const attrIdCache = new Map();         // code -> attribute_id
@@ -23,15 +23,21 @@ async function getAttributeId(conn, code) {
   return row.attribute_id;
 }
 
-/** Resolve enum_id for DRIVE_TYPE by enum code (FWD/RWD/AWD/4WD), cached. */
+/** Resolve enum_id for DRIVE_TYPE by enum code (FWD/RWD/AWD_ON_DEMAND/AWD_FULLTIME), cached. */
 async function getDriveTypeEnumId(conn, driveCode) {
-  const norm = String(driveCode || '').trim().toUpperCase();
+  let norm = String(driveCode || '').trim().toUpperCase();
+
+  // Map legacy/synonyms to canonical DB codes
+  if (norm === 'AWD') norm = 'AWD_ON_DEMAND';
+  if (norm === '4WD' || norm === '4X4') norm = 'AWD_FULLTIME';
+
   if (!DRIVE_TYPE_ALLOWED.has(norm)) {
-    throw new Error(`Invalid DRIVE_TYPE: ${driveCode}. Allowed: ${[...DRIVE_TYPE_ALLOWED].join(', ')}`);
+    throw new Error(
+      `Invalid DRIVE_TYPE: ${driveCode}. Allowed: FWD, RWD, AWD_ON_DEMAND, AWD_FULLTIME`
+    );
   }
   if (driveTypeEnumIdCache.has(norm)) return driveTypeEnumIdCache.get(norm);
 
-  // If your enum table stores per-attribute values, feel free to JOIN on attribute_id as well.
   const [[ev]] = await conn.query(
     `SELECT enum_id FROM attribute_enum_value WHERE code = ? LIMIT 1`,
     [norm]
@@ -141,18 +147,20 @@ async function upsertEavPayload(conn, editionId, { eavNumeric = [], eavBoolean =
   }
 }
 
-/** Upsert DRIVE_TYPE enum safely (code is FWD/RWD/AWD/4WD). */
+/** Upsert DRIVE_TYPE enum safely (code is FWD/RWD/AWD_ON_DEMAND/AWD_FULLTIME). */
 async function upsertDriveType(conn, editionId, driveCodeOrLabel) {
   if (driveCodeOrLabel == null) return;
-  // normalize few common labels → codes
-  const raw = String(driveCodeOrLabel).trim().toLowerCase();
-  const normalized =
-    raw === 'front' || raw === 'front wheel drive' ? 'FWD' :
-    raw === 'rear'  || raw === 'rear wheel drive'  ? 'RWD' :
-    raw === 'awd' || raw === '4wd' || raw === '4x4' ? raw.toUpperCase() :
-    raw.toUpperCase();
 
-  const enumId = await getDriveTypeEnumId(conn, normalized);
+  // Accept labels/phrases and map to canonical before lookup
+  const r = String(driveCodeOrLabel).trim().toLowerCase();
+  let code = '';
+  if (['front','front wheel drive','предно'].includes(r)) code = 'FWD';
+  else if (['rear','rear wheel drive','задно'].includes(r)) code = 'RWD';
+  else if (['awd','awd (on-demand)','awd (при нужда)'].includes(r)) code = 'AWD_ON_DEMAND';
+  else if (['4wd','4x4','awd (full-time)','awd (постоянно)'].includes(r)) code = 'AWD_FULLTIME';
+  else code = String(driveCodeOrLabel).trim().toUpperCase();
+
+  const enumId = await getDriveTypeEnumId(conn, code);
   const driveAttrId = await getAttributeId(conn, 'DRIVE_TYPE');
 
   await conn.query(
@@ -163,6 +171,7 @@ async function upsertDriveType(conn, editionId, driveCodeOrLabel) {
     [editionId, driveAttrId, enumId]
   );
 }
+
 
 // helper at top of file (once)
 function asJson(val, fallback) {
