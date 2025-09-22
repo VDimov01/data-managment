@@ -514,7 +514,7 @@ router.post('/compare', async (req, res) => {
 
     // --- 2) Attribute definitions (for names/units/categories)
     const [defs] = await pool.query(`
-      SELECT attribute_id, code, name, name_bg, unit, data_type, category
+      SELECT attribute_id, code, name, name_bg, unit, data_type, category, display_group, display_order
         FROM attribute
     `);
     const defByCode = new Map(defs.map(d => [d.code, d]));
@@ -572,6 +572,8 @@ router.post('/compare', async (req, res) => {
           unit: meta?.unit ?? unitFromVal ?? null,
           data_type: meta?.data_type || dt || 'text',
           category: meta?.category || 'Other',
+          display_group: meta?.display_group || meta?.category || 'Other',
+          display_order: Number.isFinite(meta?.display_order) ? Number(meta.display_order) : 9999,
           values: {}
         });
       }
@@ -672,12 +674,18 @@ router.post('/compare', async (req, res) => {
       });
     }
 
-    // sort (category then BG name)
-    rowsOut.sort((a, b) => {
-      const c = (a.category || '').localeCompare(b.category || '');
-      if (c) return c;
-      return (a.name_bg || a.name || '').localeCompare(b.name_bg || b.name || '');
-    });
+
+    // sort: display_group (lexical: '01 ...' < '02 ...'), then display_order, then name
+      rowsOut.sort((a, b) => {
+      const ga = (a.display_group || a.category || '');
+      const gb = (b.display_group || b.category || '');
+      const gcmp = ga.localeCompare(gb);
+      if (gcmp) return gcmp;
+      const oa = Number.isFinite(a.display_order) ? a.display_order : 9999;
+      const ob = Number.isFinite(b.display_order) ? b.display_order : 9999;
+      if (oa !== ob) return oa - ob;
+        return (a.name_bg || a.name || '').localeCompare(b.name_bg || b.name || '');
+      });
 
     res.json({ editions: editionsHeader, rows: rowsOut });
   } catch (e) {
