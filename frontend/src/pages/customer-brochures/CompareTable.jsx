@@ -1,5 +1,66 @@
 import React, { useMemo, useState } from "react";
 
+const GROUP_BG_MAP = {
+  'Basic information': 'Основна информация',
+  'Car body': 'Купе',
+  'Electric motor': 'Електромотор',
+  'ICE': 'ДВГ',
+  'Battery & Charging': 'Батерия и зареждане',
+  'Transmission': 'Трансмисия',
+  'Chassis & Steering': 'Ходова част и управление',
+  'Wheels & Brakes': 'Гуми и спирачки',
+  'Active safety': 'Активна безопасност',
+  'Passive safety': 'Пасивна безопасност',
+  'Car control & Driving assist': 'Управление и асистенти',
+  'Exterior': 'Екстериор',
+  'Interior': 'Интериор',
+  'Intelligent connectivity': 'Интелигентна свързаност',
+  'Seats': 'Седалки',
+  'Comfort & Anti-theft systems': 'Комфорт и противокражбени системи',
+  'Digital intertainment': 'Дигитално развлечение', // ако в DB е точно така изписано
+  'Air conditioner & Refrigerator': 'Климатик и хладилник',
+  'Lights': 'Осветление',
+  'Glass & Mirrors': 'Стъкла и огледала',
+  'Intelligent systems': 'Интелигентни системи',
+  'ADAS': 'ADAS',
+  'Optional packages': 'Опционални пакети',
+  'Customized options': 'Персонализация',
+  'Individual features': 'Индивидуални особености',
+  'Full Vehicle Warranty': 'Пълна гаранция на автомобила',
+  'Misc' : 'Разни',
+  'Efficiency' : 'Ефективност',
+};
+
+const GROUP_ALIASES = {
+  'Miscellaneous': 'Misc',
+  'Full Warranty': 'Full Vehicle Warranty',
+  'Individual Features': 'Individual features',
+};
+
+const SHOW_GROUP_NUMBERS = false;
+
+function splitGroup(s) {
+  const str = String(s || '').trim();
+  const m = str.match(/^(\d{1,3})\s+(.*\S)$/);
+  if (m) return { seq: Number(m[1]), en: m[2] };
+  return { seq: 999, en: str };
+}
+
+function normalizeKey(en) {
+  const aliased = GROUP_ALIASES[en] || en;
+  return aliased;
+}
+
+function localizeGroupTitle(rawGroup, langBg = true) {
+  const { seq, en } = splitGroup(rawGroup);
+  const key = normalizeKey(en);
+  const bg = GROUP_BG_MAP[key] || en;
+  const title = langBg ? bg : en;
+  return SHOW_GROUP_NUMBERS && Number.isFinite(seq) && seq !== 999
+    ? `${String(seq).padStart(2, '0')} ${title}`
+    : title;
+}
+
 export default function CompareTable({ editions, rows, onlyDiff, filter }) {
   const q = (filter || "").trim().toLowerCase();
 
@@ -36,7 +97,7 @@ export default function CompareTable({ editions, rows, onlyDiff, filter }) {
   const groups = useMemo(() => {
     const m = new Map();
     finalRows.forEach(r => {
-      const k = r.category || "Общи";
+      const k = r.display_group || "Общи";
       if (!m.has(k)) m.set(k, []);
       m.get(k).push(r);
     });
@@ -69,7 +130,7 @@ export default function CompareTable({ editions, rows, onlyDiff, filter }) {
           )}
 
           {groups.map(([section, items]) => (
-            <SectionRows key={section} title={section} items={items} editions={editions} />
+            <SectionRows key={section} title={localizeGroupTitle(section, true)} items={items} editions={editions} />
           ))}
         </tbody>
       </table>

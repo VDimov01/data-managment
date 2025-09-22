@@ -145,7 +145,7 @@ async function computeCompare(conn, edIds, onlyDiff, lang = 'bg') {
   // 3) EAV values (include enum & i18n text)
   const [eav] = await conn.query(
     `SELECT 
-       ea.edition_id, a.attribute_id, a.code, a.name, a.name_bg, a.unit, a.data_type, a.category,
+       ea.edition_id, a.attribute_id, a.code, a.name, a.name_bg, a.unit, a.data_type, a.category, a.display_group, a.display_order,
        ea.value_numeric, COALESCE(eai.value_text, ea.value_text) AS value_text, ea.value_boolean, ea.value_enum_id,
        aev.code AS enum_code,
        CASE WHEN ea.value_enum_id IS NULL THEN NULL
@@ -171,6 +171,8 @@ async function computeCompare(conn, edIds, onlyDiff, lang = 'bg') {
         unit: def.unit,
         data_type: def.data_type,
         category: def.category,
+        display_group: def.display_group,
+        display_order: def.display_order,
         values: {}
       });
     }
