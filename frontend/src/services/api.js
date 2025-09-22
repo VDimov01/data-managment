@@ -90,3 +90,9 @@ export const fetchImages = async (carId, carMaker, carModel) => {
     if(!res.ok) throw new Error("Failed to fetch images");
     return res.json();
   };
+
+export async function generateVehicleQr(apiBase, vehicleId) {
+  const r = await fetch(`${apiBase}/api/qr/vehicles/${vehicleId}`, { method: 'POST' });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json(); // { qr_png_path, destination, ... }
+}

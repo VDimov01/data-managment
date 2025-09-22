@@ -3,6 +3,7 @@ const router = express.Router();
 const mysql = require('mysql2/promise');
 const { getPool } = require('../db');
 const pool = getPool();
+const { v4: uuidv4 } = require('uuid');
 
 const ALLOWED_STATUS = new Set([
   'InTransit','Available','Reserved','Sold','Service','Demo'
@@ -16,6 +17,9 @@ router.get('/', async (req, res) => {
   v.vehicle_id,
   v.vin,
   v.stock_number,
+  v.public_uuid,
+  v.qr_object_key,
+  v.qr_png_path,
   m.name  AS make,
   mo.name AS model,
   my.year AS model_year,
@@ -79,6 +83,9 @@ ORDER BY v.vehicle_id;
           exterior_color_id: row.exterior_color_id,
           interior_color_id: row.interior_color_id,
           shop_id: row.shop_id,
+          public_uuid: row.public_uuid,
+          qr_object_key: row.qr_object_key,
+          qr_png_path: row.qr_png_path,
           attributes: []
         };
       }
@@ -119,6 +126,9 @@ router.post('/', async (req, res) => {
       mileage = 0,
       acquisition_cost = null, // optional
     } = req.body || {};
+
+    const publicUuid = uuidv4();
+
 
     // Normalize
     vin = String(vin || '').trim().toUpperCase();
@@ -171,10 +181,10 @@ router.post('/', async (req, res) => {
     const [r] = await pool.query(
       `INSERT INTO vehicle
          (vin, stock_number, edition_id, exterior_color_id, interior_color_id, shop_id,
-          status, asking_price, mileage, acquisition_cost)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+          status, asking_price, mileage, acquisition_cost, public_uuid)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
       [vin, stock_number, edition_id, exterior_color_id, interior_color_id, shop_id,
-       status, asking_price, mileage, acquisition_cost]
+       status, asking_price, mileage, acquisition_cost, publicUuid]
     );
 
     res.status(201).json({ vehicle_id: r.insertId });

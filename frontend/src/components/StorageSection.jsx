@@ -3,6 +3,7 @@ import { fetchVehicles } from "../services/api";
 import AvailableEditions from "./AvailableEditions";
 import Modal from "./Modal";
 import VehicleCreateForm from "./VehicleCreateForm";
+import VehicleQRCell from './VehicleQrCell';
 
 const STATUSES = ['InTransit','Available','Reserved','Sold','Service','Demo'];
 
@@ -38,6 +39,10 @@ export default function StorageSection() {
     }
   };
   useEffect(() => { fetchVehiclesEntries(); }, []);
+
+  const updateRow = (id, patch) => {
+    setVehicleEntries(prev => prev.map(r => (r.vehicle_id === id ? { ...r, ...patch } : r)));
+  };
 
   // Debounce search
   const [qModelDeb, setQModelDeb] = useState("");
@@ -192,6 +197,7 @@ export default function StorageSection() {
               <th>Адрес</th>
               <th>Статус</th>
               <th>Действие</th>
+              <th>QR Код</th>
             </tr>
           </thead>
           <tbody>
@@ -230,6 +236,13 @@ export default function StorageSection() {
                     >
                       {isDel ? 'Deleting…' : 'Delete'}
                     </button>
+                  </td>
+                  <td>
+                    <VehicleQRCell
+                      row={entry}
+                      apiBase={apiBase}
+                      onRowUpdate={(newRow) => updateRow(entry.vehicle_id, { qr_object_key: newRow.qr_object_key })}
+                    />
                   </td>
                 </tr>
               );

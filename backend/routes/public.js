@@ -379,4 +379,35 @@ router.get('/customers/:uuid/compares', async (req, res) => {
   }
 });
 
+// GET /api/public/vehicles/:uuid
+router.get('/vehicles/:uuid', async (req, res) => {
+  const { uuid } = req.params;
+  // get vehicle
+  const [vehRows] = await db.query(
+    `SELECT v.vehicle_id, v.public_uuid, v.vin, v.stock_number, v.mileage,
+            v.status, v.asking_price, v.edition_id, v.shop_id
+     FROM vehicle v
+     WHERE v.public_uuid = ?`, [uuid]);
+
+  if (vehRows.length === 0) return res.status(404).json({ error: 'Not found' });
+  const v = vehRows[0];
+
+  // Pull edition + attributes however you already do it
+  // e.g. your existing EAV resolver for editions:
+  // const attrs = await getEditionAttributes(v.edition_id);
+
+  // Build a sanitized payload
+  res.json({
+    public_uuid: v.public_uuid,
+    stock_number: v.stock_number,
+    vin_last6: v.vin.slice(-6),         // optional: obfuscate
+    mileage: v.mileage,
+    status: v.status,
+    asking_price: v.asking_price,
+    edition_id: v.edition_id,
+    // attributes: attrs,
+  });
+});
+
+
 module.exports = router;
