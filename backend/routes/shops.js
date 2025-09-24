@@ -22,7 +22,7 @@ router.get("/", async (req, res) => {
 router.get('/new', async (req, res) => {
   const connection = await mysql.createConnection(process.env.DATABASE_URL);
   try {
-    const [rows] = await connection.execute(`SELECT shop_id, name, address FROM shop ORDER BY name`);
+    const [rows] = await connection.execute(`SELECT shop_id, name, address, city FROM shop ORDER BY name`);
     res.json(rows);
   } catch (err) {
     console.error(err);
