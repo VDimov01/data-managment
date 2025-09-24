@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { fetchVehicles } from "../services/api";
+import { fetchVehicles, fetchShops } from "../services/api";
 import AvailableEditions from "./AvailableEditions";
 import Modal from "./Modal";
 import VehicleCreateForm from "./VehicleCreateForm";
 import VehicleQRCell from './VehicleQrCell';
+import PrintLabelsButton from "./PrintLabelsButton";
 
 const STATUSES = ['InTransit','Available','Reserved','Sold','Service','Demo'];
 
@@ -16,12 +17,15 @@ export default function StorageSection() {
   const [vehicleForEdit, setVehicleForEdit] = useState(null);
 
   const [vehicleEntries, setVehicleEntries] = useState([]);
+  const [shops, setShops] = useState([]);
   const [deletingIds, setDeletingIds] = useState(new Set()); // NEW
+  const [shopName, setShopName] = useState(""); // id -> name map
 
   // --- Filters ---
   const [qModel, setQModel] = useState("");
   const [qColor, setQColor] = useState("");
   const [qCity, setQCity] = useState("");
+  const [shopId, setShopId] = useState("");
   const [status, setStatus] = useState("");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
@@ -38,7 +42,16 @@ export default function StorageSection() {
       console.error("Error fetching vehicles:", err);
     }
   };
-  useEffect(() => { fetchVehiclesEntries(); }, []);
+
+  const fetchAndSetShops = async () => {
+    try {
+      const shopsData = await fetchShops();
+      setShops(shopsData || []);
+    } catch (err) {
+      console.error("Error fetching shops:", err);
+    }
+  }
+  useEffect(() => { fetchVehiclesEntries(); fetchAndSetShops(); }, []);
 
   const updateRow = (id, patch) => {
     setVehicleEntries(prev => prev.map(r => (r.vehicle_id === id ? { ...r, ...patch } : r)));
@@ -51,7 +64,7 @@ export default function StorageSection() {
   useEffect(() => { const t = setTimeout(()=>setQModelDeb(qModel.trim().toLowerCase()), 250); return ()=>clearTimeout(t); }, [qModel]);
   useEffect(() => { const t = setTimeout(()=>setQColorDeb(qColor.trim().toLowerCase()), 250); return ()=>clearTimeout(t); }, [qColor]);
   useEffect(() => { const t = setTimeout(()=>setQCityDeb(qCity.trim().toLowerCase()), 250); return ()=>clearTimeout(t); }, [qCity]);
-  useEffect(() => { setPage(1); }, [qModelDeb, qColorDeb, qCityDeb, status, priceMin, priceMax, pageSize]);
+  useEffect(() => { setPage(1); }, [qModelDeb, qColorDeb, qCityDeb, status, shopId, priceMin, priceMax, pageSize]);
 
   // Filter
   const filtered = useMemo(() => {
@@ -62,6 +75,7 @@ export default function StorageSection() {
       const model = (e.model || "").toLowerCase();
       const edition = (e.edition || e.edition_name || "").toLowerCase();
       const city = (e.shop_city || e.city || "").toLowerCase();
+      const shop = (e.shop_id || "").toString();
       const ext = (e.exterior_color || "").toLowerCase();
       const intl = (e.interior_color || "").toLowerCase();
       const price = e.asking_price == null ? null : Number(e.asking_price);
@@ -76,6 +90,10 @@ export default function StorageSection() {
       if (qCityDeb) {
         if (!city.includes(qCityDeb)) return false;
       }
+      if (shopId){
+        if (shop !== shopId) return false;
+        setShopName(shops.filter(s => s.shop_id.toString() === shopId)[0]?.name || "");
+      }
       if (status && st !== status) return false;
       if (min != null && Number.isFinite(min)) {
         if (!(price != null && Number.isFinite(price) && price >= min)) return false;
@@ -85,7 +103,7 @@ export default function StorageSection() {
       }
       return true;
     });
-  }, [vehicleEntries, qModelDeb, qColorDeb, qCityDeb, status, priceMin, priceMax]);
+  }, [vehicleEntries, qModelDeb, qColorDeb, qCityDeb, shopId, status, priceMin, priceMax]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -162,7 +180,10 @@ export default function StorageSection() {
       <div style={{ display:'grid', gap:8, gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr 1fr auto', alignItems:'center', marginBottom:10 }}>
         <input placeholder="Марка / модел / версия…" value={qModel} onChange={(e) => setQModel(e.target.value)} />
         <input placeholder="Цвят (ext/int)…" value={qColor} onChange={(e) => setQColor(e.target.value)} />
-        <input placeholder="Град…" value={qCity} onChange={(e) => setQCity(e.target.value)} />
+        <select value={shopId} onChange={(e) => setShopId(e.target.value)}>
+          <option value="">Магазин (всички)</option>
+          {shops.map(s => <option key={s.shop_id} value={s.shop_id}>{s.name}</option>)}
+        </select>
         <select value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">Статус (всички)</option>
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -221,7 +242,7 @@ export default function StorageSection() {
                   </td>
                   <td>{fmtPrice(entry.asking_price)}</td>
                   <td>{entry.shop_name}</td>
-                  <td>{entry.shop_city || entry.city}</td>
+                  <td>{entry.shop_city || entry.city}</td> 
                   <td>{entry.shop_address || entry.address}</td>
                   <td>{entry.status}</td>
                   <td style={{ whiteSpace:'nowrap', display:'flex', gap:6 }}>
@@ -249,6 +270,8 @@ export default function StorageSection() {
             })}
           </tbody>
         </table>
+
+        <PrintLabelsButton apiBase={apiBase} shopId={shopId} shopName={shopName} status={"Available"} />
 
         {/* Pager */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8 }}>
