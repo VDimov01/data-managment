@@ -19,6 +19,7 @@ const brochureRoutes = require('./routes/brochures');
 const compareRoutes = require('./routes/compares');
 const publicRoutes = require('./routes/public');
 const qrRoutes = require('./routes/qr');
+const labelsRoutes = require('./routes/labels');
 
 const path = require('path');
 
@@ -45,6 +46,7 @@ app.use('/api/brochures', brochureRoutes);
 app.use('/api/compares', compareRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/qr', qrRoutes);
+app.use('/api/labels', labelsRoutes);
 
 // Test Route
 app.get('/', (req, res) => {
