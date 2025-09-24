@@ -69,7 +69,7 @@ export const fetchStorage = async () => {
 }
 
 export const fetchShops = async () => {
-  const res = await fetch("http://localhost:5000/api/shops");
+  const res = await fetch("http://localhost:5000/api/shops/new");
   if (!res.ok) throw new Error("Failed to fetch shops");
   return res.json();
 }
