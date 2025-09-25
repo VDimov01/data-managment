@@ -3,7 +3,7 @@ export default function PrintSelectedLabelsButton({ apiBase = 'http://localhost:
   const href = `${apiBase}/api/labels/vehicles.pdf?ids=${selectedIds.join(',')}`;
   return (
     <a href={href} target="_blank" rel="noopener noreferrer">
-      <button disabled={!selectedIds.length}>Print selected ({selectedIds.length})</button>
+      <button>Print selected ({selectedIds.length})</button>
     </a>
   );
 }
