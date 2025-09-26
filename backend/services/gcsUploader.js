@@ -5,7 +5,7 @@ const storage = new Storage({
   keyFilename: path.join(__dirname, "../config/luminous-lodge-466913-n1-c0a750ea52df.json"),
 });
 
-const bucket = storage.bucket(process.env.BUCKET_NAME_IMAGES || "test_bucket-2004");
+const bucket = storage.bucket(process.env.BUCKET_PUBLIC || "test_bucket-2004");
 
 async function uploadToGCS(file, carId, carMaker, carModel, carYear, carPart) {
   let fileName = `cars/${carMaker}/${carModel}/${file.originalname}`;

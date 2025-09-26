@@ -96,3 +96,64 @@ export async function generateVehicleQr(apiBase, vehicleId) {
   if (!r.ok) throw new Error(await r.text());
   return r.json(); // { qr_png_path, destination, ... }
 }
+
+// --- Vehicle images (private) ---
+export async function listVehicleImages(apiBase, vehicleId) {
+  const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function uploadVehicleImages(apiBase, vehicleId, files) {
+  const fd = new FormData();
+  for (const f of files) fd.append('images', f);
+  const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images`, {
+    method: 'POST',
+    body: fd,
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json(); // { created: [...] }
+}
+
+export async function setPrimaryVehicleImage(apiBase, vehicleId, imageId) {
+  const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images/${imageId}/primary`, { method: 'POST' });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function updateVehicleImageMeta(apiBase, vehicleId, imageId, { caption, sort_order }) {
+  const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images/${imageId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ caption, sort_order })
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function deleteVehicleImage(apiBase, vehicleId, imageId) {
+  const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images/${imageId}`, { method: 'DELETE' });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// Public vehicle by UUID
+export async function getPublicVehicle(apiBase, uuid) {
+  const r = await fetch(`${apiBase}/api/public/vehicles/${uuid}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// Public vehicle images (private bucket, proxied by backend)
+export async function getPublicVehicleImages(apiBase, uuid) {
+  const r = await fetch(`${apiBase}/api/public/vehicles/${uuid}/images`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json(); // [{ vehicle_image_id, stream_url }]
+}
+
+// Edition attributes (your existing resolver)
+export async function getEditionAttributes(apiBase, editionId, lang = 'bg') {
+  const r = await fetch(`${apiBase}/api/editions/${editionId}/specs?lang=${lang}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json(); // shape depends on your resolver
+}

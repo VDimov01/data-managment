@@ -3,6 +3,9 @@ const express = require('express');
 const router = express.Router();
 const { getPool } = require('../db');
 const pool = getPool();
+const { bucketPrivate } = require('../services/gcs');
+const { getVehiclePathParts } = require('../services/vehiclePathParts');
+
 
 /** ---------------- helpers (same behavior as brochures.js) ---------------- */
 function labelFromCode(code) {
@@ -383,7 +386,7 @@ router.get('/customers/:uuid/compares', async (req, res) => {
 router.get('/vehicles/:uuid', async (req, res) => {
   const { uuid } = req.params;
   // get vehicle
-  const [vehRows] = await db.query(
+  const [vehRows] = await pool.query(
     `SELECT v.vehicle_id, v.public_uuid, v.vin, v.stock_number, v.mileage,
             v.status, v.asking_price, v.edition_id, v.shop_id
      FROM vehicle v
@@ -391,6 +394,8 @@ router.get('/vehicles/:uuid', async (req, res) => {
 
   if (vehRows.length === 0) return res.status(404).json({ error: 'Not found' });
   const v = vehRows[0];
+
+  const parts = await getVehiclePathParts(v.vehicle_id); // maker, model, year, edition, uuid
 
   // Pull edition + attributes however you already do it
   // e.g. your existing EAV resolver for editions:
@@ -405,8 +410,82 @@ router.get('/vehicles/:uuid', async (req, res) => {
     status: v.status,
     asking_price: v.asking_price,
     edition_id: v.edition_id,
+    make: parts.maker,
+    model: parts.model,
+    model: parts.model_year,
+    edition_name: parts.edition,
     // attributes: attrs,
   });
+});
+
+/**
+ * List public images for a vehicle by UUID.
+ * Returns ordered rows with a stream_url you can use directly in <img>.
+ */
+router.get('/vehicles/:uuid/images', async (req, res) => {
+  const uuid = String(req.params.uuid);
+  const pool = getPool();
+
+  // find vehicle_id from uuid
+  const [[veh]] = await pool.query(
+    'SELECT vehicle_id FROM vehicle WHERE public_uuid = ? LIMIT 1',
+    [uuid]
+  );
+  if (!veh) return res.status(404).json({ error: 'Vehicle not found' });
+
+  const [rows] = await pool.query(
+    `SELECT vehicle_image_id, object_key, content_type, bytes,
+            caption, sort_order, is_primary, created_at
+     FROM vehicle_image
+     WHERE vehicle_id = ?
+     ORDER BY is_primary DESC, sort_order ASC, vehicle_image_id ASC`,
+    [veh.vehicle_id]
+  );
+
+  const base = `${req.protocol}://${req.get('host')}/api/public/vehicles/${uuid}/images`;
+  const out = rows.map(r => ({
+    vehicle_image_id: r.vehicle_image_id,
+    caption: r.caption,
+    sort_order: r.sort_order,
+    is_primary: r.is_primary,
+    bytes: r.bytes,
+    stream_url: `${base}/${r.vehicle_image_id}`
+  }));
+
+  res.json(out);
+});
+
+/**
+ * Stream a single image by UUID + imageId.
+ * Verifies the image belongs to that vehicle before streaming from GCS.
+ */
+router.get('/vehicles/:uuid/images/:imageId', async (req, res) => {
+  const uuid = String(req.params.uuid);
+  const imageId = Number(req.params.imageId);
+  const pool = getPool();
+
+  const [[row]] = await pool.query(
+    `SELECT vi.object_key, vi.content_type
+       FROM vehicle_image vi
+       JOIN vehicle v ON v.vehicle_id = vi.vehicle_id
+      WHERE v.public_uuid = ? AND vi.vehicle_image_id = ?
+      LIMIT 1`,
+    [uuid, imageId]
+  );
+
+  if (!row) return res.status(404).end();
+
+  res.setHeader('Content-Type', row.content_type || 'image/jpeg');
+  // public caching is fine; objects are immutable (we set long max-age in GCS)
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+
+  bucketPrivate.file(row.object_key)
+    .createReadStream()
+    .on('error', (e) => {
+      res.statusCode = 500;
+      res.end(e.message);
+    })
+    .pipe(res);
 });
 
 

@@ -1,6 +1,6 @@
 // services/qrUploader.js
 const QRCode = require('qrcode');
-const { bucket } = require('./gcs');
+const { bucketPrivate } = require('./gcs');
 const { getPool } = require('../db');
 
 const PUBLIC_ORIGIN = process.env.PUBLIC_ORIGIN; // e.g. https://bydcars.bg
@@ -37,7 +37,7 @@ async function ensureVehicleQr(vehicleId) {
   const buf = await generateQrPng(destUrl);
 
   const key = qrObjectKey(v.vehicle_id, v.public_uuid);
-  const file = bucket.file(key);
+  const file = bucketPrivate.file(key);
 
   await file.save(buf, {
     resumable: false,
@@ -51,7 +51,7 @@ async function ensureVehicleQr(vehicleId) {
 
 if ((process.env.QR_PUBLIC_READ || '').toLowerCase() === 'true') {
   await file.makePublic().catch(()=>{});
-  publicUrl = `https://storage.googleapis.com/${bucket.name}/${key}`;
+  publicUrl = `https://storage.googleapis.com/${bucketPrivate.name}/${key}`;
 }
 
 // store short key; url only if public

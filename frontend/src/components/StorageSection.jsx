@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { fetchVehicles, fetchShops } from "../services/api";
 import AvailableEditions from "./AvailableEditions";
 import Modal from "./Modal";
+import VehicleImagesModal from "./VehicleImagesModal";
 import VehicleCreateForm from "./VehicleCreateForm";
 import VehicleQRCell from './VehicleQrCell';
 import PrintLabelsButton from "./PrintLabelsButton";
@@ -20,6 +21,10 @@ export default function StorageSection() {
   const [shops, setShops] = useState([]);
   const [deletingIds, setDeletingIds] = useState(new Set()); // NEW
   const [shopName, setShopName] = useState(""); // id -> name map
+
+  const [openImages, setOpenImages] = useState(false);
+  const [vehicleForImages, setVehicleForImages] = useState(null);
+
 
   // --- Filters ---
   const [qModel, setQModel] = useState("");
@@ -257,6 +262,13 @@ export default function StorageSection() {
                     >
                       {isDel ? 'Deleting…' : 'Delete'}
                     </button>
+                    <button
+                      onClick={() => { setVehicleForImages(entry); setOpenImages(true); }}
+                      style={{ marginLeft: 6 }}
+                    >
+                      Images
+                    </button>
+
                   </td>
                   <td>
                     <VehicleQRCell
@@ -287,6 +299,15 @@ export default function StorageSection() {
           />
         </div>
       </div>
+      {vehicleForImages && (
+  <VehicleImagesModal
+    apiBase={apiBase}
+    vehicle={vehicleForImages}
+    open={openImages}
+    onClose={() => { setOpenImages(false); setVehicleForImages(null); }}
+  />
+)}
+
     </div>
   );
 }

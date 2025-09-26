@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { ensureVehicleQr, backfillVehicleQrs } = require('../services/qrUploader');
-const { bucket } = require('../services/gcs');
+const { bucketPrivate } = require('../services/gcs');
 const { getPool } = require('../db');
 
 // TODO: add your admin auth middleware here
@@ -36,7 +36,7 @@ router.get('/vehicles/:id/qr.png', async (req, res) => {
 
   res.setHeader('Content-Type', 'image/png');
   res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
-  bucket.file(key).createReadStream()
+  bucketPrivate.file(key).createReadStream()
     .on('error', (e) => res.status(500).end(e.message))
     .pipe(res);
 });

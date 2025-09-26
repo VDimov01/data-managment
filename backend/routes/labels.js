@@ -3,7 +3,7 @@ const express = require('express');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
-const { bucket } = require('../services/gcs');
+const { bucketPrivate } = require('../services/gcs');
 const { fetchVehiclesForLabels } = require('../services/labelsdata');
 const { ensureVehicleQr } = require('../services/qrUploader'); // you already have this
 const router = express.Router();
@@ -46,7 +46,7 @@ router.get('/vehicles.pdf', async (req, res) => {
       const { buffer } = await renderLabelsPdfToBuffer(rows);
       const stamp = new Date().toISOString().slice(0,10).replace(/-/g,'');
       const key = buildLabelsObjectKey({ shop_id, status, ids, stamp });
-      const file = bucket.file(key);
+      const file = bucketPrivate.file(key);
       await file.save(buffer, {
         resumable: false,
         contentType: 'application/pdf',
@@ -134,7 +134,7 @@ async function renderGrid(doc, rows) {
 
     // QR image from GCS
     if (r.qr_object_key) {
-      const [buf] = await bucket.file(r.qr_object_key).download();
+      const [buf] = await bucketPrivate.file(r.qr_object_key).download();
       doc.image(buf, x + mm(2), y + mm(2), { width: qrW, height: qrH });
     } else {
       // fallback rectangle
@@ -148,6 +148,8 @@ async function renderGrid(doc, rows) {
     textCentered(doc, safeClamp(r.make, 28), centerX, ty, cellW); ty += mm(5);
     textCentered(doc, safeClamp(`${r.model} ${r.model_year}`, 28), centerX, ty, cellW); ty += mm(5);
     textCentered(doc, safeClamp(r.edition_name, 28), centerX, ty, cellW);
+    //textCentered(doc, safeClamp(`Цвят: ${r.exterior_color_id || ''} ${r.interior_color_id || ''}`, 28), centerX, ty + mm(5), cellW); 
+    // add color if needed.. have to fetch colors and then use exterior_color_id and interior_color_id from vehicle (r)
 
     col += 1; x += cellW + gap;
   }

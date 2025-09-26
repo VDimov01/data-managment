@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import ProtectedRoute from './ProtectedRoute';
 import { DataProvider } from './contexts/DataContext';
 import CustomerPortal from './pages/CustomerPortal'
+import VehiclePublicPage from './pages/VehiclePublicPage';
 
 function App() {
   const isLoggedIn = !!localStorage.getItem('token');
@@ -14,6 +15,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       {/* <Route path="/customers/:type/:uuid" element={<ClientDetails />} /> */}
       <Route path="/customer/:uuid" element={<CustomerPortal apiBase="http://localhost:5000"/>} />
+      <Route path="/vehicles/:uuid" element={<VehiclePublicPage apiBase={import.meta.env.VITE_API_BASE || "http://localhost:5000"} />} />
       <Route
         path="/dashboard"
         element={<ProtectedRoute><DataProvider><Dashboard /></DataProvider></ProtectedRoute>}
