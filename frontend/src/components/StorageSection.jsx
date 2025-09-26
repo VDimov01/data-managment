@@ -43,6 +43,7 @@ export default function StorageSection() {
     try {
       const vehicleData = await fetchVehicles();
       setVehicleEntries(vehicleData || []);
+      console.log("Fetched vehicles:", vehicleData);
     } catch (err) {
       console.error("Error fetching vehicles:", err);
     }
@@ -283,7 +284,7 @@ export default function StorageSection() {
           </tbody>
         </table>
 
-        <PrintLabelsButton apiBase={apiBase} shopId={shopId} shopName={shopName} status={"Available"} />
+        <PrintLabelsButton apiBase={apiBase} shopId={shopId} shopName={shopId ? shopName : ""} status={"Available"} />
 
         {/* Pager */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8 }}>
