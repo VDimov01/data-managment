@@ -30,7 +30,7 @@ function vehicleHierKey({ maker, model, model_year, edition, vehicle_uuid, origi
   const segEdition = cleanSegKeepSpaces(edition);
   const segUuid    = String(vehicle_uuid);
   const fileName   = fileNameFrom(originalName, buffer);
-  return `${segMaker}/${segModelYr}/${segEdition}/${segUuid}/${fileName}`;
+  return `vehicles/${segMaker}/${segModelYr}/${segEdition}/${segUuid}/${fileName}`;
 }
 
 module.exports = { vehicleHierKey };
