@@ -9,7 +9,7 @@ const { ensureVehicleQr } = require('../services/qrUploader'); // you already ha
 const router = express.Router();
 
 const mm = v => (v * 72) / 25.4; // mm -> pt
-const FONT_PATH = path.join(__dirname, '../assets/fonts/DejaVuSans.ttf');
+const FONT_PATH = path.join(__dirname, '../fonts/DejaVuSans.ttf'); // ensure this font file exists
 
 /**
  * GET /api/labels/vehicles.pdf
@@ -111,9 +111,11 @@ function createDoc() {
 }
 
 async function renderGrid(doc, rows) {
-  const cellW = mm(50), cellH = mm(65);
+  const cellW = mm(50), cellH = mm(80);          // was 65 -> now 80 to fit 5 lines
   const qrW = mm(46), qrH = mm(46);
-  const gap = mm(4);
+  const pad = mm(2), gap = mm(4);
+  const lineStep = mm(4);                        // ~11pt leading at 8pt font
+  const fontSize = 8;
 
   const usableW = doc.page.width - doc.page.margins.left - doc.page.margins.right;
   const cols = Math.max(1, Math.floor((usableW + gap) / (cellW + gap)));
@@ -129,31 +131,41 @@ async function renderGrid(doc, rows) {
       x = doc.page.margins.left; y = doc.page.margins.top; col = 0;
     }
 
-    // Cell border (thin)
+    // Cell border
     doc.save().lineWidth(0.5).rect(x, y, cellW, cellH).stroke().restore();
 
-    // QR image from GCS
+    // QR
     if (r.qr_object_key) {
       const [buf] = await bucketPrivate.file(r.qr_object_key).download();
-      doc.image(buf, x + mm(2), y + mm(2), { width: qrW, height: qrH });
+      doc.image(buf, x + pad, y + pad, { width: qrW, height: qrH });
     } else {
-      // fallback rectangle
-      doc.rect(x + mm(2), y + mm(2), qrW, qrH).stroke();
+      doc.rect(x + pad, y + pad, qrW, qrH).stroke();
     }
 
-    // Text (3 lines)
+    // Text block
     const centerX = x + cellW / 2;
-    let ty = y + mm(2) + qrH + mm(2);
-    doc.fontSize(8).fillColor('#000');
-    textCentered(doc, safeClamp(r.make, 28), centerX, ty, cellW); ty += mm(5);
-    textCentered(doc, safeClamp(`${r.model} ${r.model_year}`, 28), centerX, ty, cellW); ty += mm(5);
-    textCentered(doc, safeClamp(r.edition_name, 28), centerX, ty, cellW);
-    //textCentered(doc, safeClamp(`Цвят: ${r.exterior_color_id || ''} ${r.interior_color_id || ''}`, 28), centerX, ty + mm(5), cellW); 
-    // add color if needed.. have to fetch colors and then use exterior_color_id and interior_color_id from vehicle (r)
+    let ty = y + pad + qrH + mm(2);              // start right below the QR
+    doc.fontSize(fontSize).fillColor('#000');    // ensure Cyrillic font already selected above
+
+    const lines = [
+      safeClamp(r.make, 28),
+      safeClamp(`${r.model} ${r.model_year}`, 28),
+      safeClamp(r.edition_name, 28),
+      (r.exterior_color || r.interior_color)
+        ? safeClamp(`Цвят: ${r.exterior_color || '—'} / ${r.interior_color || '—'}`, 30)
+        : null,
+      r.shop_name ? safeClamp(`Магазин: ${r.shop_name}`, 30) : null,
+    ].filter(Boolean);
+
+    for (const line of lines) {
+      textCentered(doc, line, centerX, ty, cellW);
+      ty += lineStep;
+    }
 
     col += 1; x += cellW + gap;
   }
 }
+
 
 function textCentered(doc, s, cx, y, w) {
   const x = cx - w / 2 + mm(2);

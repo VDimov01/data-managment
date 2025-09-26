@@ -14,6 +14,9 @@ async function fetchVehiclesForLabels({ ids, shop_id, status, limit = 500 }) {
       mo.name AS model,
       my.year AS model_year,
       ed.name AS edition_name,
+      s.name AS shop_name,
+      ex.name AS exterior_color,
+      inr.name AS interior_color,
       v.qr_object_key,
       v.public_uuid
     FROM vehicle v
@@ -21,6 +24,9 @@ async function fetchVehiclesForLabels({ ids, shop_id, status, limit = 500 }) {
     JOIN model_year my ON my.model_year_id = ed.model_year_id
     JOIN model mo      ON mo.model_id = my.model_id
     JOIN make  mk      ON mk.make_id  = mo.make_id
+    JOIN shop s      ON s.shop_id  = v.shop_id
+    JOIN color ex ON ex.color_id = v.exterior_color_id
+    JOIN color inr ON inr.color_id = v.interior_color_id
     WHERE 1=1`;
   const params = [];
 
