@@ -15,8 +15,9 @@ async function fetchVehiclesForLabels({ ids, shop_id, status, limit = 500 }) {
       my.year AS model_year,
       ed.name AS edition_name,
       s.name AS shop_name,
-      ex.name AS exterior_color,
-      inr.name AS interior_color,
+      s.city AS shop_city,
+      ex.name_bg AS exterior_color,
+      inr.name_bg AS interior_color,
       v.qr_object_key,
       v.public_uuid
     FROM vehicle v

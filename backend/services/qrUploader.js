@@ -60,12 +60,21 @@ await pool.query(
   [objectKey, publicUrl, vehicleId]
 );
 
-return { vehicle_id: v.vehicle_id, objectKey, publicUrl, destination: destUrl };
+return {
+   vehicle_id: v.vehicle_id,
+   // canonical names:
+   qr_object_key: objectKey,
+   qr_png_path: publicUrl,
+   // legacy names (so old UI doesn’t break):
+   objectKey,
+   publicUrl,
+   destination: destUrl
+ };
 }
 
 async function backfillVehicleQrs() {
   const pool = getPool();
-  const [rows] = await pool.query(`SELECT vehicle_id FROM vehicle WHERE qr_png_path IS NULL`);
+  const [rows] = await pool.query(`SELECT vehicle_id FROM vehicle WHERE qr_object_key IS NULL`);
   let ok = 0, fail = 0;
   for (const r of rows) {
     try { await ensureVehicleQr(r.vehicle_id); ok++; } catch (e) { console.error('[qr] fail', r.vehicle_id, e.message); fail++; }

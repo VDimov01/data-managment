@@ -154,7 +154,7 @@ async function renderGrid(doc, rows) {
       (r.exterior_color || r.interior_color)
         ? safeClamp(`Цвят: ${r.exterior_color || '—'} / ${r.interior_color || '—'}`, 30)
         : null,
-      r.shop_name ? safeClamp(`Магазин: ${r.shop_name}`, 30) : null,
+      r.shop_city ? safeClamp(`Град: ${r.shop_city}`, 30) : null,
     ].filter(Boolean);
 
     for (const line of lines) {
@@ -165,6 +165,7 @@ async function renderGrid(doc, rows) {
     col += 1; x += cellW + gap;
   }
 }
+
 
 
 function textCentered(doc, s, cx, y, w) {
