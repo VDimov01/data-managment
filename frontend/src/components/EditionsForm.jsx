@@ -624,20 +624,20 @@ const selectedEditionName = selectedEditionObj?.name || "";
       </div>
       <div style={{ display:'flex', gap:8, marginBottom:12 }}>
   <button type="button" onClick={() => setView('attributes')} disabled={view==='attributes'}>
-    Attributes
+    Атрибути
   </button>
   <button type="button" onClick={() => setView('images')} disabled={view==='images'}>
-    Images
+    Снимки
   </button>
 </div>
 
       {isCreating ? (
         <div style={{ border:'1px solid #eee', borderRadius:8, padding:12, marginBottom:12 }}>
-          <h4 style={{ marginTop:0 }}>Create new edition</h4>
+          <h4 style={{ marginTop:0 }}>Създай ново издание</h4>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }}>
             {/* Make */}
             <SelectOrCreate
-              label="Make"
+              label="Производител"
               options={makes.map(m => ({ value:String(m.make_id), label:m.name }))}
               mode={makeSel.mode}
               setMode={(m)=>setMakeSel(s=>({ ...s, mode:m }))}
@@ -649,7 +649,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
 
             {/* Model (disabled if Make is new) */}
             <SelectOrCreate
-              label="Model"
+              label="Модел"
               // disabled={makeSel.mode === 'new'}
               options={cModels.map(m => ({ value:String(m.model_id), label:m.name }))}
               mode={modelSel.mode}
@@ -662,7 +662,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
 
             {/* Year (disabled if Model is new) */}
             <SelectOrCreate
-              label="Year"
+              label="Година"
               // disabled={modelSel.mode === 'new'}
               options={cYears.map(y => ({ value:String(y.model_year_id), label:String(y.year) }))}
               mode={yearSel.mode}
@@ -677,7 +677,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
 
             {/* Edition (existing OR create new) – disabled if Year is new */}
             <SelectOrCreate
-              label="Edition"
+              label="Издание"
               // disabled={yearSel.mode === 'new'}
               options={cEds.map(e => ({ value:String(e.edition_id), label:e.name }))}
               mode={edSel.mode}
@@ -690,29 +690,29 @@ const selectedEditionName = selectedEditionObj?.name || "";
           </div>
 
           <div style={{ marginTop:12 }}>
-            <button type="button" onClick={onCreateAndSelect}>Create & Select</button>
+            <button type="button" onClick={onCreateAndSelect}>Създай и избери</button>
           </div>
         </div>
       ) : (
         // Select existing cascade
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
           <select value={makeId} onChange={e => setMakeId(e.target.value)}>
-            <option value="">Maker…</option>
+            <option value="">Производител…</option>
             {makes.map(m => <option key={m.make_id} value={m.make_id}>{m.name}</option>)}
           </select>
 
           <select value={modelId} onChange={e => setModelId(e.target.value)} disabled={!makeId}>
-            <option value="">Model…</option>
+            <option value="">Модел…</option>
             {models.map(mo => <option key={mo.model_id} value={mo.model_id}>{mo.name}</option>)}
           </select>
 
           <select value={modelYearId} onChange={e => setModelYearId(e.target.value)} disabled={!modelId}>
-            <option value="">Year…</option>
+            <option value="">Година…</option>
             {years.map(y => <option key={y.model_year_id} value={y.model_year_id}>{y.year}</option>)}
           </select>
 
           <select value={editionId} onChange={e => setEditionId(e.target.value)} disabled={!modelYearId}>
-            <option value="">Edition…</option>
+            <option value="">Издание…</option>
             {editions.map(ed => <option key={ed.edition_id} value={ed.edition_id}>{ed.name}</option>)}
           </select>
         </div>
@@ -738,7 +738,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
   </select>
   
         <button type="button" onClick={() => setRows(prev => prev.map(r => ({ ...r, removed:false })))}>
-          Restore removed
+          Възстанови премахнатите
         </button>
       </div>
       )}
@@ -750,7 +750,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
     fontSize:13, color:'#166534'
   }}>
     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-      <strong>Save summary</strong>
+      <strong>Обобщение на запазването</strong>
       <button
         type="button"
         onClick={() => setNotices([])}
@@ -770,9 +770,9 @@ const selectedEditionName = selectedEditionObj?.name || "";
 {view === 'images' ? (
   // IMAGES TAB
   isCreating ? (
-    <p>Create and select an edition first to manage images.</p>
+    <p>Създай или избери модификация, за да управляваш изображенията.</p>
   ) : !hasEdition ? (
-    <p>Select an edition first to manage images.</p>
+    <p>Избери модификация, за да управляваш изображенията.</p>
   ) : (
     <>
       <EditionImageUploader
@@ -788,9 +788,9 @@ const selectedEditionName = selectedEditionObj?.name || "";
 ) : (
   // ATTRIBUTES TAB
   isCreating ? (
-    <p>Create and select an edition to edit attributes.</p>
+    <p>Създай и избери модификация, за да редактираш атрибутите.</p>
   ) : !hasEdition ? (
-    <p>Select an edition to edit attributes.</p>
+    <p>Избери модификация, за да редактираш атрибутите.</p>
   ) : (
     <form onSubmit={submitSpecs}>
       {grouped.map(([category, items]) => {
@@ -863,7 +863,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
       })}
 
       <div style={{ marginTop:12 }}>
-        <button type="submit">Save Attributes</button>
+        <button type="submit">Запази атрибутите</button>
       </div>
     </form>
   )
@@ -966,9 +966,9 @@ function Row({ r, langBg, enumOptions = {}, onChangeValue, onRemove }) {
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <div style={{ fontWeight:500 }}>{label}</div>
           {/* 👇 provenance badge */}
-          <span style={sourceBadgeStyle(r.source)}>{sourceLabel(r.source)}</span>
+          {/* <span style={sourceBadgeStyle(r.source)}>{sourceLabel(r.source)}</span> */}
 
-          {/* quick info toggle */}
+          {/* quick info toggle 
           <button
             type="button"
             onClick={() => setOpenInfo(o => !o)}
@@ -977,6 +977,7 @@ function Row({ r, langBg, enumOptions = {}, onChangeValue, onRemove }) {
           >
             ⓘ
           </button>
+          */}
         </div>
         <div style={{ fontSize:12, color:'#666' }}>{r.code}</div>
 
@@ -993,7 +994,7 @@ function Row({ r, langBg, enumOptions = {}, onChangeValue, onRemove }) {
             fontSize:12, color:'#444', background:'#f9fafb', border:'1px solid #eee',
             padding:'6px 8px', borderRadius:6, marginTop:6
           }}>
-            {why}
+            {/* why */}
           </div>
         )}
       </div>

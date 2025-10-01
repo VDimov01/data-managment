@@ -59,18 +59,18 @@ export default function CarsSection() {
         <button
           onClick={() => { setEditEdition(null); setOpen(true); }}
         >
-          Add Edition
+          Добави ново издание
         </button>
         <button onClick={() => setCompareIds(new Set())} disabled={compareIds.size === 0}>
-          Clear selected for compare ({compareIds.size})
+          Изчисти избраните за сравнение ({compareIds.size})
         </button>
       </div>
 
-      <Modal open={open} title="Add Edition + Attributes" onClose={() => { setOpen(false); setEditEdition(null); }}>
+      <Modal open={open} title="Добави издание + атрибути" onClose={() => { setOpen(false); setEditEdition(null); }}>
         <EditionAttributeModal
           key={editEdition ? `ed-${editEdition.edition_id}` : 'new'}
           apiBase="http://localhost:5000"
-          onSaved={() => setOpen(false)}
+          onSaved={() => setOpen(true)}
           edition={editEdition}
           onCreated={handleEditionSaved}
           onUpdated={handleEditionSaved}
@@ -79,7 +79,7 @@ export default function CarsSection() {
 
       {compareArray.length >= 1 && (
         <>
-          <h3 style={{ marginTop:16 }}>Comparison</h3>
+          <h3 style={{ marginTop:16 }}>Сравнение</h3>
           <EditionCompare apiBase="http://localhost:5000" editionIds={compareArray} />
         </>
       )}

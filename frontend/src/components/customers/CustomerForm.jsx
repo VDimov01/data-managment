@@ -43,11 +43,11 @@ export default function CustomerForm({ initial = null, onClose, onSave }) {
     e.preventDefault();
     // Minimal front-side validation mirroring backend
     if (customer_type === "Individual" && !first_name && !last_name) {
-      setErr("For Individual, at least first or last name is required.");
+      setErr("За индивидуален клиент, поне едно от имената е задължително. (собствено име, фамилия)");
       return;
     }
     if (customer_type === "Company" && !company_name) {
-      setErr("For Company, company name is required.");
+      setErr("За фирмен клиент, името на фирмата е задължително.");
       return;
     }
 
@@ -91,16 +91,16 @@ export default function CustomerForm({ initial = null, onClose, onSave }) {
     <div className="cust-modal-overlay" onMouseDown={(e) => { if (e.target.classList.contains("cust-modal-overlay")) onClose?.(); }}>
       <div className="cust-modal" role="dialog" aria-modal="true">
         <div className="cust-modal-header">
-          <h3>{isEdit ? "Edit Customer" : "Add Customer"}</h3>
+          <h3>{isEdit ? "Редактирай информация за клиент" : "Добави клиент"}</h3>
           <button className="cust-icon-btn" onClick={onClose} aria-label="Close">×</button>
         </div>
 
         <form className="cust-form" onSubmit={handleSubmit}>
           <div className="cust-row">
-            <label>Type</label>
+            <label>Тип</label>
             <select value={customer_type} onChange={(e) => setCustomerType(e.target.value)}>
-              <option value="Individual">Individual</option>
-              <option value="Company">Company</option>
+              <option value="Individual">Индивидуален клиент</option>
+              <option value="Company">Фирмен клиент</option>
             </select>
           </div>
 
@@ -108,15 +108,15 @@ export default function CustomerForm({ initial = null, onClose, onSave }) {
             <>
               <div className="cust-grid">
                 <div className="cust-field">
-                  <label>First name</label>
+                  <label>Собствено име</label>
                   <input value={first_name} onChange={(e) => setFirst(e.target.value)} />
                 </div>
                 <div className="cust-field">
-                  <label>Middle name</label>
+                  <label>Башино име</label>
                   <input value={middle_name} onChange={(e) => setMiddle(e.target.value)} />
                 </div>
                 <div className="cust-field">
-                  <label>Last name</label>
+                  <label>Фамилия</label>
                   <input value={last_name} onChange={(e) => setLast(e.target.value)} />
                 </div>
               </div>
@@ -124,20 +124,20 @@ export default function CustomerForm({ initial = null, onClose, onSave }) {
           ) : (
             <>
               <div className="cust-field">
-                <label>Company name *</label>
+                <label>Име на фирмата *</label>
                 <input value={company_name} onChange={(e) => setCompany(e.target.value)} required />
               </div>
               <div className="cust-grid">
                 <div className="cust-field">
-                  <label>Representative — First</label>
+                  <label>Представител — Собствено име</label>
                   <input value={rep_first_name} onChange={(e) => setRepFirst(e.target.value)} />
                 </div>
                 <div className="cust-field">
-                  <label>Representative — Middle</label>
+                  <label>Представител — Бащино име</label>
                   <input value={rep_middle_name} onChange={(e) => setRepMiddle(e.target.value)} />
                 </div>
                 <div className="cust-field">
-                  <label>Representative — Last</label>
+                  <label>Представител — Фамилия</label>
                   <input value={rep_last_name} onChange={(e) => setRepLast(e.target.value)} />
                 </div>
               </div>
@@ -150,46 +150,46 @@ export default function CustomerForm({ initial = null, onClose, onSave }) {
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="cust-field">
-              <label>Phone</label>
+              <label>Телефон</label>
               <input value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
             <div className="cust-field">
-              <label>Secondary phone</label>
+              <label>Допълнителен телефон</label>
               <input value={secondary_phone} onChange={(e) => setPhone2(e.target.value)} />
             </div>
           </div>
 
           <div className="cust-grid">
             <div className="cust-field">
-              <label>Country</label>
+              <label>Държава</label>
               <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="BG" />
             </div>
             <div className="cust-field">
-              <label>City</label>
+              <label>Град</label>
               <input value={city} onChange={(e) => setCity(e.target.value)} />
             </div>
             <div className="cust-field">
-              <label>Postal code</label>
+              <label>Пощенски код</label>
               <input value={postal_code} onChange={(e) => setPostal(e.target.value)} />
             </div>
           </div>
 
           <div className="cust-field">
-            <label>Address</label>
+            <label>Адрес</label>
             <input value={address_line} onChange={(e) => setAddress(e.target.value)} />
           </div>
 
           <div className="cust-grid">
             <div className="cust-field">
-              <label>Tax ID (EIK/UIC)</label>
+              <label>Данъчен номер (ЕИК/UIC)</label>
               <input value={tax_id} onChange={(e) => setTax(e.target.value)} />
             </div>
             <div className="cust-field">
-              <label>VAT Number</label>
+              <label>ДДС номер</label>
               <input value={vat_number} onChange={(e) => setVat(e.target.value)} />
             </div>
             <div className="cust-field">
-              <label>National ID</label>
+              <label>ЕГН</label>
               <input value={national_id} onChange={(e) => setNatId(e.target.value)} />
             </div>
           </div>
@@ -197,20 +197,20 @@ export default function CustomerForm({ initial = null, onClose, onSave }) {
           <div className="cust-row">
             <label className="cust-check">
               <input type="checkbox" checked={!!is_active} onChange={(e) => setActive(e.target.checked)} />
-              Active
+              Активен
             </label>
           </div>
 
           <div className="cust-field">
-            <label>Notes</label>
+            <label>Бележки</label>
             <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
 
           {err && <div className="cust-err">{err}</div>}
 
           <div className="cust-actions">
-            <button type="button" className="cust-btn" onClick={onClose}>Cancel</button>
-            <button type="submit" className="cust-btn primary">{isEdit ? "Save changes" : "Create customer"}</button>
+            <button type="button" className="cust-btn" onClick={onClose}>Отказ</button>
+            <button type="submit" className="cust-btn primary">{isEdit ? "Запази промените" : "Създай клиент"}</button>
           </div>
         </form>
       </div>

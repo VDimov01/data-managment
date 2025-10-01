@@ -4,6 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 
 const STATUSES = ['InTransit','Available','Reserved','Sold','Service','Demo'];
 
+const status_to_bg = {
+  InTransit: "В процес на доставка",
+  Available: "Наличен",
+  Reserved: "Резервиран",
+  Sold: "Продаден",
+  Service: "Сервиз",
+  Demo: "Демо"
+}
+
 export default function VehicleCreateForm({
   apiBase = "http://localhost:5000",
   edition,              // used in create mode title
@@ -89,7 +98,7 @@ const [intNew, setIntNew] = useState('');
   }, [mode, vehicle]);
 
   title = mode === 'edit'
-    ? `Edit vehicle #${vehicle?.vehicle_id ?? ''} — ${vehicle?.make ?? ''} ${vehicle?.model ?? ''} ${vehicle?.model_year ?? ''} ${vehicle?.edition ?? ''}`
+    ? `Редактиране на автомобил #${vehicle?.vehicle_id ?? ''} — ${vehicle?.make ?? ''} ${vehicle?.model ?? ''} ${vehicle?.model_year ?? ''} ${vehicle?.edition ?? ''}`
     : `${edition?.make || ''} ${edition?.model || ''} ${edition?.year || ''} — ${edition?.edition_name || ''}`;
 
   const handleChange = (e) => {
@@ -177,7 +186,7 @@ const [intNew, setIntNew] = useState('');
           <input name="stock_number" placeholder="Stock number (optional)" value={form.stock_number} onChange={handleChange} />
 
           <SelectOrCreate
-            label="Exterior color"
+            label="Цвят на екстериора"
             options={extColors.map(c => ({ value: String(c.color_id), label: c.name_bg }))}
             mode={extMode} setMode={setExtMode}
             value={extValue} setValue={setExtValue}
@@ -185,30 +194,29 @@ const [intNew, setIntNew] = useState('');
           />
 
           <SelectOrCreate
-            label="Interior color"
+            label="Цвят на интериора"
             options={intColors.map(c => ({ value: String(c.color_id), label: c.name_bg }))}
             mode={intMode} setMode={setIntMode}
             value={intValue} setValue={setIntValue}
             newValue={intNew} setNewValue={setIntNew}
             allowNone
           />
-
           <select name="shop_id" value={form.shop_id} onChange={handleChange}>
-            <option value="">Shop (optional)…</option>
+            <option value="">Магазин (по избор)…</option>
             {shops.map(s => <option key={s.shop_id} value={s.shop_id}>{s.name} - {s.address}</option>)}
           </select>
 
           <select name="status" value={form.status} onChange={handleChange}>
-            {STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
+            {STATUSES.map(st => <option key={st} value={st}>{status_to_bg[st]}</option>)}
           </select>
 
-          <input name="asking_price" type="number" step="0.01" placeholder="Asking price" value={form.asking_price} onChange={handleChange} />
-          <input name="mileage" type="number" placeholder="Mileage (km)" value={form.mileage} onChange={handleChange} />
+          <input name="asking_price" type="number" step="0.01" placeholder="Цена" value={form.asking_price} onChange={handleChange} />
+          <input name="mileage" type="number" placeholder="Пробег (км)" value={form.mileage} onChange={handleChange} />
         </div>
 
         <div style={{ marginTop: 12, display:'flex', gap:8 }}>
-          <button type="submit">Create</button>
-          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="submit">Създай</button>
+          <button type="button" onClick={onClose}>Отказ</button>
         </div>
       </form>
     </div>

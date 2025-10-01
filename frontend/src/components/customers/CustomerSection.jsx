@@ -42,7 +42,7 @@ export default function CustomerSection() {
         setTotalPages(data.totalPages || 1);
       } catch (e) {
         if (cancelled) return;
-        setErr(e.message || "Failed to load customers");
+        setErr(e.message || "Неуспешно зареждане на данни");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -83,8 +83,8 @@ export default function CustomerSection() {
   const onDelete = (row) => {
     setConfirm({
       open: true,
-      title: "Delete customer?",
-      message: `This will permanently delete "${row.display_name || (row.company_name || `${row.first_name || ""} ${row.last_name || ""}`)}".`,
+      title: "Изтриване на клиент?",
+      message: `Това ще изтрие постоянно "${row.display_name || (row.company_name || `${row.first_name || ""} ${row.last_name || ""}`)}".`,
       onConfirm: async () => {
         try {
           await deleteCustomer(row.customer_id);
@@ -97,7 +97,7 @@ export default function CustomerSection() {
           setTotal(data.total || 0);
           setTotalPages(data.totalPages || 1);
         } catch (e) {
-          alert(e.message || "Delete failed");
+          alert(e.message || "Неуспешно изтриване");
         } finally {
           setConfirm({ open: false, onConfirm: null, title: "", message: "" });
         }
@@ -120,7 +120,7 @@ export default function CustomerSection() {
         <div className="cust-toolbar-left">
           <input
             className="cust-input"
-            placeholder="Search by name, email, phone, city, UUID…"
+            placeholder="Търсене по име, имейл, телефон, град, UUID…"
             value={q}
             onChange={(e) => { setQ(e.target.value); setPage(1); }}
           />
@@ -143,13 +143,13 @@ export default function CustomerSection() {
             onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
             title="Rows per page"
           >
-            {[10,20,50,100].map(n => <option key={n} value={n}>{n} / page</option>)}
+            {[10,20,50,100].map(n => <option key={n} value={n}>{n} / страница</option>)}
           </select>
-          <button className="cust-btn primary" onClick={openCreate}>Add Customer</button>
+          <button className="cust-btn primary" onClick={openCreate}>Добави клиент</button>
         </div>
       </div>
 
-      {loading && <div className="cust-msg">Loading customers…</div>}
+      {loading && <div className="cust-msg">Зареждане на клиенти…</div>}
       {err && <div className="cust-msg error">{err}</div>}
 
       {!loading && !err && (
@@ -170,13 +170,13 @@ export default function CustomerSection() {
               className="cust-btn"
               disabled={page <= 1}
               onClick={() => setPage(p => Math.max(1, p - 1))}
-            >Prev</button>
-            <span className="cust-pager-text">Page {page} of {totalPages}</span>
+            >Предишна</button>
+            <span className="cust-pager-text">Страница {page} от {totalPages}</span>
             <button
               className="cust-btn"
               disabled={page >= totalPages}
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            >Next</button>
+            >Следваща</button>
           </div>
         </>
       )}

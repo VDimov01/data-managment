@@ -4,10 +4,19 @@ import AvailableEditions from "./AvailableEditions";
 import Modal from "./Modal";
 import VehicleImagesModal from "./VehicleImagesModal";
 import VehicleCreateForm from "./VehicleCreateForm";
-import VehicleQRCell from './VehicleQrCell';
+import VehicleQRCell from './VehicleQRCell';
 import PrintLabelsButton from "./PrintLabelsButton";
 
 const STATUSES = ['InTransit','Available','Reserved','Sold','Service','Demo'];
+
+const status_to_bg = {
+  InTransit: "В процес на доставка",
+  Available: "Наличен",
+  Reserved: "Резервиран",
+  Sold: "Продаден",
+  Service: "Сервиз",
+  Demo: "Демо"
+}
 
 export default function StorageSection() {
   const apiBase = "http://localhost:5000";
@@ -147,7 +156,7 @@ export default function StorageSection() {
       <h2>Менежиране на наличност</h2>
 
       <div>
-        <h2>Vehicles — Create from edition</h2>
+        <h2>Автомобили</h2>
         <AvailableEditions
           apiBase={apiBase}
           showAddVehicle={true}
@@ -156,7 +165,7 @@ export default function StorageSection() {
         />
 
         {/* Create modal */}
-        <Modal open={open} title="Create Vehicle" onClose={() => { setOpen(false); setEditionForVehicle(null); }}>
+        <Modal open={open} title="Създаване на автомобил" onClose={() => { setOpen(false); setEditionForVehicle(null); }}>
           {editionForVehicle && (
             <VehicleCreateForm
               apiBase={apiBase}
@@ -168,7 +177,7 @@ export default function StorageSection() {
         </Modal>
 
         {/* Edit modal */}
-        <Modal open={openEdit} title="Edit Vehicle" onClose={() => { setOpenEdit(false); setVehicleForEdit(null); }}>
+        <Modal open={openEdit} title="Редактиране на автомобил" onClose={() => { setOpenEdit(false); setVehicleForEdit(null); }}>
           {vehicleForEdit && (
             <VehicleCreateForm
               apiBase={apiBase}
@@ -250,10 +259,10 @@ export default function StorageSection() {
                   <td>{entry.shop_name}</td>
                   <td>{entry.shop_city || entry.city}</td> 
                   <td>{entry.shop_address || entry.address}</td>
-                  <td>{entry.status}</td>
+                  <td>{status_to_bg[entry.status]}</td>
                   <td style={{ whiteSpace:'nowrap', display:'flex', gap:6 }}>
                     <button type="button" onClick={() => { setVehicleForEdit(entry); setOpenEdit(true); }} disabled={isDel}>
-                      Edit
+                      Редактирай
                     </button>
                     <button
                       type="button"
@@ -261,13 +270,13 @@ export default function StorageSection() {
                       disabled={isDel}
                       style={{ color:'#b30000' }}
                     >
-                      {isDel ? 'Deleting…' : 'Delete'}
+                      {isDel ? 'Изтриване…' : 'Изтрий'}
                     </button>
                     <button
                       onClick={() => { setVehicleForImages(entry); setOpenImages(true); }}
                       style={{ marginLeft: 6 }}
                     >
-                      Images
+                      Снимки
                     </button>
 
                   </td>

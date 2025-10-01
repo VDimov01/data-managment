@@ -96,22 +96,22 @@ export default function AvailableEditions({
           value={pageSize}
           onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
         >
-          {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
+          {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n} / страница</option>)}
         </select>
-        <button type="button" onClick={() => { setQ(""); setPage(1); }}>Clear</button>
+        <button type="button" onClick={() => { setQ(""); setPage(1); }}>Изчисти</button>
       </div>
 
       {!hideDefaultActions && (
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
           <div style={{ fontSize:12, color:'#666' }}>
-            Selected for compare: <b>{selectedIds.size}</b>
+            Избрани за сравнение: <b>{selectedIds.size}</b>
           </div>
-          <button type="button" onClick={onClearSelected} disabled={selectedIds.size === 0}>Clear selected</button>
+          <button type="button" onClick={onClearSelected} disabled={selectedIds.size === 0}>Изчисти избраните</button>
         </div>
       )}
 
-      {loading && <p>Loading editions…</p>}
-      {err && <p style={{ color: "crimson" }}>Error: {err}</p>}
+      {loading && <p>Зареждане на модификации…</p>}
+      {err && <p style={{ color: "crimson" }}>Грешка: {err}</p>}
 
       {!loading && !err && (
         <>
@@ -120,11 +120,11 @@ export default function AvailableEditions({
               <thead>
                 <tr>
                   <th style={th}>#</th>
-                  <th style={th}>Make</th>
-                  <th style={th}>Model</th>
-                  <th style={th}>Year</th>
-                  <th style={th}>Edition</th>
-                  <th style={th}>Actions</th>
+                  <th style={th}>Производител</th>
+                  <th style={th}>Модел</th>
+                  <th style={th}>Година</th>
+                  <th style={th}>Издание</th>
+                  <th style={th}>Действия</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,14 +142,14 @@ export default function AvailableEditions({
                         <div style={{ display:'flex', gap:8 }}>
                           {!hideDefaultActions && (
                             <>
-                              <button type="button" onClick={() => onEdit?.(row)} disabled={deleting}>Edit</button>
+                              <button type="button" onClick={() => onEdit?.(row)} disabled={deleting}>Редактиране</button>
                               <button
                                 type="button"
                                 onClick={() => onToggleSelect(row)}
                                 aria-pressed={selected}
                                 disabled={deleting}
                               >
-                                {selected ? 'Unselect' : 'Select'}
+                                {selected ? 'Премахни от сравнение' : 'Избери за сравнение'}
                               </button>
                               <button
                                 type="button"
@@ -157,7 +157,7 @@ export default function AvailableEditions({
                                 disabled={deleting}
                                 style={{ color: '#b30000' }}
                               >
-                                {deleting ? 'Deleting…' : 'Delete'}
+                                {deleting ? 'Изтриване' : 'Изтрий'}
                               </button>
                             </>
                           )}
@@ -169,7 +169,7 @@ export default function AvailableEditions({
                               disabled={deleting}
                               style={{ fontWeight: 600 }}
                             >
-                              Add vehicle
+                              Добави автомобил
                             </button>
                           )}
                         </div>
@@ -180,7 +180,7 @@ export default function AvailableEditions({
                 {pageItems.length === 0 && (
                   <tr>
                     <td colSpan={6} style={{ ...td, color: "#777" }}>
-                      No editions match your search.
+                      Няма намерени издания.
                     </td>
                   </tr>
                 )}
@@ -190,7 +190,7 @@ export default function AvailableEditions({
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
             <div style={{ fontSize: 12, color: "#666" }}>
-              Showing {filtered.length === 0 ? 0 : start + 1}–{Math.min(start + pageSize, filtered.length)} of {filtered.length}
+              Показване на {filtered.length === 0 ? 0 : start + 1}–{Math.min(start + pageSize, filtered.length)} от {filtered.length}
             </div>
             <Pagination
               page={page}
@@ -223,7 +223,7 @@ function Pagination({ page, totalPages, onPrev, onNext, onJump }) {
 
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-      <button type="button" onClick={onPrev} disabled={page <= 1}>Prev</button>
+      <button type="button" onClick={onPrev} disabled={page <= 1}>Предишна</button>
       {pages.map((p, idx) =>
         p === "…" ? (
           <span key={`e-${idx}`} style={{ padding: "4px 6px", color: "#777" }}>…</span>
@@ -244,7 +244,7 @@ function Pagination({ page, totalPages, onPrev, onNext, onJump }) {
           </button>
         )
       )}
-      <button type="button" onClick={onNext} disabled={page >= totalPages}>Next</button>
+      <button type="button" onClick={onNext} disabled={page >= totalPages}>Следваща</button>
     </div>
   );
 }
