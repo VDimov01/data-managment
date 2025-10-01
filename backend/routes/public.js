@@ -488,5 +488,117 @@ router.get('/vehicles/:uuid/images/:imageId', async (req, res) => {
     .pipe(res);
 });
 
+// GET /api/public/customers/:uuid/contracts
+// Lists contracts for the public customer, only non-withdrawn, issued/viewed/signed
+// GET /public/customers/:uuid/contracts  (multi-query version)
+router.get('/customers/:uuid/contracts', async (req, res) => {
+  try {
+    const { uuid } = req.params;
+
+    // 0) resolve customer_id
+    const [[cust]] = await pool.query(
+      `SELECT customer_id FROM customer WHERE public_uuid = ? LIMIT 1`,
+      [uuid]
+    );
+    if (!cust) return res.status(404).json({ error: 'Customer not found' });
+
+    // optional paging (keep it simple for public)
+    const page  = Math.max(1, parseInt(req.query.page || '1', 10));
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || '20', 10)));
+    const offset = (page - 1) * limit;
+
+    // 1) contracts for this customer (issued/viewed/signed only)
+    const [contracts] = await pool.query(
+      `
+      SELECT
+        c.contract_id, c.uuid, c.contract_number, c.status, c.type,
+        c.currency_code, c.valid_until, c.total, c.created_at, c.updated_at
+      FROM contract c
+      WHERE c.customer_id = ?
+        AND c.status IN ('issued','viewed','signed')
+      ORDER BY c.created_at DESC
+      LIMIT ? OFFSET ?
+      `,
+      [cust.customer_id, limit, offset]
+    );
+
+    // total for pagination
+    const [[cnt]] = await pool.query(
+      `
+      SELECT COUNT(*) AS total
+      FROM contract c
+      WHERE c.customer_id = ?
+        AND c.status IN ('issued','viewed','signed')
+      `,
+      [cust.customer_id]
+    );
+
+    if (contracts.length === 0) {
+      return res.json({ page, limit, total: cnt.total || 0, items: [] });
+    }
+
+    // 2) fetch ALL items for these contract_ids in one query, then group in Node
+    const contractIds = contracts.map(c => c.contract_id);
+    const placeholders = contractIds.map(() => '?').join(',');
+
+    const [rows] = await pool.query(
+      `
+      SELECT
+        ci.contract_id,
+        v.vehicle_id, v.vin, v.asking_price,
+        mk.name AS make, md.name AS model, my.year AS model_year,
+        ed.name AS edition,
+        cext.name_bg AS exterior_color,
+        cint.name_bg AS interior_color,
+        v.mileage
+      FROM contract_item ci
+      JOIN vehicle     v   ON v.vehicle_id = ci.vehicle_id
+      JOIN edition     ed  ON ed.edition_id = v.edition_id
+      JOIN model_year  my  ON my.model_year_id = ed.model_year_id
+      JOIN model       md  ON md.model_id = my.model_id
+      JOIN make        mk  ON mk.make_id = md.make_id
+      LEFT JOIN color  cext ON cext.color_id = v.exterior_color_id AND cext.type = 'exterior'
+      LEFT JOIN color  cint ON cint.color_id = v.interior_color_id AND cint.type = 'interior'
+      WHERE ci.contract_id IN (${placeholders})
+      ORDER BY ci.contract_id, ci.position, ci.contract_item_id
+      `,
+      contractIds
+    );
+
+    // 3) group by contract_id in JS
+    const byCtr = new Map();
+    for (const r of rows) {
+      if (!byCtr.has(r.contract_id)) byCtr.set(r.contract_id, []);
+      byCtr.get(r.contract_id).push({
+        vehicle_id: r.vehicle_id,
+        vin: r.vin,
+        asking_price: r.asking_price,
+        make: r.make,
+        model: r.model,
+        model_year: r.model_year,
+        edition: r.edition,
+        exterior_color: r.exterior_color,
+        interior_color: r.interior_color,
+        mileage: r.mileage,
+      });
+    }
+
+    // attach arrays
+    const items = contracts.map(c => ({
+      ...c,
+      items_count: byCtr.get(c.contract_id)?.length || 0,
+      vehicles: byCtr.get(c.contract_id) || [],
+    }));
+
+    return res.json({ page, limit, total: cnt.total || 0, items });
+  } catch (e) {
+    console.error('GET /public/customers/:uuid/contracts', e);
+    res.status(500).json({ error: 'DB error' });
+  }
+});
+
+
+
+
 
 module.exports = router;

@@ -7,7 +7,6 @@ const db = require('./db');
 const authRoutes = require('./routes/auth');
 const offersRoutes = require('./routes/offers');
 const shopsRoutes = require('./routes/shops');
-const contractsRoutes = require('./routes/contracts');
 const carImagesRoutes = require('./routes/carImages');
 const vehicleRoutes = require('./routes/vehicle');
 const editionsRoutes = require('./routes/editions');
@@ -21,6 +20,7 @@ const publicRoutes = require('./routes/public');
 const qrRoutes = require('./routes/qr');
 const labelsRoutes = require('./routes/labels');
 const vehicleImagesRoutes = require('./routes/vehicleImages');
+const contractsRoutes = require('./routes/contracts');
 
 const path = require('path');
 

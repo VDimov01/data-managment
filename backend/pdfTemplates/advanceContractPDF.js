@@ -64,7 +64,7 @@ function boldedCompanyName(buyer){
 }
 
 function boldedClientName(buyer){
-  return React.createElement(Text, { style: { fontWeight: "bold" } }, `${buyer.first_name} ${buyer.middle_name} ${buyer.last_name}, с ЕГН: ${decryptUCN}`);
+  return React.createElement(Text, { style: { fontWeight: "bold" } }, `${buyer.first_name} ${buyer.middle_name} ${buyer.last_name}, с ЕГН: ${buyer.national_id} - `, boldText(`КУПУВАЧ`));
 }
 
 function boldText(text){
@@ -76,7 +76,6 @@ function AdvanceContractPDF({ buyer, cars = [], advance_amount, type }) {
   const remaining = totalAmount - advance_amount;
   const deliveryDays = 60;
   const today = new Date().toLocaleDateString("bg-BG");
-  console.log(buyer);
 
   const decryptedUCN = buyer?.ucn ? decryptUCN(buyer.ucn) : null;
 
@@ -96,8 +95,8 @@ function AdvanceContractPDF({ buyer, cars = [], advance_amount, type }) {
         React.createElement(View, {style: {marginTop: 10, marginBottom: 10} }),
         React.createElement(Text, null,``, boldText(`"Некст Авто“ ЕООД, с ЕИК:`), ` 208224080, гр. Стара Загора, ул. "Темида" 1, вх. Б, ап. 16, тел.: 0996600900, e-mail: sales@solaris.expert, представлявано от Пламен Иванов Генчев – `, boldText(`ПРОДАВАЧ`)),
         React.createElement(Text, null, `и`),
-        type === "client" && boldedClientName(buyer),
-        type === "company" && React.createElement(Text, null, ``, boldText(`${buyer.name} с ЕИК: `), `${buyer.vat_number} и адрес на управление ${buyer.address || ""}, ${buyer.city || ""}`, `, представлявано от ${buyer.rep_first_name} ${buyer.rep_middle_name || ""} ${buyer.rep_last_name || ""}, наричан по-долу – `, boldText(`КУПУВАЧ`)),
+        buyer.customer_type === "Individual" && boldedClientName(buyer),
+        buyer.customer_type === "Company" && React.createElement(Text, null, ``, boldText(`${buyer.name} с ЕИК: `), `${buyer.vat_number} и адрес на управление ${buyer.address || ""}, ${buyer.city || ""}`, `, представлявано от ${buyer.rep_first_name} ${buyer.rep_middle_name || ""} ${buyer.rep_last_name || ""}, наричан по-долу – `, boldText(`КУПУВАЧ`)),
       ]),
 
       // Vehicle info
@@ -108,7 +107,7 @@ function AdvanceContractPDF({ buyer, cars = [], advance_amount, type }) {
   React.createElement(Text, { key: idx, style: styles.carDescription },
     ``,boldText(`Лек автомобил`), `, марка/модел "`,
     React.createElement(Text, { style: { fontWeight: "bold" } }, `${car.maker} ${car.model} ${car.edition || ""}`),
-    ` ", Идентификационен номер на превозното средство с VIN № ${car.vin}, цвят ${car.color || "неуточнен"}, пробег на автомобила - ${car.mileage_km} км, количество ${car.quantity}, единична цена ${(car.car_price_bgn).toLocaleString()} лв, обща цена ${(car.car_price_bgn * car.quantity).toLocaleString()} лв.`
+    ` ", Идентификационен номер на превозното средство с VIN № ${car.vin}, цвят ${car.exterior_color || "неуточнен"} / ${car.interior_color || ""}, пробег на автомобила - ${car.mileage_km} км, количество ${car.quantity}, единична цена ${(car.car_price_bgn).toLocaleString()} лв, обща цена ${(car.car_price_bgn * car.quantity).toLocaleString()} лв.`
   )
 )
       
@@ -120,7 +119,7 @@ function AdvanceContractPDF({ buyer, cars = [], advance_amount, type }) {
         React.createElement(Text, null, `1. `, boldText(`ПРОДАВАЧЪТ`), ` продава на `, boldText(`КУПУВАЧА`), ` изброените по-горе МПС-та в отлично техническо състояние и външен вид, и заедно с всички принадлежности, числящи се към автомобилите за сумата ${totalAmount.toLocaleString()} лв. (с включено ДДС), която сума продавача ще получи по банков път от купувача:`),
         React.createElement(Text, {style: {marginLeft: 20}}, `1.1. Авансово плащане от ${advance_amount.toLocaleString()} лв при сключване на договора.`),
         React.createElement(Text, {style: {marginLeft: 20}}, `1.2. Остатък от ${remaining.toLocaleString()} лв при предаване на автомобилите.`),
-        React.createElement(Text, {style: {marginLeft: 20}}, `1.3. Очаквания срок за доставка е 60 дни след подписване на договора. При забаваповече от 30 дни продавача е длъжен да върне заплатената сума авансово и даиздаде кредитно известие. Продавача осигурява 5 години гаранционно обслужване на автомобила и 6 години на батерията или 150000 /сто и петдесетхиляди км./, което настъпи по-рано. Гаранцията е валидна за дефекти непредизвикани от купувача. За всички останали случаи продавача осигурява следгаранционен сервиз по цени на компонентите и тарифи на трудаофициално обявени в магазините и сервизите на същия.`),
+        React.createElement(Text, {style: {marginLeft: 20}}, `1.3. Очаквания срок за доставка е 60 дни след подписване на договора. При забаваповече от 30 дни продавача е длъжен да върне заплатената сума авансово и да издаде кредитно известие. Продавача осигурява 5 години гаранционно обслужване на автомобила и 6 години на батерията или 150000 /сто и петдесетхиляди км./, което настъпи по-рано. Гаранцията е валидна за дефекти непредизвикани от купувача. За всички останали случаи продавача осигурява следгаранционен сервиз по цени на компонентите и тарифи на трудаофициално обявени в магазините и сервизите на същия.`),
       ]),
 
       // Additional clauses

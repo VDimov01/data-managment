@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useState } from "react";
 import CustomerBrochuresPage from "./customer-brochures/CustomerBrochuresPage";
 import CustomerComparesPage from "./customer-compares/CustomerComparesPage";
+import CustomerContractsPage from "./customer-contracts/CustomerContractsPage";
 
 export default function CustomerPortal({ apiBase = "http://localhost:5000" }) {
   const { uuid } = useParams(); // keep route: /customer/:uuid
@@ -25,6 +26,10 @@ export default function CustomerPortal({ apiBase = "http://localhost:5000" }) {
           >
             Сравнения
           </button>
+          <button className={`cp-link ${tab === 'contracts' ? 'on' : ''}`} onClick={() => setTab('contracts')}>
+            Договори
+          </button>
+          
         </nav>
       </aside>
 
@@ -34,6 +39,9 @@ export default function CustomerPortal({ apiBase = "http://localhost:5000" }) {
         )}
         {tab === 'compares' && (
           <CustomerComparesPage apiBase={apiBase} key={`c-${uuid}`} />
+        )}
+        {tab === 'contracts' && (
+          <CustomerContractsPage apiBase={apiBase} key={`d-${uuid}`} />
         )}
       </main>
     </div>
