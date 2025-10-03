@@ -43,9 +43,13 @@ const [intNew, setIntNew] = useState('');
     interior_color_id: '',
     shop_id: '',
     status: 'InTransit',
+    expected_arrival_earliest: '',
+    expected_arrival_latest: '',
+    useDefaultEta: true, // toggle: default 60–90 vs custom dates
     asking_price: '',
     mileage: '',
   });
+
   let title = '';
   title = useMemo(() =>
     `${edition?.make || ''} ${edition?.model || ''} ${edition?.year || ''} — ${edition?.edition_name || ''}`,
@@ -137,6 +141,18 @@ const [intNew, setIntNew] = useState('');
       interior_color_id = d.color_id;
     }
 
+    // client-side guard: if custom window, validate
+   if (form.status === 'InTransit' && !form.useDefaultEta) {
+     const eDate = form.expected_arrival_earliest;
+     const lDate = form.expected_arrival_latest;
+     if (!eDate || !lDate) {
+       return setError('Provide both earliest and latest expected dates or use the default window.');
+     }
+     if (eDate > lDate) {
+       return setError('Earliest date must be before or equal to latest date.');
+     }
+   }
+
     const basePayload = {
       vin: String(form.vin || '').trim(),
       stock_number: String(form.stock_number || '').trim() || null,
@@ -146,6 +162,13 @@ const [intNew, setIntNew] = useState('');
       status: form.status || 'InTransit',
       asking_price: form.asking_price === '' ? null : Number(form.asking_price),
       mileage: form.mileage === '' ? 0 : Math.trunc(Number(form.mileage)),
+      // ETA: send only when InTransit and user chose custom dates
+     ...(form.status === 'InTransit' && !form.useDefaultEta
+       ? {
+           expected_arrival_earliest: form.expected_arrival_earliest,
+           expected_arrival_latest: form.expected_arrival_latest,
+         }
+       : {})
     };
 
     if (mode === 'create') {
@@ -206,12 +229,65 @@ const [intNew, setIntNew] = useState('');
             {shops.map(s => <option key={s.shop_id} value={s.shop_id}>{s.name} - {s.address}</option>)}
           </select>
 
-          <select name="status" value={form.status} onChange={handleChange}>
+          <input name="asking_price" type="number" step="0.01" placeholder="Цена" value={form.asking_price} onChange={handleChange} />
+          <input name="mileage" type="number" placeholder="Пробег (км)" value={form.mileage} onChange={handleChange} />
+
+         
+          <select
+            name="status"
+            value={form.status}
+            onChange={(e) => {
+              const status = e.target.value;
+              setForm((f) => ({ ...f, status }));
+              setForm((f) => ({
+                ...f,
+                status,
+                // when leaving InTransit hide/reset ETA fields
+                ...(status !== 'InTransit' ? {
+                  expected_arrival_earliest: '',
+                  expected_arrival_latest: '',
+                  useDefaultEta: true
+                } : {})
+              }));
+            }}
+          >
             {STATUSES.map(st => <option key={st} value={st}>{status_to_bg[st]}</option>)}
           </select>
 
-          <input name="asking_price" type="number" step="0.01" placeholder="Цена" value={form.asking_price} onChange={handleChange} />
-          <input name="mileage" type="number" placeholder="Пробег (км)" value={form.mileage} onChange={handleChange} />
+              {/* ETA block – only when InTransit */}
+          {form.status === 'InTransit' && (
+            <fieldset style={{ border: '1px solid #eee', padding: 12, borderRadius: 8, marginTop: 12 }}>
+              <legend>Очаквана дата на пристигане</legend>
+              <label style={{ display: 'block', marginBottom: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={form.useDefaultEta}
+                  onChange={(e) => setForm(f => ({ ...f, useDefaultEta: e.target.checked }))}
+                /> Използвай стандартния интервал (+60 до +90 дни)
+              </label>
+              {!form.useDefaultEta && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ marginRight: 8 }}>Най-ранна</label>
+                    <input
+                      type="date"
+                      value={form.expected_arrival_earliest}
+                      onChange={(e) => setForm(f => ({ ...f, expected_arrival_earliest: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ marginRight: 8 }}>Най-късна</label>
+                    <input
+                      type="date"
+                      value={form.expected_arrival_latest}
+                      onChange={(e) => setForm(f => ({ ...f, expected_arrival_latest: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              )}
+            </fieldset>
+          )}
+
         </div>
 
         <div style={{ marginTop: 12, display:'flex', gap:8 }}>

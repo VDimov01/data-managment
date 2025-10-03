@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mysql = require('mysql2/promise');
-const { getPool } = require('../db');
+const { getPool, withTransaction } = require('../db');
 const pool = getPool();
 const { v4: uuidv4 } = require('uuid');
 
@@ -32,6 +32,12 @@ router.get('/', async (req, res) => {
 
   v.asking_price,
   v.status,
+  v.expected_arrival_earliest,
+  v.expected_arrival_latest,
+  v.arrived_at,
+  v.reserved_by_contract_id,
+  v.reserved_at,
+  v.reserved_until,
   v.mileage,
   v.shop_id,
   s.name AS shop_name,
@@ -86,6 +92,12 @@ ORDER BY v.vehicle_id;
           public_uuid: row.public_uuid,
           qr_object_key: row.qr_object_key,
           qr_png_path: row.qr_png_path,
+          expected_arrival_earliest: row.expected_arrival_earliest,
+          expected_arrival_latest: row.expected_arrival_latest,
+          arrived_at: row.arrived_at,
+          reserved_by_contract_id: row.reserved_by_contract_id,
+          reserved_at: row.reserved_at,
+          reserved_until: row.reserved_until,
           attributes: []
         };
       }
@@ -124,7 +136,10 @@ router.post('/', async (req, res) => {
       status = 'InTransit',
       asking_price = null,
       mileage = 0,
-      acquisition_cost = null, // optional
+      acquisition_cost = null,
+      expected_arrival_date = null,         // optional single date "YYYY-MM-DD"
+      expected_arrival_earliest = null,     // optional window start
+      expected_arrival_latest = null        // optional window end
     } = req.body || {};
 
     const publicUuid = uuidv4();
@@ -141,6 +156,25 @@ router.post('/', async (req, res) => {
     acquisition_cost = acquisition_cost === '' || acquisition_cost == null ? null : Number(acquisition_cost);
     mileage = mileage === '' || mileage == null ? 0 : Math.trunc(Number(mileage));
     status = String(status || 'InTransit');
+
+      // ETA normalization: if a single date is provided, pin both ends to it
+    const isDate = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+    if (expected_arrival_date && !isDate(expected_arrival_date)) {
+      return res.status(400).json({ error: 'expected_arrival_date must be YYYY-MM-DD' });
+    }
+    if (expected_arrival_earliest && !isDate(expected_arrival_earliest)) {
+      return res.status(400).json({ error: 'expected_arrival_earliest must be YYYY-MM-DD' });
+    }
+    if (expected_arrival_latest && !isDate(expected_arrival_latest)) {
+      return res.status(400).json({ error: 'expected_arrival_latest must be YYYY-MM-DD' });
+    }
+    if (expected_arrival_date && (!expected_arrival_earliest && !expected_arrival_latest)) {
+      expected_arrival_earliest = expected_arrival_latest = expected_arrival_date;
+    }
+    if (expected_arrival_earliest && expected_arrival_latest &&
+        expected_arrival_earliest > expected_arrival_latest) {
+      return res.status(400).json({ error: 'expected_arrival_earliest must be <= expected_arrival_latest' });
+    }
 
     if (!vin || !Number.isFinite(edition_id)) {
       return res.status(400).json({ error: 'vin and edition_id are required' });
@@ -177,17 +211,62 @@ router.post('/', async (req, res) => {
       if (!s) return res.status(400).json({ error: 'shop_id not found' });
     }
 
-    // Insert
-    const [r] = await pool.query(
-      `INSERT INTO vehicle
-         (vin, stock_number, edition_id, exterior_color_id, interior_color_id, shop_id,
-          status, asking_price, mileage, acquisition_cost, public_uuid)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [vin, stock_number, edition_id, exterior_color_id, interior_color_id, shop_id,
-       status, asking_price, mileage, acquisition_cost, publicUuid]
-    );
+    // Insert (with ETA handling + status audit) in a txn
+    const out = await withTransaction(async (conn) => {
+      //helper
+      const addDaysUTC = (d, days) => {
+          const dt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+          dt.setUTCDate(dt.getUTCDate() + days);
+        return dt.toISOString().slice(0, 10); // YYYY-MM-DD
+      };
 
-    res.status(201).json({ vehicle_id: r.insertId });
+      // Build SQL with optional ETA window
+      const cols = [
+        'vin','stock_number','edition_id','exterior_color_id','interior_color_id','shop_id',
+        'status','asking_price','mileage','acquisition_cost','public_uuid'
+      ];
+
+      const vals = [vin, stock_number, edition_id, exterior_color_id, interior_color_id, shop_id,
+              status, asking_price, mileage, acquisition_cost, publicUuid];
+
+      let etaClause = '';
+
+        // if status is InTransit and no ETA provided -> default 60..90 days from today
+      if (status === 'InTransit') {
+        let e = expected_arrival_earliest || null;
+        let l = expected_arrival_latest   || null;
+
+        // If a single date was provided, you already normalized to earliest/latest earlier
+        if (!e && !l) {
+          const now = new Date();
+          e = addDaysUTC(now, 60);
+          l = addDaysUTC(now, 90);
+        }
+        cols.push('expected_arrival_earliest','expected_arrival_latest');
+        vals.push(e, l);
+      }
+
+      const sql = `
+        INSERT INTO vehicle (${cols.join(',')})
+        VALUES (${cols.map(_=>'?').join(',')})
+      `;
+      const [r] = await conn.query(sql + etaClause, vals);
+
+      // status audit row
+      await conn.query(
+        `INSERT INTO vehicle_status_event (vehicle_id, old_status, new_status, note)
+           VALUES (?,?,?,?)`,
+        [r.insertId, status, status, 'created']
+      );
+      return r.insertId;
+    });
+
+    res.status(201).json({
+      vehicle_id: out,
+      status,
+      expected_arrival_earliest: expected_arrival_earliest || null,
+      expected_arrival_latest: expected_arrival_latest || null
+    });
   } catch (err) {
     // Duplicate key (VIN/stock_number)
     if (err && err.code === 'ER_DUP_ENTRY') {
@@ -202,103 +281,210 @@ router.post('/', async (req, res) => {
 });
 
 // UPDATE vehicle (full update using current payload semantics)
+// PUT /api/vehicles/:id  (with ETA + status transition support)
 router.put('/:id', async (req, res) => {
   const vehicleId = Number(req.params.id);
   if (!Number.isFinite(vehicleId)) return res.status(400).json({ error: 'Invalid vehicle id' });
 
+  // helpers
+  const isDate = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
   try {
-    // Load existing so we can default edition_id if client doesn’t send it
-    const [[current]] = await pool.query('SELECT * FROM vehicle WHERE vehicle_id=?', [vehicleId]);
-    if (!current) return res.status(404).json({ error: 'Vehicle not found' });
+    // Lock the row; we’ll decide defaults based on current state
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
 
-    let {
-      vin,
-      stock_number = null,
-      edition_id = current.edition_id, // default to current if not supplied
-      exterior_color_id = null,
-      interior_color_id = null,
-      shop_id = null,
-      status = current.status,
-      asking_price = null,
-      mileage = 0,
-      acquisition_cost = null,
-    } = req.body || {};
+      const [[current]] = await conn.query(
+        'SELECT * FROM vehicle WHERE vehicle_id=? FOR UPDATE',
+        [vehicleId]
+      );
+      if (!current) {
+        await conn.rollback(); conn.release();
+        return res.status(404).json({ error: 'Vehicle not found' });
+      }
 
-    // normalize
-    vin = String(vin ?? current.vin).trim().toUpperCase();
-    stock_number = stock_number == null || stock_number === '' ? null : String(stock_number).trim();
-    edition_id = Number(edition_id);
-    exterior_color_id = exterior_color_id ? Number(exterior_color_id) : null;
-    interior_color_id = interior_color_id ? Number(interior_color_id) : null;
-    shop_id = shop_id ? Number(shop_id) : null;
-    status = String(status || current.status);
-    asking_price = asking_price === '' || asking_price == null ? null : Number(asking_price);
-    acquisition_cost = acquisition_cost === '' || acquisition_cost == null ? null : Number(acquisition_cost);
-    mileage = mileage === '' || mileage == null ? 0 : Math.trunc(Number(mileage));
+      let {
+        vin,
+        stock_number = null,
+        edition_id = current.edition_id,
+        exterior_color_id = null,
+        interior_color_id = null,
+        shop_id = null,
+        status = current.status,
+        asking_price = null,
+        mileage = 0,
+        acquisition_cost = null,
 
-    if (!vin || !Number.isFinite(edition_id)) {
-      return res.status(400).json({ error: 'vin and edition_id are required' });
-    }
-    if (!ALLOWED_STATUS.has(status)) {
-      return res.status(400).json({ error: `status must be one of: ${[...ALLOWED_STATUS].join(', ')}` });
-    }
-    if (asking_price !== null && !Number.isFinite(asking_price)) {
-      return res.status(400).json({ error: 'asking_price must be a number' });
-    }
-    if (acquisition_cost !== null && !Number.isFinite(acquisition_cost)) {
-      return res.status(400).json({ error: 'acquisition_cost must be a number' });
-    }
-    if (!Number.isFinite(mileage)) {
-      return res.status(400).json({ error: 'mileage must be a number' });
-    }
+        // ETA inputs
+        expected_arrival_date = null,        // single date, optional
+        expected_arrival_earliest = null,    // window start, optional
+        expected_arrival_latest = null,      // window end, optional
+        clear_eta = false,                   // optional boolean to wipe ETA
+        note = null                          // optional note for audit
+      } = req.body || {};
 
-    // validate refs
-    const [[ed]] = await pool.query('SELECT edition_id FROM edition WHERE edition_id=?', [edition_id]);
-    if (!ed) return res.status(400).json({ error: 'edition_id not found' });
+      // normalize
+      vin = String(vin ?? current.vin).trim().toUpperCase();
+      stock_number = stock_number == null || stock_number === '' ? null : String(stock_number).trim();
+      edition_id = Number(edition_id);
+      exterior_color_id = exterior_color_id ? Number(exterior_color_id) : null;
+      interior_color_id = interior_color_id ? Number(interior_color_id) : null;
+      shop_id = shop_id ? Number(shop_id) : null;
+      status = String(status || current.status);
+      asking_price = asking_price === '' || asking_price == null ? null : Number(asking_price);
+      acquisition_cost = acquisition_cost === '' || acquisition_cost == null ? null : Number(acquisition_cost);
+      mileage = mileage === '' || mileage == null ? 0 : Math.trunc(Number(mileage));
 
-    if (exterior_color_id !== null) {
-      const [[c]] = await pool.query('SELECT type FROM color WHERE color_id=?', [exterior_color_id]);
-      if (!c) return res.status(400).json({ error: 'exterior_color_id not found' });
-      if (c.type !== 'exterior') return res.status(400).json({ error: 'exterior_color_id must be type=exterior' });
-    }
-    if (interior_color_id !== null) {
-      const [[c]] = await pool.query('SELECT type FROM color WHERE color_id=?', [interior_color_id]);
-      if (!c) return res.status(400).json({ error: 'interior_color_id not found' });
-      if (c.type !== 'interior') return res.status(400).json({ error: 'interior_color_id must be type=interior' });
-    }
-    if (shop_id !== null) {
-      const [[s]] = await pool.query('SELECT shop_id FROM shop WHERE shop_id=?', [shop_id]);
-      if (!s) return res.status(400).json({ error: 'shop_id not found' });
-    }
+      if (!vin || !Number.isFinite(edition_id)) {
+        await conn.rollback(); conn.release();
+        return res.status(400).json({ error: 'vin and edition_id are required' });
+      }
+      if (!ALLOWED_STATUS.has(status)) {
+        await conn.rollback(); conn.release();
+        return res.status(400).json({ error: `status must be one of: ${[...ALLOWED_STATUS].join(', ')}` });
+      }
+      if (asking_price !== null && !Number.isFinite(asking_price)) {
+        await conn.rollback(); conn.release();
+        return res.status(400).json({ error: 'asking_price must be a number' });
+      }
+      if (acquisition_cost !== null && !Number.isFinite(acquisition_cost)) {
+        await conn.rollback(); conn.release();
+        return res.status(400).json({ error: 'acquisition_cost must be a number' });
+      }
+      if (!Number.isFinite(mileage)) {
+        await conn.rollback(); conn.release();
+        return res.status(400).json({ error: 'mileage must be a number' });
+      }
 
-    await pool.query(
-      `UPDATE vehicle SET
-        vin=?,
-        stock_number=?,
-        edition_id=?,
-        exterior_color_id=?,
-        interior_color_id=?,
-        shop_id=?,
-        status=?,
-        asking_price=?,
-        mileage=?,
-        acquisition_cost=?
-       WHERE vehicle_id=?`,
-      [vin, stock_number, edition_id, exterior_color_id, interior_color_id, shop_id, status, asking_price, mileage, acquisition_cost, vehicleId]
-    );
+      // validate refs
+      const [[ed]] = await conn.query('SELECT edition_id FROM edition WHERE edition_id=?', [edition_id]);
+      if (!ed) { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'edition_id not found' }); }
+      if (exterior_color_id !== null) {
+        const [[c]] = await conn.query('SELECT type FROM color WHERE color_id=?', [exterior_color_id]);
+        if (!c) { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'exterior_color_id not found' }); }
+        if (c.type !== 'exterior') { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'exterior_color_id must be type=exterior' }); }
+      }
+      if (interior_color_id !== null) {
+        const [[c2]] = await conn.query('SELECT type FROM color WHERE color_id=?', [interior_color_id]);
+        if (!c2) { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'interior_color_id not found' }); }
+        if (c2.type !== 'interior') { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'interior_color_id must be type=interior' }); }
+      }
+      if (shop_id !== null) {
+        const [[s]] = await conn.query('SELECT shop_id FROM shop WHERE shop_id=?', [shop_id]);
+        if (!s) { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'shop_id not found' }); }
+      }
 
-    res.json({ message: 'Updated' });
+      // ----- ETA normalization -----
+      if (expected_arrival_date && !isDate(expected_arrival_date)) {
+        await conn.rollback(); conn.release();
+        return res.status(400).json({ error: 'expected_arrival_date must be YYYY-MM-DD' });
+      }
+      if (expected_arrival_earliest && !isDate(expected_arrival_earliest)) {
+        await conn.rollback(); conn.release();
+        return res.status(400).json({ error: 'expected_arrival_earliest must be YYYY-MM-DD' });
+      }
+      if (expected_arrival_latest && !isDate(expected_arrival_latest)) {
+        await conn.rollback(); conn.release();
+        return res.status(400).json({ error: 'expected_arrival_latest must be YYYY-MM-DD' });
+      }
+      if (expected_arrival_date && (!expected_arrival_earliest && !expected_arrival_latest)) {
+        expected_arrival_earliest = expected_arrival_date;
+        expected_arrival_latest = expected_arrival_date;
+      }
+      if (expected_arrival_earliest && expected_arrival_latest &&
+          expected_arrival_earliest > expected_arrival_latest) {
+        await conn.rollback(); conn.release();
+        return res.status(400).json({ error: 'expected_arrival_earliest must be <= expected_arrival_latest' });
+      }
+
+      const statusChanged = status !== current.status;
+
+      // Build update set + params
+      const sets = [
+        'vin=?','stock_number=?','edition_id=?','exterior_color_id=?','interior_color_id=?',
+        'shop_id=?','status=?','asking_price=?','mileage=?','acquisition_cost=?'
+      ];
+      const params = [vin, stock_number, edition_id, exterior_color_id, interior_color_id,
+                      shop_id, status, asking_price, mileage, acquisition_cost];
+
+      let etaEarliest = expected_arrival_earliest;
+      let etaLatest   = expected_arrival_latest;
+
+      // If switching to InTransit and no ETA provided, default +60/+90 days
+      if (statusChanged && status === 'InTransit' && !etaEarliest && !etaLatest && !clear_eta) {
+        const [[d]] = await conn.query('SELECT CURRENT_DATE() AS today');
+        const [[def]] = await conn.query(
+          'SELECT DATE_ADD(? , INTERVAL 60 DAY) AS e, DATE_ADD(? , INTERVAL 90 DAY) AS l',
+          [d.today, d.today]
+        );
+        etaEarliest = def.e;  // YYYY-MM-DD
+        etaLatest   = def.l;
+      }
+
+      // ETA column updates
+      if (clear_eta === true) {
+        sets.push('expected_arrival_earliest=NULL','expected_arrival_latest=NULL');
+      } else if (etaEarliest || etaLatest) {
+        sets.push('expected_arrival_earliest=?','expected_arrival_latest=?');
+        params.push(etaEarliest || null, etaLatest || null);
+      }
+
+      // If correcting from Available->InTransit (or any -> InTransit), nuke arrived_at (you didn’t arrive yet)
+      if (statusChanged && status === 'InTransit') {
+        sets.push('arrived_at=NULL');
+      }
+
+      // Execute update
+      sets.push('reserved_by_contract_id=reserved_by_contract_id'); // no-op to keep SQL valid if sets was empty (paranoia)
+      const sql = `UPDATE vehicle SET ${sets.join(', ')} WHERE vehicle_id=?`;
+      params.push(vehicleId);
+      await conn.query(sql, params);
+
+      // Audit
+      if (statusChanged) {
+        await conn.query(
+          `INSERT INTO vehicle_status_event (vehicle_id, old_status, new_status, note)
+           VALUES (?,?,?,?)`,
+          [vehicleId, current.status, status, note || (etaEarliest && etaLatest ? `ETA set ${etaEarliest}..${etaLatest}` : null)]
+        );
+      } else if ((etaEarliest || etaLatest || clear_eta) && note) {
+        // Log ETA-only changes as a note (old_status=new_status)
+        await conn.query(
+          `INSERT INTO vehicle_status_event (vehicle_id, old_status, new_status, note)
+           VALUES (?,?,?,?)`,
+          [vehicleId, current.status, current.status, `ETA update: ${etaEarliest || 'NULL'}..${etaLatest || 'NULL'} ${note ? '| '+note : ''}`]
+        );
+      }
+
+      await conn.commit();
+      conn.release();
+
+      return res.json({
+        ok: true,
+        vehicle_id: vehicleId,
+        status,
+        expected_arrival_earliest: clear_eta ? null : (etaEarliest ?? current.expected_arrival_earliest),
+        expected_arrival_latest:   clear_eta ? null : (etaLatest   ?? current.expected_arrival_latest)
+      });
+    } catch (e) {
+      try { await conn.rollback(); } catch {}
+      conn.release();
+      if (e && e.code === 'ER_DUP_ENTRY') {
+        const msg = (e.sqlMessage || '').toLowerCase();
+        if (msg.includes('vin'))         return res.status(409).json({ error: 'VIN already exists' });
+        if (msg.includes('stock_number'))return res.status(409).json({ error: 'Stock number already exists' });
+        return res.status(409).json({ error: 'Duplicate value' });
+      }
+      console.error('PUT /api/vehicles/:id', e);
+      return res.status(500).json({ error: 'Database error' });
+    }
   } catch (err) {
-    if (err && err.code === 'ER_DUP_ENTRY') {
-      const msg = (err.sqlMessage || '').toLowerCase();
-      if (msg.includes('vin')) return res.status(409).json({ error: 'VIN already exists' });
-      if (msg.includes('stock_number')) return res.status(409).json({ error: 'Stock number already exists' });
-      return res.status(409).json({ error: 'Duplicate value' });
-    }
-    console.error('PUT /api/vehicles/:id', err);
-    res.status(500).json({ error: 'Database error' });
+    console.error('PUT /api/vehicles/:id (outer)', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 // DELETE /api/vehicles/:id
 router.delete('/:id', async (req, res) => {

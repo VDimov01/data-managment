@@ -21,7 +21,7 @@ async function uploadVehicleImages(vehicleId, files = []) {
 
   const created = [];
   for (const f of files) {
-    const key = vehicleHierKey({ ...parts, originalName: f.originalname, buffer: f.buffer });
+    const key = vehicleHierKey({ ...parts, originalName: f.originalname, buffer: f.buffer, filetype: "images" });
     const file = bucketPrivate.file(key);
 
     // Save to GCS (private bucket)

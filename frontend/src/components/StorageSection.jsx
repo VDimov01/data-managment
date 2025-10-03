@@ -6,6 +6,7 @@ import VehicleImagesModal from "./VehicleImagesModal";
 import VehicleCreateForm from "./VehicleCreateForm";
 import VehicleQRCell from './VehicleQRCell';
 import PrintLabelsButton from "./PrintLabelsButton";
+import { formatDateDMYDateOnly } from "../utils/dates";
 
 const STATUSES = ['InTransit','Available','Reserved','Sold','Service','Demo'];
 
@@ -230,8 +231,9 @@ export default function StorageSection() {
               <th>Цена</th>
               <th>Магазин</th>
               <th>Град</th>
-              <th>Адрес</th>
+              {/* <th>Адрес</th> */}
               <th>Статус</th>
+              <th>Информация за статус</th>
               <th>Действие</th>
               <th>QR Код</th>
             </tr>
@@ -249,7 +251,7 @@ export default function StorageSection() {
               const isDel = deletingIds.has(vid);
               return (
                 <tr key={vid}>
-                  <td>{entry.maker || entry.make} {entry.model} {entry.edition || entry.edition_name || ""}</td>
+                  <td style={{fontWeight: "bold"}}>{entry.maker || entry.make} {entry.model} {entry.model_year || entry.year} {entry.edition || entry.edition_name || ""}</td>
                   <td>{entry.vin}</td>
                   <td>
                     {(entry.exterior_color || "")}
@@ -258,8 +260,16 @@ export default function StorageSection() {
                   <td>{fmtPrice(entry.asking_price)}</td>
                   <td>{entry.shop_name}</td>
                   <td>{entry.shop_city || entry.city}</td> 
-                  <td>{entry.shop_address || entry.address}</td>
-                  <td>{status_to_bg[entry.status]}</td>
+                  {/* <td>{entry.shop_address || entry.address}</td> */}
+                  <td>
+                    {status_to_bg[entry.status]}
+                  </td>
+                  <td>
+                    <span style={{display: "block"}}>{entry.status === "InTransit" && entry.expected_arrival_earliest ? `Най-рано: ${formatDateDMYDateOnly(entry.expected_arrival_earliest)}` : ""}</span>
+                    <span>{entry.status === "InTransit" && entry.expected_arrival_latest ? `Най-късно: ${formatDateDMYDateOnly(entry.expected_arrival_latest)}` : ""}</span>
+                    <span style={{display: "block"}}>{entry.status === "Reserved" && entry.reserved_at ? `Резервирано на: ${formatDateDMYDateOnly(entry.reserved_at)}` : ""}</span>
+                    <span>{entry.status === "Reserved" && entry.reserved_until ? `Резервирано до: ${formatDateDMYDateOnly(entry.reserved_until)}` : ""}</span>
+                  </td>
                   <td style={{ whiteSpace:'nowrap', display:'flex', gap:6 }}>
                     <button type="button" onClick={() => { setVehicleForEdit(entry); setOpenEdit(true); }} disabled={isDel}>
                       Редактирай

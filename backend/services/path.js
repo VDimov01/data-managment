@@ -24,13 +24,13 @@ function fileNameFrom(originalName, buffer) {
  * Build object key:
  * maker/<Model> <Year>/<Edition>/<vehicleUuid>/<file>
  */
-function vehicleHierKey({ maker, model, model_year, edition, vehicle_uuid, originalName, buffer }) {
+function vehicleHierKey({ maker, model, model_year, edition, vehicle_uuid, originalName, buffer, filetype }) {
   const segMaker   = cleanSegKeepSpaces(maker).toLowerCase(); // folder: keep spaces between words
   const segModelYr = `${cleanSegKeepSpaces(model)} ${String(model_year).replace(/[^\d]/g,'')}`;
   const segEdition = cleanSegKeepSpaces(edition);
   const segUuid    = String(vehicle_uuid);
   const fileName   = fileNameFrom(originalName, buffer);
-  return `vehicles/${segMaker}/${segModelYr}/${segEdition}/${segUuid}/${fileName}`;
+  return `vehicles/${segMaker}/${segModelYr}/${segEdition}/${segUuid}/${filetype}/${fileName}`;
 }
 
 module.exports = { vehicleHierKey };
