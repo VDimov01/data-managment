@@ -82,6 +82,9 @@ export default function ContractsSection({ apiBase = "http://localhost:5000" }) 
 
   const [tab, setTab] = useState("create"); // 'create' | 'browse'
 
+  const [specs, setSpecs] = useState([]);     // attachments list
+  const [genLoading, setGenLoading] = useState(false);
+
   // wizard state
   const [step, setStep] = useState(1);
   const [creating, setCreating] = useState(false);
@@ -105,6 +108,38 @@ export default function ContractsSection({ apiBase = "http://localhost:5000" }) 
   const [items, setItems] = useState([]);
 
   const [cancelling, setCancelling] = useState(false);
+
+  async function loadSpecs() {
+    if (!contract?.contract_id) return;
+    try {
+      const data = await api(`/contracts/${contract.contract_id}/specs-pdfs`, { method: 'GET' });
+      setSpecs(data.attachments || []);
+    } catch (e) {
+      // silent
+    }
+  }
+
+  useEffect(() => {
+  if (step === 3 && contract?.contract_id) loadSpecs();
+}, [step, contract?.contract_id]);
+
+  async function handleGenerateSpecs() {
+    if (!contract?.contract_id) return;
+    setGenLoading(true);
+    try {
+      const data = await api(`/contracts/${contract.contract_id}/specs-pdfs`, {
+        method: 'POST',
+        body: { lang: 'bg' }
+      });
+      setSpecs(data.attachments || []);
+    } catch (e) {
+      alert(`Spec pack failed: ${e.message}`);
+    } finally {
+      setGenLoading(false);
+    }
+  }
+
+
 
   const totalClient = useMemo(() => {
     let sum = 0;
@@ -351,31 +386,74 @@ async function handleCancel() {
           )}
 
           {step === 3 && contract && (
-            <div className="card">
-              <div className="card-body">
-                <HeaderSummary contract={contract} customer={customer} />
-                <p className="muted">
-                  You can <strong>Render a draft PDF</strong> (keeps status = draft), or <strong>Issue</strong> which
-                  generates a new PDF version and reserves the vehicles.
-                </p>
-                <div className="actions">
-                  <div>
+  <div className="card">
+    <div className="card-body">
+      <HeaderSummary contract={contract} customer={customer} />
+
+      <p className="muted">
+        You can <strong>Render a draft PDF</strong> (keeps status = draft), or <strong>Issue</strong> which
+        generates a new PDF version and reserves the vehicles.
+      </p>
+
+      {/* --- Spec PDFs (internal, per-edition) --- */}
+      <div className="row">
+        <div className="col">
+          <label className="lbl">Spec PDF (internal)</label>
+          <div className="actions" style={{ justifyContent: 'flex-start' }}>
+            <button className="btn" onClick={handleGenerateSpecs} disabled={genLoading}>
+              {genLoading ? 'Generating…' : 'Generate spec pack (BG)'}
+            </button>
+          </div>
+
+          {specs.length === 0 ? (
+            <div className="muted" style={{ marginTop: 8 }}>No spec attachments yet.</div>
+          ) : (
+            <div className="list" style={{ marginTop: 8 }}>
+              {specs.map(a => (
+                <div key={a.edition_specs_pdf_id} className="list-item">
+                  <div className="line-1">
+                    <strong>{a.filename}</strong> — v{a.version}
+                  </div>
+                  <div className="line-2">
+                    SHA256: {a.sha256?.slice(0, 12)}… • {Math.round((a.byte_size || 0) / 1024)} KB
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    <a className="btn" href={a.signedUrl} target="_blank" rel="noreferrer">Open (signed)</a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* --- Actions --- */}
+      <div className="actions">
+        <div>
           {/* Danger zone: cancel & release */}
-          <button className="btn danger" onClick={handleCancel} disabled={cancelling || contract.status === 'withdrawn'}>
+          <button
+            className="btn danger"
+            onClick={handleCancel}
+            disabled={cancelling || contract.status === 'withdrawn'}
+          >
             {cancelling ? 'Cancelling…' : 'Cancel & release vehicles'}
           </button>
         </div>
-                  <button className="btn secondary" onClick={() => setStep(2)}>Back</button>
-                  <button className="btn" onClick={handleRenderDraftPdf} disabled={renderingDraft}>
-                    {renderingDraft ? "Rendering…" : "Render draft PDF"}
-                  </button>
-                  <button className="btn success" onClick={handleIssue} disabled={issuing}>
-                    {issuing ? "Issuing..." : "Issue & generate PDF"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+
+        <button className="btn secondary" onClick={() => setStep(2)}>Back</button>
+
+        <button className="btn" onClick={handleRenderDraftPdf} disabled={renderingDraft}>
+          {renderingDraft ? 'Rendering…' : 'Render draft PDF'}
+        </button>
+
+        <button className="btn success" onClick={handleIssue} disabled={issuing}>
+          {issuing ? 'Issuing...' : 'Issue & generate PDF'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
         </>
       )}
 

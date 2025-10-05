@@ -3,7 +3,11 @@ const express = require('express');
 const router = express.Router();
 const { getPool, withTransaction } = require('../db');
 const pool = getPool();
-
+const {
+  ensureEditionSpecsPdf,
+  getSignedUrl,
+  // renderEditionSpecsPdfBuffer, // not needed here
+} = require('../services/specsPDF');
 
 /* ================ Helpers ================ */
 
@@ -870,6 +874,80 @@ if (effective) {
     res.status(500).json({ error: 'DB error' });
   } finally {
     conn.release();
+  }
+});
+
+router.get('/:edition_id/specs-pdf/latest', async (req, res) => {
+  try {
+    const edition_id = Number(req.params.edition_id);
+    const lang = (req.query?.lang || 'bg').toLowerCase() === 'en' ? 'en' : 'bg';
+    if (!Number.isFinite(edition_id) || edition_id <= 0) {
+      return res.status(400).json({ error: 'Invalid edition_id' });
+    }
+
+    const [rows] = await pool.query(
+      `
+      SELECT version, gcs_key
+        FROM edition_specs_pdf
+       WHERE edition_id = ? AND lang = ?
+       ORDER BY version DESC
+       LIMIT 1
+      `,
+      [edition_id, lang]
+    );
+
+    if (!rows.length) return res.status(404).json({ error: 'No spec pack yet' });
+
+    const row = rows[0];
+    const { signedUrl, expiresAt } = await getSignedUrl(row.gcs_key, 10);
+
+    res.json({
+      edition_id,
+      version: row.version,
+      pdf: { signedUrl, expiresAt },
+    });
+  } catch (e) {
+    console.error('GET /api/editions/:edition_id/specs-pdf/latest', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/:edition_id/specs-pdf', async (req, res) => {
+  try {
+    const edition_id = Number(req.params.edition_id);
+    const lang = (req.body?.lang || 'bg').toLowerCase() === 'en' ? 'en' : 'bg';
+    if (!Number.isFinite(edition_id) || edition_id <= 0) {
+      return res.status(400).json({ error: 'Invalid edition_id' });
+    }
+
+    const created_by_user_id =
+      Number(req.user?.user_id ?? req.headers['x-user-id'] ?? 1) || 1;
+
+    const out = await withTransaction(async (conn) => {
+      // ensureEditionSpecsPdf handles: header load, snapshot build, reuse-or-create, upload, insert
+      const { reused, row /* edition_specs_pdf row */, header, groups } =
+        await ensureEditionSpecsPdf(conn, {
+          edition_id,
+          lang,
+          created_by_user_id,
+        });
+
+      // always return a short-lived signed URL for immediate preview
+      const { signedUrl, expiresAt } = await getSignedUrl(row.gcs_key, 10);
+
+      return {
+        edition_id,
+        version: row.version,
+        gcs_key: row.gcs_key,
+        reused,
+        pdf: { signedUrl, expiresAt },
+      };
+    });
+
+    res.json(out);
+  } catch (e) {
+    console.error('POST /api/editions/:edition_id/specs-pdf', e);
+    res.status(400).json({ error: e.message || 'Failed to generate specs PDF' });
   }
 });
 

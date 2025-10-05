@@ -29,6 +29,53 @@ export default function AvailableEditions({
 
   const [deletingIds, setDeletingIds] = useState(new Set());
 
+  const [specBusy, setSpecBusy] = useState(new Set()); // edition_ids in-flight
+
+const ensureSpecs = async (row, { regenerate = true } = {}) => {
+  const id = row.edition_id;
+  setSpecBusy(prev => new Set(prev).add(id));
+  try {
+    const res = await fetch(`${apiBase}/api/editions/${id}/specs-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ regenerate })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || 'Spec pack failed');
+
+    const url = data?.pdf?.signedUrl || data?.signedUrl || data.attachments.signedUrl;
+    if (url && confirm('Open the latest Spec Pack now?')) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      alert('Spec Pack generated.');
+    }
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    setSpecBusy(prev => { const n = new Set(prev); n.delete(id); return n; });
+  }
+};
+
+const openLatestSpecs = async (row) => {
+  const id = row.edition_id;
+  setSpecBusy(prev => new Set(prev).add(id));
+  try {
+    const res = await fetch(`${apiBase}/api/editions/${id}/specs-pdf/latest`);
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 404) return alert('No spec pack yet. Generate first.');
+    if (!res.ok) throw new Error(data?.error || 'Failed to fetch latest spec pack');
+
+    const url = data?.signedUrl || data?.pdf?.signedUrl || data.attachments.signedUrl;
+    if (!url) return alert('No signed URL returned.');
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    setSpecBusy(prev => { const n = new Set(prev); n.delete(id); return n; });
+  }
+};
+
+
   const load = async () => {
     setLoading(true); setErr(null);
     try {
@@ -158,6 +205,21 @@ export default function AvailableEditions({
                                 style={{ color: '#b30000' }}
                               >
                                 {deleting ? 'Изтриване' : 'Изтрий'}
+                              </button>
+                              <button
+                                onClick={() => openLatestSpecs(row)}
+                                disabled={specBusy.has(row.edition_id)}
+                                style={{ marginRight: 6 }}
+                              >
+                                {specBusy.has(row.edition_id) ? 'Отваряне…' : 'Отвори Spec Pack'}
+                              </button>
+
+                              <button
+                                onClick={() => ensureSpecs(row, { regenerate: true })}
+                                disabled={specBusy.has(row.edition_id)}
+                                style={{ fontWeight: 600 }}
+                              >
+                                {specBusy.has(row.edition_id) ? 'Генериране…' : 'Регенерирай Spec Pack'}
                               </button>
                             </>
                           )}

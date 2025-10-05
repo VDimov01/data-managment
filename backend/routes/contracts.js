@@ -4,6 +4,8 @@ const { v4: uuidv4 } = require('uuid');
 const {getPool} = require('../db'); // adjust if your pool lives elsewhere
 const pool = getPool();
 const React = require('react');
+const { ensureEditionSpecsPdf, getSignedUrl } = require('../services/specsPDF');
+
 
 const {
   renderContractPdfBuffer,
@@ -902,5 +904,116 @@ router.get('/:uuid/pdf/latest', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+
+// POST /api/contracts/:id/specs-pdfs  body: { lang?: 'bg' }
+router.post('/:contract_id/specs-pdfs', async (req, res) => {
+  try {
+    const contract_id = Number(req.params.contract_id);
+    const lang = (req.body?.lang || 'bg').toLowerCase() === 'en' ? 'en' : 'bg';
+    if (!contract_id) return res.status(400).json({ error: 'contract_id required' });
+
+    const out = await withTxn(async (conn) => {
+      const [[ctr]] = await conn.query(`SELECT * FROM contract WHERE contract_id = ?`, [contract_id]);
+      if (!ctr) throw new Error('contract not found');
+
+      const [items] = await conn.query(`
+        SELECT ci.contract_item_id, v.edition_id
+          FROM contract_item ci
+          JOIN vehicle v ON v.vehicle_id = ci.vehicle_id
+         WHERE ci.contract_id = ?`, [contract_id]);
+
+      const uniqueEditionIds = Array.from(new Set(items.map(i => i.edition_id).filter(Boolean)));
+      if (uniqueEditionIds.length === 0) throw new Error('no editions found in contract items');
+
+      const created_by_user_id = req.user?.user_id || 1; // replace with real auth
+      const results = [];
+
+      for (const edId of uniqueEditionIds) {
+        const { reused, row } = await ensureEditionSpecsPdf(conn, {
+          edition_id: edId, lang, created_by_user_id
+        });
+
+        // attach once per contract (no need to duplicate per item)
+        // Check if already attached
+        const [[att]] = await conn.query(`
+          SELECT contract_attachment_id
+            FROM contract_attachment
+           WHERE contract_id = ? AND attachment_type='edition_specs_pdf' AND edition_specs_pdf_id = ?
+           LIMIT 1`, [contract_id, row.edition_specs_pdf_id]);
+
+        if (!att) {
+          await conn.query(`
+            INSERT INTO contract_attachment
+              (contract_id, contract_item_id, attachment_type, edition_specs_pdf_id, visibility, created_at, created_by_user_id)
+            VALUES
+              (?, NULL, 'edition_specs_pdf', ?, 'internal', NOW(), ?)`,
+            [contract_id, row.edition_specs_pdf_id, created_by_user_id]
+          );
+        }
+
+        const signed = await getSignedUrl(row.gcs_key, 10);
+        results.push({
+          edition_id: edId,
+          edition_specs_pdf_id: row.edition_specs_pdf_id,
+          version: row.version,
+          filename: row.filename,
+          byte_size: row.byte_size,
+          sha256: row.sha256,
+          signedUrl: signed.signedUrl,
+          expiresAt: signed.expiresAt,
+          reused
+        });
+      }
+
+      return { contract_id, lang, attachments: results };
+    });
+
+    res.json(out);
+  } catch (e) {
+    console.error('POST /contracts/:id/specs-pdfs', e);
+    res.status(400).json({ error: e.message || 'Generation failed' });
+  }
+});
+
+router.get('/:contract_id/specs-pdfs', async (req, res) => {
+  try {
+    const contract_id = Number(req.params.contract_id);
+    if (!contract_id) return res.status(400).json({ error: 'contract_id required' });
+
+    const [rows] = await pool.query(`
+      SELECT a.contract_attachment_id,
+             s.edition_specs_pdf_id, s.edition_id, s.lang, s.version,
+             s.filename, s.byte_size, s.sha256, s.gcs_key, s.created_at
+        FROM contract_attachment a
+        JOIN edition_specs_pdf s ON s.edition_specs_pdf_id = a.edition_specs_pdf_id
+       WHERE a.contract_id = ? AND a.attachment_type = 'edition_specs_pdf' AND a.visibility = 'internal'
+       ORDER BY s.created_at DESC, s.version DESC`, [contract_id]);
+
+    const augmented = [];
+    for (const r of rows) {
+      const { signedUrl, expiresAt } = await require('../services/specsPDF').getSignedUrl(r.gcs_key, 10);
+      augmented.push({
+        contract_attachment_id: r.contract_attachment_id,
+        edition_specs_pdf_id: r.edition_specs_pdf_id,
+        edition_id: r.edition_id,
+        lang: r.lang,
+        version: r.version,
+        filename: r.filename,
+        byte_size: r.byte_size,
+        sha256: r.sha256,
+        created_at: r.created_at,
+        signedUrl, expiresAt
+      });
+    }
+
+    res.json({ contract_id, attachments: augmented });
+  } catch (e) {
+    console.error('GET /contracts/:id/specs-pdfs', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 
 module.exports = router;

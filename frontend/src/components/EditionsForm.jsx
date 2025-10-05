@@ -44,28 +44,6 @@ const ENUM_OPTIONS = {
   ]
 };
 
-
-
-// Only these are saved in EAV (numeric/boolean); the rest go to JSON.
-// (You can tweak this set anytime without touching backend.)
-const FILTERABLE_CODES = new Set([
-  // Dimensions / chassis
-  'LENGTH','WIDTH','HEIGHT','WHEELBASE','FRONT_TRACK_WIDTH','REAR_TRACK_WIDTH',
-  // Power/torque
-  'EV_MAX_POWER_KW','EV_MAX_POWER_HP','EV_MAX_TORQUE',
-  'ICE_MAX_POWER_KW','ICE_MAX_POWER_HP','ICE_MAX_TORQUE',
-  'ICE_MAX_POWER_RPM','ICE_MAX_TORQUE_RPM',
-  // Performance / range / efficiency
-  'MAX_SPEED','ACCELERATION_0_100','ELECTRIC_RANGE_CLTC',
-  'ELECTRIC_RANGE_WLTC','MIXED_RANGE_MIIT_KM',
-  'ELECTRICITY_CONSUMPTION_KWH_PER_100KM','WLTC_FUEL_CONSUMPTION',
-  // Battery / charging (pick the ones you truly want filterable)
-  'BATTERY_CAPACITY','FAST_CHARGE_TIME_H','SLOW_CHARGE_TIME_H',
-  'FAST_CHARGE_MAX_POWER','SLOW_CHARGER_POWER',
-  // Seats / weights
-  'SEATS_COUNT','CURB_WEIGHT_KG','GROSS_VEHICLE_WEIGHT','MAXIMUM_MASS','MAX_PAYLOAD',
-]);
-
 // normalize a UI value (string from <input>) to typed value or null
 function coerceByType(dt, v) {
   if (v === '' || v == null) return null;
@@ -105,6 +83,16 @@ function normalizeDriveType(input) {
   return ['FWD','RWD','AWD_ON_DEMAND','AWD_FULLTIME'].includes(up) ? up : '';
 }
 
+async function regenerateSpecsForEdition(apiBase, edition_id) {
+  const res = await fetch(`${apiBase}/api/editions/${edition_id}/specs-pdf`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ regenerate: true }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Spec pack generation failed');
+  return data;
+}
 
 
 export default function EditionAttributeModal({ apiBase = "http://localhost:5000", onSaved, edition = null, onCreated, onUpdated }) {
@@ -588,6 +576,20 @@ const submitSpecs = async (e) => {
   setNotices([`Saved JSON+EAV successfully (${eavNumeric.length} numeric, ${eavBoolean.length} boolean, ${Object.keys(json.attributes).length} JSON).`]);
   alert("Saved.");
   if (typeof onSaved === "function") onSaved({ editionId });
+
+  // Suppose `edition_id` is known after save
+if (window.confirm('Да регенерирам ли Spec Pack за това издание с обновените параметри?')) {
+  try {
+    const data = await regenerateSpecsForEdition(apiBase, editionId);
+    const url = data?.pdf?.signedUrl || data?.signedUrl;
+    if (url && window.confirm('Spec Pack е готов. Да го отворя ли?')) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
 };
 
 
