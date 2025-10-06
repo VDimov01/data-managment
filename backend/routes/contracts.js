@@ -919,50 +919,60 @@ router.post('/:contract_id/specs-pdfs', async (req, res) => {
 
       const [items] = await conn.query(`
         SELECT ci.contract_item_id, v.edition_id
-          FROM contract_item ci
-          JOIN vehicle v ON v.vehicle_id = ci.vehicle_id
-         WHERE ci.contract_id = ?`, [contract_id]);
+        FROM contract_item ci
+        JOIN vehicle v ON v.vehicle_id = ci.vehicle_id
+        WHERE ci.contract_id = ?`, [contract_id]);
 
-      const uniqueEditionIds = Array.from(new Set(items.map(i => i.edition_id).filter(Boolean)));
-      if (uniqueEditionIds.length === 0) throw new Error('no editions found in contract items');
+      if (!items.length) throw new Error('no items');
 
-      const created_by_user_id = req.user?.user_id || 1; // replace with real auth
+      const created_by_user_id = req.user?.user_id || 1;
+
+      // Ensure spec per edition once
+      const byEdition = new Map();
+      for (const it of items) {
+        if (!byEdition.has(it.edition_id)) {
+          const { reused, row } = await ensureEditionSpecsPdf(conn, {
+            edition_id: it.edition_id,
+            lang,
+            created_by_user_id
+          });
+          byEdition.set(it.edition_id, row);
+        }
+      }
+
       const results = [];
+      for (const it of items) {
+        const spec = byEdition.get(it.edition_id);
 
-      for (const edId of uniqueEditionIds) {
-        const { reused, row } = await ensureEditionSpecsPdf(conn, {
-          edition_id: edId, lang, created_by_user_id
-        });
-
-        // attach once per contract (no need to duplicate per item)
-        // Check if already attached
-        const [[att]] = await conn.query(`
-          SELECT contract_attachment_id
-            FROM contract_attachment
-           WHERE contract_id = ? AND attachment_type='edition_specs_pdf' AND edition_specs_pdf_id = ?
-           LIMIT 1`, [contract_id, row.edition_specs_pdf_id]);
-
-        if (!att) {
+        // Is it already attached for this contract_item?
+        const [[exists]] = await conn.query(
+          `SELECT 1 FROM contract_attachment
+           WHERE contract_id = ? AND contract_item_id = ? AND attachment_type='edition_specs_pdf'
+             AND edition_specs_pdf_id = ?
+           LIMIT 1`,
+          [contract_id, it.contract_item_id, spec.edition_specs_pdf_id]
+        );
+        if (!exists) {
           await conn.query(`
             INSERT INTO contract_attachment
               (contract_id, contract_item_id, attachment_type, edition_specs_pdf_id, visibility, created_at, created_by_user_id)
             VALUES
-              (?, NULL, 'edition_specs_pdf', ?, 'internal', NOW(), ?)`,
-            [contract_id, row.edition_specs_pdf_id, created_by_user_id]
+              (?, ?, 'edition_specs_pdf', ?, 'internal', NOW(), ?)`,
+            [contract_id, it.contract_item_id, spec.edition_specs_pdf_id, created_by_user_id]
           );
         }
 
-        const signed = await getSignedUrl(row.gcs_key, 10);
+        const signed = await getSignedUrl(spec.gcs_key, 10);
         results.push({
-          edition_id: edId,
-          edition_specs_pdf_id: row.edition_specs_pdf_id,
-          version: row.version,
-          filename: row.filename,
-          byte_size: row.byte_size,
-          sha256: row.sha256,
+          contract_item_id: it.contract_item_id,
+          edition_id: it.edition_id,
+          edition_specs_pdf_id: spec.edition_specs_pdf_id,
+          version: spec.version,
+          filename: spec.filename,
+          sha256: spec.sha256,
           signedUrl: signed.signedUrl,
           expiresAt: signed.expiresAt,
-          reused
+          byte_size: spec.byte_size,
         });
       }
 
@@ -976,6 +986,7 @@ router.post('/:contract_id/specs-pdfs', async (req, res) => {
   }
 });
 
+
 router.get('/:contract_id/specs-pdfs', async (req, res) => {
   try {
     const contract_id = Number(req.params.contract_id);
@@ -984,9 +995,18 @@ router.get('/:contract_id/specs-pdfs', async (req, res) => {
     const [rows] = await pool.query(`
       SELECT a.contract_attachment_id,
              s.edition_specs_pdf_id, s.edition_id, s.lang, s.version,
-             s.filename, s.byte_size, s.sha256, s.gcs_key, s.created_at
+             s.filename, s.byte_size, s.sha256, s.gcs_key, s.created_at, v.vehicle_id,
+             v.vin, e.name AS edition_name,
+             my.year, m.name AS model_name, mk.name AS make_name
         FROM contract_attachment a
         JOIN edition_specs_pdf s ON s.edition_specs_pdf_id = a.edition_specs_pdf_id
+        JOIN contract c ON c.contract_id = a.contract_id
+        JOIN contract_item ci ON ci.contract_item_id = a.contract_item_id
+        JOIN vehicle v ON v.vehicle_id = ci.vehicle_id
+        JOIN edition e ON e.edition_id = s.edition_id
+        JOIN model_year my ON my.model_year_id = e.model_year_id
+        JOIN model m ON m.model_id = my.model_id
+        JOIN make mk ON mk.make_id = m.make_id
        WHERE a.contract_id = ? AND a.attachment_type = 'edition_specs_pdf' AND a.visibility = 'internal'
        ORDER BY s.created_at DESC, s.version DESC`, [contract_id]);
 
@@ -1003,7 +1023,13 @@ router.get('/:contract_id/specs-pdfs', async (req, res) => {
         byte_size: r.byte_size,
         sha256: r.sha256,
         created_at: r.created_at,
-        signedUrl, expiresAt
+        vehicle_id : r.vehicle_id,
+        vin        : r.vin,
+        edition_name: r.edition_name,
+        year       : r.year,
+        model_name : r.model_name,
+        make_name  : r.make_name,
+        signedUrl, expiresAt,
       });
     }
 

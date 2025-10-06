@@ -19,6 +19,8 @@ function ensureFonts() {
   fontsReady = true;
 }
 
+const HIDDEN_CODES = new Set(['MSRP_AT_LAUNCH']);
+
 const GROUP_ORDER = [
   '01 Basic information','02 Car body','03 Electric motor','04 ICE','05 Battery & Charging',
   '06 Transmission','07 Chassis & Steering','08 Wheels & Brakes','09 Active safety',
@@ -90,7 +92,9 @@ async function buildEditionSnapshot(conn, edition_id, lang='bg') {
     SELECT attribute_id, code, name, name_bg, unit, data_type, category, display_group, display_order
     FROM attribute
   `);
-  const defByCode = new Map(defs.map(d => [d.code, d]));
+  const defByCode = new Map(defs.map(d => [d.code, d])
+    .filter(d => d[0] && !HIDDEN_CODES.has(d[0]))
+  );
 
   // effective EAV (like your compare route)
   const [eff] = await conn.query(`
