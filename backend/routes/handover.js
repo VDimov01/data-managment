@@ -514,9 +514,10 @@ router.post('/bulk-from-contract/:contract_id', async (req, res) => {
         const [[row]] = await conn.query(
           `
           SELECT ci.contract_item_id, ci.contract_id, ci.vehicle_id,
-                 c.customer_id, v.vin
+                 c.customer_id, v.vin, v.mileage AS mileage_km, s.city
           FROM contract_item ci
           JOIN vehicle v ON v.vehicle_id = ci.vehicle_id
+          JOIN shop s ON s.shop_id = v.shop_id
           JOIN contract c ON c.contract_id = ci.contract_id
           WHERE ci.contract_item_id = ? AND ci.contract_id = ?
           `,
@@ -525,7 +526,7 @@ router.post('/bulk-from-contract/:contract_id', async (req, res) => {
         if (!row) continue;
 
         const buyer_snapshot = buyerSnap || await (async () => {
-          const [[cust]] = await conn.query(`SELECT customer_id, display_name FROM customer WHERE customer_id = ?`, [ctr.customer_id]);
+          const [[cust]] = await conn.query(`SELECT customer_id, display_name, national_id FROM customer WHERE customer_id = ?`, [ctr.customer_id]);
           return { captured_at_utc: new Date().toISOString(), customer_id: cust.customer_id, display_name: cust.display_name || '' };
         })();
 
@@ -537,7 +538,7 @@ router.post('/bulk-from-contract/:contract_id', async (req, res) => {
              handover_date, location, odometer_km, notes,
              created_by_user_id, created_at)
           SELECT UUID(), ?, ?, ci.vehicle_id, ?, CAST(? AS JSON), CAST(? AS JSON), 'draft',
-                 NULL, NULL, NULL, NULL,
+                 NULL, ?, ?, NULL,
                  ?, NOW()
           FROM contract_item ci
           WHERE ci.contract_item_id = ? AND ci.contract_id = ?
@@ -548,6 +549,8 @@ router.post('/bulk-from-contract/:contract_id', async (req, res) => {
             ctr.customer_id,
             JSON.stringify(buyer_snapshot),
             JSON.stringify(null),
+            row.city ? row.city : null,
+            row.mileage_km ? row.mileage_km : null,
             created_by_user_id,
             it.contract_item_id,
             contract_id

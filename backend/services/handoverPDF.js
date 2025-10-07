@@ -5,6 +5,7 @@ const path = require('path');
 const { pdf, Document, Page, Text, View, StyleSheet, Font } = require('@react-pdf/renderer');
 
 const { bucketPrivate, storage, BUCKET_PRIVATE } = require('./gcs');
+const HandoverRecordBG = require ('../pdfTemplates/handoverRecordBG.js');
 
 let fontsReady = false;
 function ensureFonts() {
@@ -55,71 +56,9 @@ async function elementToBuffer(element) {
   return Buffer.from(str, 'binary');
 }
 
-/** Extremely simple single-vehicle handover PDF (Bulgarian labels kept generic) */
-function HandoverDoc({ buyer, vehicle, handover }) {
-  const styles = StyleSheet.create({
-    page: { padding: 40, fontSize: 11, fontFamily: 'DejaVu' },
-    h1: { fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 16 },
-    block: { marginTop: 10, marginBottom: 6 },
-    row: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 3 },
-    label: { fontWeight: 'bold' },
-    small: { fontSize: 10, color: '#555' },
-  });
-
-  const buyerName =
-    buyer?.display_name ||
-    [buyer?.first_name, buyer?.middle_name, buyer?.last_name].filter(Boolean).join(' ') ||
-    buyer?.company_name || '';
-
-  return React.createElement(
-    Document, null,
-    React.createElement(
-      Page, { size: 'A4', style: styles.page },
-      React.createElement(Text, { style: styles.h1 }, 'ПРИЕМО-ПРЕДАВАТЕЛЕН ПРОТОКОЛ'),
-
-      React.createElement(View, { style: styles.block },
-        React.createElement(Text, { style: styles.label }, 'Купувач'),
-        React.createElement(Text, null, buyerName),
-        React.createElement(Text, { style: styles.small }, (buyer?.email || buyer?.phone) ? `${buyer?.email || ''} ${buyer?.phone || ''}` : '')
-      ),
-
-      React.createElement(View, { style: styles.block },
-        React.createElement(Text, { style: styles.label }, 'Автомобил'),
-        React.createElement(Text, null,
-          `${vehicle?.make_name || vehicle?.make || ''} ${vehicle?.model_name || vehicle?.model || ''}`
-          + (vehicle?.year ? ` (${vehicle.year})` : '')
-          + (vehicle?.edition_name ? ` — ${vehicle.edition_name}` : '')
-        ),
-        React.createElement(Text, { style: styles.small },
-          `VIN: ${vehicle?.vin || '—'} • Пробег: ${vehicle?.mileage_km ?? vehicle?.mileage ?? '—'} km`
-        )
-      ),
-
-      React.createElement(View, { style: styles.block },
-        React.createElement(Text, { style: styles.label }, 'Данни за предаване'),
-        React.createElement(View, { style: styles.row },
-          React.createElement(Text, null, 'Дата:'), React.createElement(Text, null, handover?.handover_date || '—')
-        ),
-        React.createElement(View, { style: styles.row },
-          React.createElement(Text, null, 'Местоположение:'), React.createElement(Text, null, handover?.location || '—')
-        ),
-        React.createElement(View, { style: styles.row },
-          React.createElement(Text, null, 'Одометър (км):'), React.createElement(Text, null, (handover?.odometer_km ?? '—') + '')
-        ),
-      ),
-
-      React.createElement(View, { style: { marginTop: 30 } },
-        React.createElement(Text, { style: styles.small }, 'Подписи:'),
-        React.createElement(Text, { style: styles.small }, 'Продавач: ____________________________'),
-        React.createElement(Text, { style: { ...styles.small, marginTop: 8 } }, 'Купувач: ____________________________')
-      )
-    )
-  );
-}
-
 async function renderHandoverPdfBuffer({ buyer, vehicle, handover }) {
   ensureFonts();
-  const element = React.createElement(HandoverDoc, { buyer, vehicle, handover });
+  const element = React.createElement(HandoverRecordBG, { record: handover , seller: {}, buyer, vehicle});
   const buffer = await elementToBuffer(element);
   return ensureBuffer(buffer, 'handover pdf');
 }

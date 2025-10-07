@@ -144,7 +144,7 @@ export default function ContractsSection({ apiBase = "http://localhost:5000" }) 
       });
       setSpecs(data.attachments || []);
     } catch (e) {
-      alert(`Spec pack failed: ${e.message}`);
+      alert(`Неуспешно генериране на спецификации: ${e.message}`);
     } finally {
       setGenLoading(false);
     }
@@ -178,13 +178,13 @@ export default function ContractsSection({ apiBase = "http://localhost:5000" }) 
   }
 
   async function handleCreateDraft() {
-    if (!customer?.customer_id) return alert("Pick a customer.");
+    if (!customer?.customer_id) return alert("Изберете клиент.");
     if (type === "ADVANCE" && !advanceAmount) {
-      if (!confirm("Create an ADVANCE contract with 0 advance amount?")) return;
+      if (!confirm("Създаване на Авансов договор с 0лв авансово плащане?")) return;
     }
 
     const buyer_snapshot = buildBuyerSnapshot(customer);
-    if (!buyer_snapshot) return alert("Buyer snapshot failed to build.");
+    if (!buyer_snapshot) return alert("Неуспешно генериране на информация за купувача.");
 
     setCreating(true);
     try {
@@ -205,7 +205,7 @@ export default function ContractsSection({ apiBase = "http://localhost:5000" }) 
       setStep(2);
       setTab("create");
     } catch (e) {
-      alert(`Create failed: ${e.message}`);
+      alert(`Неуспешно създаване: ${e.message}`);
     } finally {
       setCreating(false);
     }
@@ -213,7 +213,7 @@ export default function ContractsSection({ apiBase = "http://localhost:5000" }) 
 
   async function handleSaveItems() {
     if (!contract?.contract_id) return;
-    if (items.length === 0) return alert("Add at least one vehicle.");
+    if (items.length === 0) return alert("Добавете поне едно превозно средство.");
 
     setSavingItems(true);
     try {
@@ -229,10 +229,10 @@ export default function ContractsSection({ apiBase = "http://localhost:5000" }) 
         method: "PUT",
         body: { items: payloadItems },
       });
-      alert("Items saved.");
+      alert("Артикулите са запазени.");
       setStep(3);
     } catch (e) {
-      alert(`Save items failed: ${e.message}`);
+      alert(`Неуспешно запазване на артикулите: ${e.message}`);
     } finally {
       setSavingItems(false);
     }
@@ -252,7 +252,7 @@ export default function ContractsSection({ apiBase = "http://localhost:5000" }) 
       // reflect that contract has a latest pdf
       setContract(prev => prev ? { ...prev, latest_pdf_id: data.latest_pdf_id || prev.latest_pdf_id } : prev);
     } catch (e) {
-      alert(`Draft PDF failed: ${e.message}`);
+      alert(`Неуспешно генериране на чернова PDF: ${e.message}`);
     } finally {
       setRenderingDraft(false);
     }
@@ -271,7 +271,7 @@ export default function ContractsSection({ apiBase = "http://localhost:5000" }) 
       }
       setContract(prev => ({ ...prev, status: "issued", issued_at: new Date().toISOString() }));
     } catch (e) {
-      alert(`Issue failed: ${e.message}`);
+      alert(`Издаване неуспешно: ${e.message}`);
     } finally {
       setIssuing(false);
     }
@@ -280,7 +280,7 @@ export default function ContractsSection({ apiBase = "http://localhost:5000" }) 
 
 async function handleCancel() {
   if (!contract?.contract_id) return;
-  if (!confirm('Cancel this contract and release reserved vehicles?')) return;
+  if (!confirm('Отмени договора и освободи превозните средства?')) return;
 
   setCancelling(true);
   try {
@@ -288,10 +288,10 @@ async function handleCancel() {
       method: 'POST',
       body: { force: false }, // set true if you decide to allow cancelling signed contracts
     });
-    alert(`Cancelled. Released ${data.released_count} vehicle(s).`);
+    alert(`Отменен. Освободени ${data.released_count} превозни средства.`);
     setContract(prev => ({ ...prev, status: 'withdrawn' }));
   } catch (e) {
-    alert(`Cancel failed: ${e.message}`);
+    alert(`Отмяна неуспешна: ${e.message}`);
   } finally {
     setCancelling(false);
   }
