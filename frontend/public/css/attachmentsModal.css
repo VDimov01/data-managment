@@ -1,0 +1,142 @@
+/* Root */
+.am-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Tabs */
+.am-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 6px;
+}
+
+.am-tab {
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  cursor: pointer;
+  color: #374151;
+}
+
+.am-tab.is-active {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* Section */
+.am-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Toolbar */
+.am-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Empty */
+.am-empty {
+  color: #6b7280;
+  padding: 14px 10px;
+}
+
+/* List & Items */
+.am-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.am-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+
+.am-item__main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.am-title {
+  font-weight: 700;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.am-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: #4b5563;
+}
+
+.am-chip {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.am-chip.muted {
+  background: #fff;
+  border-style: dashed;
+  color: #9ca3af;
+}
+
+.am-dot {
+  color: #9ca3af;
+}
+
+.am-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Buttons (reuse your existing button classes if any) */
+.btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+}
+
+.btn:hover { background: #eceff3; }
+
+.btn.primary {
+  background: #1556b0;
+  border-color: #1556b0;
+  color: #fff;
+}
+
+.btn.primary:hover { background: #10458c; }
+
+/* Responsive */
+@media (max-width: 720px) {
+  .am-item {
+    grid-template-columns: 1fr;
+  }
+  .am-actions {
+    justify-content: flex-start;
+  }
+}
