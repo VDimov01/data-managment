@@ -56,26 +56,26 @@ export default function AttachCustomersPanel({ apiBase, brochureId }) {
       });
       if (!r.ok) {
         const d = await r.json().catch(()=>null);
-        return alert(d?.error || "Attach failed");
+        return alert(d?.error || "Неуспешно прикрепяне към клиента");
       }
       await load();
       setSearchQ(""); setCustResults([]);
     } catch (e) {
-      console.error(e); alert("Attach failed");
+      console.error(e); alert("Неуспешно прикрепяне към клиента");
     }
   };
 
   const detach = async (customer_id) => {
-    if (!window.confirm("Detach this brochure from the customer?")) return;
+    if (!window.confirm("Откачане на брошурата от клиента?")) return;
     try {
       const r = await fetch(`${apiBase}/api/brochures/${brochureId}/attachments/${customer_id}`, { method: "DELETE" });
       if (r.status !== 204) {
         const d = await r.json().catch(()=>null);
-        return alert(d?.error || "Detach failed");
+        return alert(d?.error || "Неуспешно откачане");
       }
       setList(prev => prev.filter(x => x.customer_id !== customer_id));
     } catch (e) {
-      console.error(e); alert("Detach failed");
+      console.error(e); alert("Неуспешно откачане");
     }
   };
 
@@ -91,8 +91,8 @@ export default function AttachCustomersPanel({ apiBase, brochureId }) {
     <div className="br-attach">
       <div className="br-attach-grid">
         <div className="br-attach-col">
-          <h4>Attached customers</h4>
-          {loading ? <p className="br-muted">Loading…</p> : (
+          <h4>Закачени клиенти</h4>
+          {loading ? <p className="br-muted">Зареждане…</p> : (
             <ul className="br-attach-list">
               {list.map(x => (
                 <li key={x.customer_id} className="br-attach-item">
@@ -100,22 +100,22 @@ export default function AttachCustomersPanel({ apiBase, brochureId }) {
                     <div className="br-strong">{displayCustomerName(x)}</div>
                     <div className="br-muted">{x.email || "—"}</div>
                   </div>
-                  <button className="br-danger" onClick={() => detach(x.customer_id)}>Detach</button>
+                  <button className="br-danger" onClick={() => detach(x.customer_id)}>Откачи</button>
                 </li>
               ))}
-              {list.length === 0 && <li className="br-muted">No attachments.</li>}
+              {list.length === 0 && <li className="br-muted">Няма закачени клиенти.</li>}
             </ul>
           )}
         </div>
 
         <div className="br-attach-col">
-          <h4>Search customers to attach</h4>
+          <h4>Търсене на клиенти за закачане</h4>
           <input
             value={searchQ}
             onChange={(e)=>setSearchQ(e.target.value)}
-            placeholder="Name / email / company…"
+            placeholder="Име / имейл / компания…"
           />
-          {searchLoading && <p className="br-muted">Searching…</p>}
+          {searchLoading && <p className="br-muted">Търсене…</p>}
           {!searchLoading && searchQ && (
             <ul className="br-attach-list">
               {custResults.map(c => (
@@ -124,10 +124,10 @@ export default function AttachCustomersPanel({ apiBase, brochureId }) {
                     <div className="br-strong">{displayCustomerName(c)}</div>
                     <div className="br-muted">{c.email || "—"}</div>
                   </div>
-                  <button onClick={() => attach(c.customer_id)}>Attach</button>
+                  <button onClick={() => attach(c.customer_id)}>Прикрепи</button>
                 </li>
               ))}
-              {custResults.length === 0 && <li className="br-muted">No matches.</li>}
+              {custResults.length === 0 && <li className="br-muted">Няма намерени клиенти.</li>}
             </ul>
           )}
         </div>

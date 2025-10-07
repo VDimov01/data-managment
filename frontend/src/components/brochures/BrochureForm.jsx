@@ -117,8 +117,8 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
   };
 
   const save = async () => {
-    if (!title.trim()) return alert("Title is required");
-    if (!makeId || !modelId) return alert("Select make and model");
+    if (!title.trim()) return alert("Заглавието е задължително");
+    if (!makeId || !modelId) return alert("Изберете производител и модел");
 
     const body = {
       title: title.trim(),
@@ -155,11 +155,11 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
       const data = await r.json().catch(()=>null);
       if (!r.ok) {
         console.error(data);
-        return alert(data?.error || "Save failed");
+        return alert(data?.error || "Неуспешно записване");
       }
       onSaved?.();
     } catch (e) {
-      console.error(e); alert("Save failed");
+      console.error(e); alert("Неуспешно записване");
     }
   };
 
@@ -167,55 +167,55 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
     <div className="br-form">
       <div className="br-grid">
         <div>
-          <label>Title *</label>
+          <label>Заглавие *</label>
           <input value={title} onChange={(e)=>setTitle(e.target.value)} />
         </div>
         <div>
-          <label>Language</label>
+          <label>Език</label>
           <select value={language} onChange={e=>setLanguage(e.target.value)}>
             <option value="bg">BG</option>
             <option value="en">EN</option>
           </select>
         </div>
         <div>
-          <label>Only differences</label>
+          <label>Само разлики</label>
           <div className="br-check">
             <input type="checkbox" checked={onlyDiff} onChange={()=>setOnlyDiff(v=>!v)} />
-            <span>Show only differing attributes</span>
+            <span>Покажи само различаващи се атрибути</span>
           </div>
         </div>
         <div>
           <label>Snapshot</label>
           <div className="br-check">
             <input type="checkbox" checked={snapshot} onChange={()=>setSnapshot(v=>!v)} />
-            <span>Freeze data in brochure</span>
+            <span>Замрази данните в брошурата</span>
           </div>
         </div>
 
         <div className="br-col-2">
-          <label>Description</label>
+          <label>Описание</label>
           <textarea rows={2} value={description} onChange={e=>setDescription(e.target.value)} />
         </div>
 
         <div>
-          <label>Make *</label>
+          <label>Производител *</label>
           <select value={makeId} onChange={(e)=>setMakeId(e.target.value)}>
-            <option value="">Select make…</option>
+            <option value="">Изберете производител…</option>
             {makes.map(m => <option key={m.make_id} value={m.make_id}>{m.name}</option>)}
           </select>
         </div>
 
         <div>
-          <label>Model *</label>
+          <label>Модел *</label>
           <select value={modelId} onChange={(e)=>setModelId(e.target.value)} disabled={!makeId}>
-            <option value="">Select model…</option>
+            <option value="">Изберете модел…</option>
             {models.map(m => <option key={m.model_id} value={m.model_id}>{m.name}</option>)}
           </select>
         </div>
       </div>
 
       <fieldset className="br-fieldset">
-        <legend>Selection</legend>
+        <legend>Вид брошура</legend>
         <div className="br-row">
           <label className="br-radio">
             <input
@@ -225,7 +225,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
               checked={selectionMode === "ALL_YEARS"}
               onChange={()=>setSelectionMode("ALL_YEARS")}
             />
-            <span>All years (all editions)</span>
+            <span>Всички издания</span>
           </label>
           <label className="br-radio">
             <input
@@ -235,7 +235,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
               checked={selectionMode === "YEARS"}
               onChange={()=>setSelectionMode("YEARS")}
             />
-            <span>Specific years</span>
+            <span>По избрани години</span>
           </label>
           <label className="br-radio">
             <input
@@ -245,13 +245,13 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
               checked={selectionMode === "EDITIONS"}
               onChange={()=>setSelectionMode("EDITIONS")}
             />
-            <span>Specific editions</span>
+            <span>По избрани издания</span>
           </label>
         </div>
 
         {selectionMode === "YEARS" && (
           <div className="br-chipbox">
-            {years.length === 0 && <p className="br-muted">Select model to load years…</p>}
+            {years.length === 0 && <p className="br-muted">Изберете модел, за да заредите години…</p>}
             {years.map(y => {
               const on = selectedYearIds.has(String(y.model_year_id));
               return (
@@ -270,7 +270,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
 
         {selectionMode === "EDITIONS" && (
           <>
-            <p className="br-muted">Pick one or more years to load their editions; then select editions below.</p>
+            <p className="br-muted">Изберете една или повече години, за да заредите техните издания; след това изберете издания по-долу.</p>
             <div className="br-chipbox">
               {years.map(y => {
                 const on = selectedYearIds.has(String(y.model_year_id));
@@ -289,7 +289,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
 
             <div className="br-listbox">
               {Array.from(selectedYearIds).length === 0 && (
-                <div className="br-muted">Select at least one year to show editions.</div>
+                <div className="br-muted">Изберете поне една година, за да покажете издания.</div>
               )}
               {Array.from(selectedYearIds).length > 0 && (
                 <EditionPicker
@@ -305,7 +305,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
       </fieldset>
 
       <div className="br-actions-end">
-        <button className="br-primary" onClick={save}>{isEdit ? "Save Changes" : "Create Brochure"}</button>
+        <button className="br-primary" onClick={save}>{isEdit ? "Запази промените" : "Създай брошура"}</button>
       </div>
     </div>
   );

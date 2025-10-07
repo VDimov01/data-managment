@@ -3,6 +3,11 @@ import Modal from "../Modal";
 import BrochureForm from "./BrochureForm";
 import AttachCustomersPanel from "./AttachCustomersPanel";
 
+const selectionModeBG = {
+  ALL_YEARS: "Всички издания",
+  YEARS: "По избрани години",
+  EDITIONS: "По избрани издания"
+}
 
 export default function BrochuresSection({ apiBase = "http://localhost:5000" }) {
   const [q, setQ] = useState("");
@@ -46,7 +51,7 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
       setTotal(data.total || 0);
     } catch (e) {
       console.error(e);
-      setErr(e.message || "Failed to load brochures");
+      setErr(e.message || "Неуспешно зареждане на брошури");
     } finally {
       setLoading(false);
     }
@@ -58,7 +63,7 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
   const onEdit = (row) => { setEditing(row); setOpenForm(true); console.log(row); };
 
   const onDelete = async (row) => {
-    if (!window.confirm(`Delete brochure "${row.title}"?`)) return;
+    if (!window.confirm(`Изтрий брошура "${row.title}"?`)) return;
     try {
       const r = await fetch(`${apiBase}/api/brochures/${row.brochure_id}`, { method: "DELETE" });
       if (r.status === 204) {
@@ -67,11 +72,11 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
         setTotal(t => Math.max(0, t - 1));
       } else {
         const j = await r.json().catch(()=>null);
-        alert(j?.error || "Delete failed");
+        alert(j?.error || "Неуспешно изтриване");
       }
     } catch (e) {
       console.error(e);
-      alert("Delete failed");
+      alert("Неуспешно изтриване");
     }
   };
 
@@ -81,12 +86,12 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
       const data = await r.json();
       if (!r.ok) {
         console.error(data);
-        return alert(data.error || "Resolve failed");
+        return alert(data.error || "Неуспешно извличане на данни");
       }
       setPreviewData({ title: row.title, ...data });
       setOpenPreview(true);
     } catch (e) {
-      console.error(e); alert("Preview failed");
+      console.error(e); alert("Неуспешно предварително преглеждане");
     }
   };
 
@@ -99,8 +104,8 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
   const onToggleSnapshot = async (row) => {
     const action = row.is_snapshot ? "unlock" : "lock";
     const confirmMsg = row.is_snapshot
-      ? "Unlock this brochure? It will become dynamic and reflect future changes."
-      : "Lock this brochure? It will snapshot current data and stop auto-updating.";
+      ? "Отключи тази брошура? Ще започне да се обновява автоматично."
+      : "Заключи тази брошура? Ще запамети текущите данни и ще спре автоматичното обновяване.";
     if (!window.confirm(confirmMsg)) return;
 
     try {
@@ -129,20 +134,20 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
     <div className="br-container">
       <div className="br-toolbar">
         <input
-          placeholder="Search title/description…"
+          placeholder="Търси по заглавие..."
           value={q}
           onChange={(e) => { setQ(e.target.value); setPage(1); }}
         />
         <div className="br-toolbar-right">
           <select value={limit} onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}>
-            {[10,20,50,100].map(n => <option key={n} value={n}>{n}/page</option>)}
+            {[10,20,50,100].map(n => <option key={n} value={n}>{n}/страница</option>)}
           </select>
-          <button className="br-primary" onClick={onCreate}>+ New Brochure</button>
+          <button className="br-primary" onClick={onCreate}>+ Нова брошура</button>
         </div>
       </div>
 
-      {loading && <p className="br-muted">Loading…</p>}
-      {err && <p className="br-error">Error: {err}</p>}
+      {loading && <p className="br-muted">Зареждане...</p>}
+      {err && <p className="br-error">Грешка: {err}</p>}
 
       {!loading && !err && (
         <>
@@ -151,20 +156,20 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Title</th>
-                  <th>Make / Model</th>
-                  <th>Mode</th>
-                  <th>Diffs</th>
-                  <th>Lang</th>
+                  <th>Заглавие</th>
+                  <th>Производител / Модел</th>
+                  <th>Вид брошура</th>
+                  <th>Само разлики</th>
+                  <th>Език</th>
                   <th>Snapshot</th>
-                  <th>Created</th>
-                  <th style={{width:220}}>Actions</th>
+                  <th>Създаден</th>
+                  <th style={{width:220}}>Действия</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="br-muted">No brochures.</td>
+                    <td colSpan={9} className="br-muted">Няма брошури.</td>
                   </tr>
                 )}
                 {rows.map(r => (
@@ -172,23 +177,23 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
                     <td>{r.brochure_id}</td>
                     <td>{r.title}</td>
                     <td>{r.make_name} / {r.model_name}</td>
-                    <td>{r.selection_mode}</td>
-                    <td>{r.only_differences ? "Yes" : "No"}</td>
+                    <td>{selectionModeBG[r.selection_mode] || r.selection_mode}</td>
+                    <td>{r.only_differences ? "Да" : "Не"}</td>
                     <td>{r.language?.toUpperCase()}</td>
                     <td>{r.is_snapshot ? "Snapshot" : "Live"}</td>
                     <td>{r.created_at?.slice(0,19).replace('T',' ') || ""}</td>
                     <td>
                       <div className="br-actions">
-                        <button onClick={() => onPreview(r)}>Preview</button>
-                        <button onClick={() => onOpenAttach(r)}>Attach</button>
-                        <button onClick={() => onEdit(r)}>Edit</button>
+                        <button onClick={() => onPreview(r)}>Преглед</button>
+                        <button onClick={() => onOpenAttach(r)}>Прикрепи</button>
+                        <button onClick={() => onEdit(r)}>Редактирай</button>
                         <button
                           onClick={() => onToggleSnapshot(r)}
-                          title={r.is_snapshot ? "Unlock (make dynamic again)" : "Lock (freeze as snapshot)"}
+                          title={r.is_snapshot ? "Отключи (върни в динамичен режим)" : "Заключи (замрази като моментна снимка)"}
                         >
-                          {r.is_snapshot ? "Unlock" : "Lock"}
+                          {r.is_snapshot ? "Отключи" : "Заключи"}
                         </button>
-                        <button className="br-danger" onClick={() => onDelete(r)}>Delete</button>
+                        <button className="br-danger" onClick={() => onDelete(r)}>Изтрий</button>
                       </div>
                     </td>
                   </tr>
@@ -234,7 +239,7 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
       {/* Attach to customers */}
       <Modal
         open={openAttach}
-        title={attachFor ? `Attach to customers — ${attachFor.title}` : "Attach"}
+        title={attachFor ? `Закачи към клиенти — ${attachFor.title}` : "Закачи към клиенти"}
         onClose={() => { setOpenAttach(false); setAttachFor(null); }}
         maxWidth={900}
       >
