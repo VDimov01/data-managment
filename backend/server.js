@@ -21,6 +21,7 @@ const qrRoutes = require('./routes/qr');
 const labelsRoutes = require('./routes/labels');
 const vehicleImagesRoutes = require('./routes/vehicleImages');
 const contractsRoutes = require('./routes/contracts');
+const handoverRoutes = require('./routes/handover');
 
 const path = require('path');
 
@@ -51,6 +52,7 @@ app.use('/api/public', publicRoutes);
 app.use('/api/qr', qrRoutes);
 app.use('/api/labels', labelsRoutes);
 app.use('/api/vehicleImages', vehicleImagesRoutes);
+app.use('/api/handover', handoverRoutes);
 
 // Test Route
 app.get('/', (req, res) => {

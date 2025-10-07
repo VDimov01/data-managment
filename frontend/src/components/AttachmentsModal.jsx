@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { niceBytes, buildUrl, makeApi } from "./ContractsSection.jsx";
 import { formatDateDMYLocal } from "../utils/dates.js";
+import HandoverTab from "./HandoverTab.jsx";
 
 export default function AttachmentsModal({ apiBase, contract, onClose }) {
   const [loading, setLoading] = useState(false);
@@ -145,8 +146,7 @@ export default function AttachmentsModal({ apiBase, contract, onClose }) {
           </div>
 
           <div style={{marginTop:16}}>
-            <h4 style={{margin:'6px 0'}}>Приемо-предавателни протоколи</h4>
-            <div className="muted">Ще ги вържем тук след като приключим бекенда за handover. За сега — само spec packs.</div>
+            <HandoverTab apiBase={apiBase} contract={contract} />
           </div>
         </div>
       </div>

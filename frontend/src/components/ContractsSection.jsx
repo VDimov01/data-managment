@@ -297,6 +297,45 @@ async function handleCancel() {
   }
 }
 
+// Add these handlers inside ContractsSection
+const [creatingHandover, setCreatingHandover] = useState(false);
+const [issuingAllHandover, setIssuingAllHandover] = useState(false);
+
+async function handleCreateHandoverDrafts() {
+  if (!contract?.contract_id) return;
+  setCreatingHandover(true);
+  try {
+    await fetch(buildUrl(apiBase, `/api/handover/bulk-from-contract/${contract.contract_id}`), {
+      method: 'POST'
+    }).then(r => r.json()).then(d => { if (d.error) throw new Error(d.error); });
+    alert('Създадени са чернови за всички линии.');
+  } catch (e) {
+    alert(`Грешка: ${e.message}`);
+  } finally { setCreatingHandover(false); }
+}
+
+async function handleIssueAllHandover() {
+  if (!contract?.contract_id) return;
+  setIssuingAllHandover(true);
+  try {
+    const data = await fetch(buildUrl(apiBase, `/api/handover/by-contract/${contract.contract_id}`))
+      .then(r => r.json());
+    const list = Array.isArray(data.items) ? data.items : [];
+    for (const hr of list) {
+      if (hr.status === 'draft') {
+        const d = await fetch(buildUrl(apiBase, `/api/handover/${hr.handover_record_id}/issue`), { method:'POST' })
+          .then(r=>r.json());
+        if (d?.pdf?.signedUrl) window.open(d.pdf.signedUrl, '_blank', 'noopener,noreferrer');
+      }
+    }
+    alert('Готово.');
+  } catch (e) {
+    alert(`Грешка: ${e.message}`);
+  } finally { setIssuingAllHandover(false); }
+}
+
+
+
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
@@ -434,6 +473,13 @@ async function handleCancel() {
               ))}
             </div>
           )}
+
+          <button className="btn" onClick={handleCreateHandoverDrafts} disabled={creatingHandover}>
+            {creatingHandover ? 'Създаване…' : 'Чернови протоколи (всички)'}
+          </button>
+          <button className="btn" onClick={handleIssueAllHandover} disabled={issuingAllHandover}>
+            {issuingAllHandover ? 'Генериране…' : 'Генерирай всички протоколи'}
+          </button>
         </div>
       </div>
 
