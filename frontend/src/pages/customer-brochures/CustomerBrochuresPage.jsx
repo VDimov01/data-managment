@@ -1,12 +1,15 @@
+// frontend/src/pages/customer-brochures/CustomerBrochuresPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import CompareTable from "./CompareTable";
 import ImageHero from "./ImageHero";
 import ImageGallery from "./ImageGallery";
 import Lightbox from "./Lightbox";
+import { listEditionImages } from "../../services/api";
 
 export default function CustomerBrochuresPage({ apiBase = "http://localhost:5000" }) {
   const { uuid } = useParams();
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
   const [brochures, setBrochures] = useState([]);
@@ -19,15 +22,25 @@ export default function CustomerBrochuresPage({ apiBase = "http://localhost:5000
   const [onlyDiff, setOnlyDiff] = useState(false);
   const [attrFilter, setAttrFilter] = useState("");
 
-  // Replace "-" with space, collapse extra spaces, then URL-encode
-  const safe = (s) =>
-    encodeURIComponent(
-      String(s ?? "")
-        .trim()
-        .replace(/-/g, " ")
-        .replace(/\s+/g, " ")
-    );
+  // --- helpers ---
+  const groupImages = (images) => {
+    const imgs = Array.isArray(images) ? images : [];
 
+    // The backend already orders by: is_primary DESC, part-rank, sort_order, id
+    // Still, we’ll explicitly group for clarity.
+    const primary = imgs.find(x => Number(x.is_primary) === 1) || null;
+
+    const main = primary
+      ? [primary]
+      : imgs.filter(x => (x.part || "") === "main");
+
+    const exterior = imgs.filter(x => (x.part || "unsorted") === "exterior");
+    const interior = imgs.filter(x => (x.part || "unsorted") === "interior");
+    const unsorted = imgs.filter(x => (x.part || "unsorted") === "unsorted");
+    return { main, exterior, interior, unsorted };
+  };
+
+  // Load brochures, then prefetch images for each brochure’s first edition
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -42,28 +55,29 @@ export default function CustomerBrochuresPage({ apiBase = "http://localhost:5000
         setBrochures(list);
         if (list.length) setActiveId(String(list[0].brochure_id));
 
-        // prefetch images (first edition per brochure)
-        const defaults = { main: [], exterior: [], interior: [] };
+        // Prefetch images for the first edition per brochure (if present)
         const entries = await Promise.all(
           list.map(async (b) => {
+            const brochureId = String(b.brochure_id);
             const ed = b?.data?.editions?.[0];
-            if (!ed) return [String(b.brochure_id), defaults];
+            console.log("Prefetching images for brochure", brochureId, "edition", ed);
+            if (!ed) return [brochureId, { main: [], exterior: [], interior: [], unsorted: [] }];
 
-            const url = `${apiBase}/api/car-images/${ed.edition_id}-${safe(ed.make_name)}-${safe(ed.model_name)}-${safe(ed.year)}`;
+            // Use your helper (it builds the slug route internally)
             try {
-              const res = await fetch(url);
-              const j = await res.json();
-              if (!res.ok) throw new Error(j?.error || `HTTP ${res.status}`);
-              const imgs = Array.isArray(j?.images) ? j.images : [];
-              const groups = {
-                main: imgs.filter(i => i.part === "main"),
-                exterior: imgs.filter(i => i.part === "exterior"),
-                interior: imgs.filter(i => i.part === "interior"),
-              };
-              return [String(b.brochure_id), groups];
+              const resp = await listEditionImages(
+                apiBase,
+                ed.edition_id,
+                ed.make_name,
+                ed.model_name,
+                ed.year
+              );
+              console.log("Prefetched images for brochure", brochureId, resp);
+              const groups = groupImages(resp?.images);
+              return [brochureId, groups];
             } catch (e) {
-              console.error("Images fetch failed for brochure", b.brochure_id, e);
-              return [String(b.brochure_id), defaults];
+              console.error("Images fetch failed for brochure", brochureId, e);
+              return [brochureId, { main: [], exterior: [], interior: [], unsorted: [] }];
             }
           })
         );
@@ -88,7 +102,7 @@ export default function CustomerBrochuresPage({ apiBase = "http://localhost:5000
   );
 
   const imgGroups = useMemo(
-    () => imagesByBrochure[String(activeId)] || { main: [], exterior: [], interior: [] },
+    () => imagesByBrochure[String(activeId)] || { main: [], exterior: [], interior: [], unsorted: [] },
     [imagesByBrochure, activeId]
   );
 
@@ -173,7 +187,11 @@ export default function CustomerBrochuresPage({ apiBase = "http://localhost:5000
                 </div>
                 <div className="cb-right">
                   <label className="cb-check">
-                    <input type="checkbox" checked={onlyDiff} onChange={() => setOnlyDiff(v=>!v)} />
+                    <input
+                      type="checkbox"
+                      checked={onlyDiff}
+                      onChange={() => setOnlyDiff(v => !v)}
+                    />
                     <span>Показвай само разлики</span>
                   </label>
                 </div>

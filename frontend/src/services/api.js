@@ -157,3 +157,39 @@ export async function getEditionAttributes(apiBase, editionId, lang = 'bg') {
   if (!r.ok) throw new Error(await r.text());
   return r.json(); // shape depends on your resolver
 }
+
+export async function listEditionImages(apiBase, editionId, maker, model, year) {
+  const safe = (s) => encodeURIComponent(String(s ?? "").trim().replace(/-/g, " ").replace(/\s+/g, " "));
+  const r = await fetch(`${apiBase}/api/car-images/${editionId}-${safe(maker)}-${safe(model)}-${safe(year)}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function uploadEditionImages(apiBase, editionId, maker, model, year, files, part='unsorted') {
+  const safe = (s) => encodeURIComponent(String(s ?? "").trim().replace(/-/g, " ").replace(/\s+/g, " "));
+  const fd = new FormData();
+  for (const f of files) fd.append("images", f);
+  const r = await fetch(`${apiBase}/api/car-images/${editionId}-${safe(maker)}-${safe(model)}-${safe(year)}-${part}`, {
+    method: "POST", body: fd
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function patchEditionImage(apiBase, id, patch) {
+  const r = await fetch(`${apiBase}/api/car-images/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || 'Patch failed');
+  return data; // { ok: true }
+}
+
+
+export async function deleteEditionImage(apiBase, imageId) {
+  const r = await fetch(`${apiBase}/api/car-images/${imageId}`, { method: "DELETE" });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}

@@ -8,10 +8,35 @@ import {
   updateVehicleImageMeta
 } from "../services/api";
 
-export default function VehicleImagesModal({ apiBase = "http://localhost:5000", vehicle, open, onClose }) {
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor, useSensors
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+  arrayMove
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+export default function VehicleImagesModal({
+  apiBase = "http://localhost:5000",
+  vehicle,
+  open,
+  onClose
+}) {
   const [rows, setRows] = useState([]);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [reordering, setReordering] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+
   const vehicleId = vehicle?.vehicle_id || vehicle?.id;
 
   const title = useMemo(() => {
@@ -25,6 +50,12 @@ export default function VehicleImagesModal({ apiBase = "http://localhost:5000", 
     setBusy(true);
     try {
       const data = await listVehicleImages(apiBase, vehicleId);
+      // make sure list is ordered deterministically by sort_order then id
+      data.sort(
+        (a, b) =>
+          (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
+          a.vehicle_image_id - b.vehicle_image_id
+      );
       setRows(Array.isArray(data) ? data : []);
       console.log("Loaded images:", data);
     } catch (e) {
@@ -34,7 +65,9 @@ export default function VehicleImagesModal({ apiBase = "http://localhost:5000", 
     }
   };
 
-  useEffect(() => { if (open && vehicleId) refresh(); }, [open, vehicleId]);
+  useEffect(() => {
+    if (open && vehicleId) refresh();
+  }, [open, vehicleId]);
 
   const onUpload = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -55,7 +88,11 @@ export default function VehicleImagesModal({ apiBase = "http://localhost:5000", 
     if (!window.confirm("Delete this image?")) return;
     try {
       await deleteVehicleImage(apiBase, vehicleId, imageId);
-      setRows(prev => prev.filter(r => r.vehicle_image_id !== imageId));
+      setRows((prev) => prev
+        .filter((r) => r.vehicle_image_id !== imageId)
+        .map((r, i) => ({ ...r, sort_order: i + 1 })));
+      // persist reindex for remaining items (optional: bulk; here we keep your PATCH-per-item behavior)
+      persistOrderForChanged();
     } catch (e) {
       alert(`Delete failed: ${e.message}`);
     }
@@ -64,7 +101,12 @@ export default function VehicleImagesModal({ apiBase = "http://localhost:5000", 
   const onPrimary = async (imageId) => {
     try {
       await setPrimaryVehicleImage(apiBase, vehicleId, imageId);
-      setRows(prev => prev.map(r => ({ ...r, is_primary: r.vehicle_image_id === imageId ? 1 : 0 })));
+      setRows((prev) =>
+        prev.map((r) => ({
+          ...r,
+          is_primary: r.vehicle_image_id === imageId ? 1 : 0
+        }))
+      );
     } catch (e) {
       alert(`Failed to set primary: ${e.message}`);
     }
@@ -73,102 +115,202 @@ export default function VehicleImagesModal({ apiBase = "http://localhost:5000", 
   const onMetaChange = async (imageId, patch) => {
     try {
       await updateVehicleImageMeta(apiBase, vehicleId, imageId, patch);
-      setRows(prev => prev.map(r => r.vehicle_image_id === imageId ? { ...r, ...patch } : r));
+      setRows((prev) =>
+        prev.map((r) =>
+          r.vehicle_image_id === imageId ? { ...r, ...patch } : r
+        )
+      );
     } catch (e) {
       alert(`Update failed: ${e.message}`);
     }
   };
 
+  // --- Drag & Drop wiring ---
+
+  const ids = rows.map((r) => r.vehicle_image_id);
+
+  const onDragEnd = async ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const oldIndex = rows.findIndex((x) => x.vehicle_image_id === active.id);
+    const newIndex = rows.findIndex((x) => x.vehicle_image_id === over.id);
+
+    // optimistic reorder & renumber
+    const moved = arrayMove(rows, oldIndex, newIndex).map((r, i) => ({
+      ...r,
+      sort_order: i + 1
+    }));
+    setRows(moved);
+
+    // persist only items whose sort_order actually changed
+    await persistOrderForChanged(rows, moved);
+  };
+
+  // Persist order only for changed rows (uses your per-item PATCH)
+  async function persistOrderForChanged(prevList = null, nextList = null) {
+    const before = prevList ?? rows;
+    const after = nextList ?? rows;
+    const diffs = [];
+    for (let i = 0; i < after.length; i++) {
+      const a = after[i];
+      const b = before[i];
+      if (!b || a.vehicle_image_id !== b.vehicle_image_id || (a.sort_order ?? 0) !== (b.sort_order ?? 0)) {
+        diffs.push({ id: a.vehicle_image_id, sort_order: a.sort_order ?? i + 1 });
+      }
+    }
+    if (!diffs.length) return;
+
+    setReordering(true);
+    try {
+      await Promise.all(
+        diffs.map(({ id, sort_order }) =>
+          updateVehicleImageMeta(apiBase, vehicleId, id, { sort_order })
+        )
+      );
+    } catch (e) {
+      console.error("Persist order failed", e);
+      // fallback: refresh to get server truth
+      await refresh();
+      alert(`Reorder failed: ${e.message}`);
+    } finally {
+      setReordering(false);
+    }
+  }
+
   const grid = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
     gap: 12
   };
   const card = {
-    border: '1px solid #ddd',
+    border: "1px solid #ddd",
     borderRadius: 8,
     padding: 8,
-    background: '#fff'
+    background: "#fff",
+    position: "relative"
   };
   const imgStyle = {
-    width: '100%',
+    width: "100%",
     height: 120,
-    objectFit: 'cover',
+    objectFit: "cover",
     borderRadius: 6,
-    background: '#f7f7f7',
-    border: '1px solid #eee'
+    background: "#f7f7f7",
+    border: "1px solid #eee",
+    display: "block"
   };
   const smallBtn = {
-    padding: '4px 8px',
+    padding: "4px 8px",
     borderRadius: 6,
-    border: '1px solid #ccc',
-    background: '#fafafa',
-    cursor: 'pointer'
+    border: "1px solid #ccc",
+    background: "#fafafa",
+    cursor: "pointer"
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={title} maxWidth={900}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+    <Modal open={open} onClose={onClose} title={title}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
         <input type="file" accept="image/*" multiple onChange={onUpload} disabled={uploading} />
-        <span style={{ fontSize: 12, color: '#666' }}>
+        <button onClick={refresh} disabled={busy || uploading}>
+          {busy ? "Refreshing…" : "Refresh"}
+        </button>
+        {reordering && <span style={{ fontSize: 12, opacity: 0.7 }}>Saving order…</span>}
+        <span style={{ marginLeft: "auto", fontSize: 12, color: "#666" }}>
           {uploading ? "Uploading…" : "PNG/JPG up to ~15MB each"}
         </span>
-        <button onClick={refresh} disabled={busy} style={smallBtn}>{busy ? 'Refreshing…' : 'Refresh'}</button>
       </div>
 
       {rows.length === 0 && !busy && (
-        <div style={{ padding: 12, color: '#666' }}>No images yet. Upload some.</div>
+        <div style={{ padding: 16, opacity: 0.7 }}>No images yet. Upload some.</div>
       )}
 
-      <div style={grid}>
-        {rows.map(r => {
-          const imgUrl = r.stream_url || `${apiBase}/api/vehicleImages/${vehicleId}/images/${r.vehicle_image_id}`;
-          return (
-            <div key={r.vehicle_image_id} style={card}>
-              <img src={imgUrl} alt="" style={imgStyle} />
-              <div style={{ marginTop: 6, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => onPrimary(r.vehicle_image_id)}
-                  style={{ ...smallBtn, background: r.is_primary ? '#e6f4ea' : '#fafafa', borderColor: r.is_primary ? '#4caf50' : '#ccc' }}
-                  title="Set as primary"
-                >
-                  {r.is_primary ? 'Primary' : 'Make primary'}
-                </button>
-                <button
-                  onClick={() => onDelete(r.vehicle_image_id)}
-                  style={{ ...smallBtn, color: '#b30000', borderColor: '#b30000' }}
-                >
-                  Delete
-                </button>
-              </div>
-              <div style={{ marginTop: 6 }}>
-                <label style={{ display: 'block', fontSize: 12, color: '#666' }}>Caption</label>
-                <input
-                  type="text"
-                  defaultValue={r.caption || ""}
-                  onBlur={(e) => {
-                    const v = e.target.value;
-                    if (v !== (r.caption || "")) onMetaChange(r.vehicle_image_id, { caption: v });
-                  }}
-                  style={{ width: '100%', padding: 6, border: '1px solid #ddd', borderRadius: 6 }}
-                />
-              </div>
-              <div style={{ marginTop: 6 }}>
-                <label style={{ display: 'block', fontSize: 12, color: '#666' }}>Sort order</label>
-                <input
-                  type="number"
-                  defaultValue={r.sort_order ?? 0}
-                  onBlur={(e) => {
-                    const num = Number(e.target.value) || 0;
-                    if (num !== (r.sort_order ?? 0)) onMetaChange(r.vehicle_image_id, { sort_order: num });
-                  }}
-                  style={{ width: '100%', padding: 6, border: '1px solid #ddd', borderRadius: 6 }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={ids} strategy={rectSortingStrategy}>
+          <div style={grid}>
+            {rows.map((r) => (
+              <SortableCard
+                key={r.vehicle_image_id}
+                r={r}
+                apiBase={apiBase}
+                vehicleId={vehicleId}
+                imgStyle={imgStyle}
+                card={card}
+                smallBtn={smallBtn}
+                onPrimary={onPrimary}
+                onDelete={onDelete}
+                onMetaChange={onMetaChange}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
     </Modal>
+  );
+}
+
+function SortableCard({
+  r, imgStyle, card, smallBtn, onPrimary, onDelete, onMetaChange
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: r.vehicle_image_id });
+
+  const style = {
+    ...card,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    cursor: "grab",
+    userSelect: "none"
+  };
+
+  const imgUrl = r.stream_url; // backend proxy URL (private bucket)
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <img src={imgUrl} alt="" style={imgStyle} draggable={false} />
+      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <button
+          onClick={() => onPrimary(r.vehicle_image_id)}
+          style={{
+            ...smallBtn,
+            background: r.is_primary ? "#e6f4ea" : "#fafafa",
+            borderColor: r.is_primary ? "#4caf50" : "#ccc"
+          }}
+          title="Set as primary"
+        >
+          {r.is_primary ? "Primary" : "Make primary"}
+        </button>
+        <button
+          onClick={() => onDelete(r.vehicle_image_id)}
+          style={{ ...smallBtn, color: "#b30000", borderColor: "#b30000" }}
+        >
+          Delete
+        </button>
+      </div>
+
+      <div style={{ marginTop: 8 }}>
+        <label style={{ display: "block", fontSize: 12, color: "#555" }}>Caption</label>
+        <input
+          defaultValue={r.caption || ""}
+          onBlur={(e) => {
+            const v = e.target.value;
+            if (v !== (r.caption || "")) onMetaChange(r.vehicle_image_id, { caption: v });
+          }}
+          style={{ width: "100%", padding: 6, border: "1px solid #ddd", borderRadius: 6 }}
+        />
+      </div>
+
+      <div style={{ marginTop: 8 }}>
+        <label style={{ display: "block", fontSize: 12, color: "#555" }}>Sort order</label>
+        <input
+          type="number"
+          min={1}
+          defaultValue={r.sort_order ?? 0}
+          onBlur={(e) => {
+            const num = Number(e.target.value) || 0;
+            if (num !== (r.sort_order ?? 0)) onMetaChange(r.vehicle_image_id, { sort_order: num });
+          }}
+          style={{ width: "100%", padding: 6, border: "1px solid #ddd", borderRadius: 6 }}
+        />
+      </div>
+    </div>
   );
 }
