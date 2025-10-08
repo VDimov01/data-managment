@@ -13,7 +13,6 @@ function App() {
     <Routes>
       <Route path="/" element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} />} />
       <Route path="/login" element={<Login />} />
-      {/* <Route path="/customers/:type/:uuid" element={<ClientDetails />} /> */}
       <Route path="/customer/:uuid" element={<CustomerPortal apiBase="http://localhost:5000"/>} />
       <Route path="/vehicles/:uuid" element={<VehiclePublicPage apiBase={import.meta.env.VITE_API_BASE || "http://localhost:5000"} />} />
       <Route
