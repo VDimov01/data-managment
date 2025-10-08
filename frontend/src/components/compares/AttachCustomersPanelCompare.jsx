@@ -37,11 +37,11 @@ export default function AttachCustomersPanelCompare({ apiBase, compareId }) {
       });
       if (!r.ok) {
         const j = await r.json().catch(()=>null);
-        return alert(j?.error || "Attach failed");
+        return alert(j?.error || "Неуспешно закачане");
       }
       setAttached(prev => Array.from(new Set([...prev, customer_id])));
     } catch (e) {
-      console.error(e); alert("Attach failed");
+      console.error(e); alert("Неуспешно закачане");
     }
   };
 
@@ -50,22 +50,22 @@ export default function AttachCustomersPanelCompare({ apiBase, compareId }) {
       const r = await fetch(`${apiBase}/api/compares/${compareId}/attach/${customer_id}`, { method: "DELETE" });
       if (r.status !== 204) {
         const j = await r.json().catch(()=>null);
-        return alert(j?.error || "Detach failed");
+        return alert(j?.error || "Неуспешно премахване");
       }
       setAttached(prev => prev.filter(id => id !== customer_id));
     } catch (e) {
-      console.error(e); alert("Detach failed");
+      console.error(e); alert("Неуспешно премахване");
     }
   };
 
   return (
     <div>
       <div style={{ display:'flex', gap:8, marginBottom:10 }}>
-        <input placeholder="Search customers…" value={q} onChange={e=>setQ(e.target.value)} />
-        <button onClick={loadCustomers}>Search</button>
+        <input placeholder="Търсене на клиенти…" value={q} onChange={e=>setQ(e.target.value)} />
+        <button onClick={loadCustomers}>Търси</button>
       </div>
       <div className="cmp-list">
-        {customers.length === 0 && <div className="cmp-muted">No customers.</div>}
+        {customers.length === 0 && <div className="cmp-muted">Няма намерени клиенти.</div>}
         {customers.map(c => (
           <div key={c.customer_id} className="cmp-row">
             <div className="cmp-row-main">
@@ -80,9 +80,9 @@ export default function AttachCustomersPanelCompare({ apiBase, compareId }) {
             </div>
             <div className="cmp-row-actions">
               {attached.includes(c.customer_id) ? (
-                <button className="cmp-danger" onClick={() => detach(c.customer_id)}>Detach</button>
+                <button className="cmp-danger" onClick={() => detach(c.customer_id)}>Премахни</button>
               ) : (
-                <button onClick={() => attach(c.customer_id)}>Attach</button>
+                <button onClick={() => attach(c.customer_id)}>Добави</button>
               )}
             </div>
           </div>
