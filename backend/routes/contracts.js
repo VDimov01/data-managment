@@ -1040,6 +1040,132 @@ router.get('/:contract_id/specs-pdfs', async (req, res) => {
   }
 });
 
+// Mark contract as SIGNED and sell all its vehicles
+router.post('/:contract_id/sign', async (req, res) => {
+  try {
+    const contract_id = Number(req.params.contract_id);
+    if (!contract_id) return res.status(400).json({ error: 'contract_id required' });
+
+    // who did it (swap to real auth)
+    const userId = Number(
+      (req.user && (req.user.user_id ?? req.user.id)) ??
+      req.headers['x-user-id'] ?? 1
+    ) || 1;
+
+    const result = await withTxn(async (conn) => {
+      // Lock contract
+      const [[ctr]] = await conn.query(
+        `SELECT * FROM contract WHERE contract_id = ? FOR UPDATE`,
+        [contract_id]
+      );
+      if (!ctr) throw new Error('contract not found');
+
+      // Only allow from issued (or viewed if you want to be lenient)
+      if (!['issued', 'viewed'].includes(String(ctr.status))) {
+        throw new Error(`cannot sign contract from status "${ctr.status}"`);
+      }
+
+      // Load items + lock vehicles
+      const [rows] = await conn.query(
+        `
+        SELECT
+          ci.contract_item_id, ci.vehicle_id, ci.unit_price, ci.currency_code,
+          v.status AS vehicle_status, v.reserved_by_contract_id
+        FROM contract_item ci
+        JOIN vehicle v ON v.vehicle_id = ci.vehicle_id
+        WHERE ci.contract_id = ?
+        FOR UPDATE
+        `,
+        [contract_id]
+      );
+      if (!rows.length) throw new Error('contract has no items');
+
+      // Guard rails
+      for (const r of rows) {
+        if (String(r.vehicle_status) === 'Sold') {
+          throw new Error(`vehicle ${r.vehicle_id} already Sold`);
+        }
+        if (r.reserved_by_contract_id && r.reserved_by_contract_id !== contract_id) {
+          throw new Error(`vehicle ${r.vehicle_id} reserved by another contract`);
+        }
+      }
+
+      // Soft policy: warn if any handovers are not signed
+      const [hrs] = await conn.query(
+        `
+        SELECT hr.handover_record_id, hr.status, hr.contract_item_id
+        FROM handover_record hr
+        WHERE hr.contract_id = ?
+        `,
+        [contract_id]
+      );
+      const notSigned = (hrs || []).filter(h => h.status !== 'signed');
+      const warnings = [];
+      if (notSigned.length) {
+        warnings.push(
+          `Има ${notSigned.length} приемо-предавателни протокола, които не са подписани.`
+        );
+      }
+
+      // Do the updates
+      const now = new Date();
+      const vehiclesSold = [];
+      const soldNote = `Sold via contract ${ctr.contract_number || ctr.uuid}`;
+
+      for (const r of rows) {
+        const price = r.unit_price ?? null; // DECIMAL string ok
+        const currency = (r.currency_code || ctr.currency_code || 'BGN').toUpperCase().slice(0,3);
+
+        // Status event (audit)
+        await conn.query(
+          `INSERT INTO vehicle_status_event
+            (vehicle_id, old_status, new_status, changed_by, note, created_at)
+           VALUES (?, ?, 'Sold', ?, ?, NOW())`,
+          [r.vehicle_id, r.vehicle_status, userId, soldNote]
+        );
+
+        // Vehicle -> Sold (+ durable link + clear reservation)
+        await conn.query(
+          `
+          UPDATE vehicle
+             SET status = 'Sold',
+                 reserved_by_contract_id = NULL,
+                 reserved_until = NULL,
+                 sold_by_contract_id = ?,
+                 sold_at = NOW(),
+                 sold_price = ?,
+                 sold_currency = ?
+           WHERE vehicle_id = ?
+          `,
+          [contract_id, price, currency, r.vehicle_id]
+        );
+
+        vehiclesSold.push(r.vehicle_id);
+      }
+
+      // Contract -> signed
+      await conn.query(
+        `UPDATE contract SET status='signed', signed_at = NOW(), updated_at = NOW() WHERE contract_id = ?`,
+        [contract_id]
+      );
+
+      return {
+        contract_id,
+        status: 'signed',
+        signed_at: now.toISOString(),
+        vehicles_sold: vehiclesSold,
+        handover_summary: { total: hrs.length, not_signed: notSigned.length },
+        warnings
+      };
+    });
+
+    res.json(result);
+  } catch (e) {
+    console.error('POST /contracts/:id/sign', e);
+    res.status(400).json({ error: e.message || 'Sign failed' });
+  }
+});
+
 
 
 module.exports = router;

@@ -56,6 +56,20 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
     }
   }
 
+  async function handleMarkSigned(contractId) {
+  if (!contractId) return;
+  if (!confirm('Маркиране на договора като подписан и продажба на автомобилите?')) return;
+  try {
+    const r = await fetch(`${apiBase}/api/contracts/${contractId}/sign`, { method:'POST' });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data?.error || 'Failed');
+    if (data?.warnings?.length) alert(data.warnings.join('\n'));
+    // refresh UI/state
+    await load();
+  } catch (e) { alert(e.message); }
+}
+
+
   useEffect(() => { load(); }, [q, page]); // reload on q/page change or after issuing
 
   const pages = Math.max(1, Math.ceil((total || 0) / limit));
@@ -107,7 +121,13 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
                       <button className="btn" onClick={() => onOpenLatest(r.uuid)}>Отвори</button>
                       <button className="btn" onClick={() => onRegenerate(r.contract_id)}>Регенерирай</button>
                       <button className="btn" onClick={() => setAttachmentsFor(r)}>Приложения към договора</button>
-                      {String(r.status).toLowerCase() !== 'issued' && (
+                      {
+                        String(r.status).toLowerCase() === 'issued' && (
+                          <button className="btn" onClick={() => handleMarkSigned(r.contract_id)}>Маркирай като подписан</button>
+                        )
+                      }
+                      {String(r.status).toLowerCase() !== 'issued' && String(r.status).toLowerCase() !== 'withdrawn' && 
+                      String(r.status).toLowerCase() !== 'cancelled' && String(r.status).toLowerCase() !== 'signed' && (
                         <button className="btn success" onClick={async () => {await onIssue(r.contract_id); await load();}}>Издаване</button>
                       )}
                       {String(r.status).toLowerCase() !== 'withdrawn' && String(r.status).toLowerCase() !== 'draft' && (
