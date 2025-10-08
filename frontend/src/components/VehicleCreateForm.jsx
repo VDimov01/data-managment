@@ -38,7 +38,7 @@ const [intNew, setIntNew] = useState('');
 
   const [form, setForm] = useState({
     vin: '',
-    stock_number: '',
+    release_date: '',
     exterior_color_id: '',
     interior_color_id: '',
     shop_id: '',
@@ -75,7 +75,7 @@ const [intNew, setIntNew] = useState('');
 
     setForm({
       vin: vehicle.vin || '',
-      stock_number: vehicle.stock_number || '',
+      release_date: vehicle.release_date || '',
       shop_id: vehicle.shop_id ? String(vehicle.shop_id) : '',
       status: vehicle.status || 'InTransit',
       asking_price: vehicle.asking_price != null ? String(vehicle.asking_price) : '',
@@ -155,7 +155,7 @@ const [intNew, setIntNew] = useState('');
 
     const basePayload = {
       vin: String(form.vin || '').trim(),
-      stock_number: String(form.stock_number || '').trim() || null,
+      release_date: String(form.release_date || '').trim() || null,
       exterior_color_id,
       interior_color_id,
       shop_id: form.shop_id ? Number(form.shop_id) : null,
@@ -206,7 +206,7 @@ const [intNew, setIntNew] = useState('');
       <form onSubmit={handleSubmit} className="space-y-2">
         <div className="grid" style={{ display:'grid', gap:10, gridTemplateColumns:'1fr 1fr' }}>
           <input name="vin" placeholder="VIN" value={form.vin} onChange={handleChange} required />
-          <input name="stock_number" placeholder="Stock number (optional)" value={form.stock_number} onChange={handleChange} />
+          <input name="release_date" placeholder="Release date (optional)" value={form.release_date} onChange={handleChange} />
 
           <SelectOrCreate
             label="Цвят на екстериора"

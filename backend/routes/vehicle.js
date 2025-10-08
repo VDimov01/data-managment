@@ -39,6 +39,7 @@ router.get('/', async (req, res) => {
   v.reserved_at,
   v.reserved_until,
   v.mileage,
+  v.release_date,
   v.shop_id,
   s.name AS shop_name,
   s.address AS shop_address,
@@ -80,6 +81,7 @@ ORDER BY v.vehicle_id;
           edition: row.edition,
           asking_price: row.asking_price,
           status: row.status,
+          release_date: row.release_date,
           mileage: row.mileage,
           shop_name: row.shop_name,
           shop_address: row.shop_address,
@@ -129,6 +131,7 @@ router.post('/', async (req, res) => {
     let {
       vin,
       stock_number = null,
+      release_date = null,
       edition_id,
       exterior_color_id = null,
       interior_color_id = null,
@@ -148,6 +151,7 @@ router.post('/', async (req, res) => {
     // Normalize
     vin = String(vin || '').trim().toUpperCase();
     stock_number = stock_number == null || stock_number === '' ? null : String(stock_number).trim();
+    release_date = release_date == null || release_date === '' ? null : String(release_date).trim();
     edition_id = Number(edition_id);
     exterior_color_id = exterior_color_id ? Number(exterior_color_id) : null;
     interior_color_id = interior_color_id ? Number(interior_color_id) : null;
@@ -222,11 +226,11 @@ router.post('/', async (req, res) => {
 
       // Build SQL with optional ETA window
       const cols = [
-        'vin','stock_number','edition_id','exterior_color_id','interior_color_id','shop_id',
+        'vin','release_date','edition_id','exterior_color_id','interior_color_id','shop_id',
         'status','asking_price','mileage','acquisition_cost','public_uuid'
       ];
 
-      const vals = [vin, stock_number, edition_id, exterior_color_id, interior_color_id, shop_id,
+      const vals = [vin, release_date, edition_id, exterior_color_id, interior_color_id, shop_id,
               status, asking_price, mileage, acquisition_cost, publicUuid];
 
       let etaClause = '';
@@ -307,6 +311,7 @@ router.put('/:id', async (req, res) => {
       let {
         vin,
         stock_number = null,
+        release_date = null,
         edition_id = current.edition_id,
         exterior_color_id = null,
         interior_color_id = null,
@@ -327,6 +332,7 @@ router.put('/:id', async (req, res) => {
       // normalize
       vin = String(vin ?? current.vin).trim().toUpperCase();
       stock_number = stock_number == null || stock_number === '' ? null : String(stock_number).trim();
+      release_date = release_date == null || release_date === '' ? null : String(release_date).trim();
       edition_id = Number(edition_id);
       exterior_color_id = exterior_color_id ? Number(exterior_color_id) : null;
       interior_color_id = interior_color_id ? Number(interior_color_id) : null;
@@ -402,10 +408,10 @@ router.put('/:id', async (req, res) => {
 
       // Build update set + params
       const sets = [
-        'vin=?','stock_number=?','edition_id=?','exterior_color_id=?','interior_color_id=?',
+        'vin=?','release_date=?','edition_id=?','exterior_color_id=?','interior_color_id=?',
         'shop_id=?','status=?','asking_price=?','mileage=?','acquisition_cost=?'
       ];
-      const params = [vin, stock_number, edition_id, exterior_color_id, interior_color_id,
+      const params = [vin, release_date, edition_id, exterior_color_id, interior_color_id,
                       shop_id, status, asking_price, mileage, acquisition_cost];
 
       let etaEarliest = expected_arrival_earliest;
