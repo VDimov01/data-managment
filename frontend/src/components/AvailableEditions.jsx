@@ -211,7 +211,7 @@ const openLatestSpecs = async (row) => {
                                 disabled={specBusy.has(row.edition_id)}
                                 style={{ marginRight: 6 }}
                               >
-                                {specBusy.has(row.edition_id) ? 'Отваряне…' : 'Отвори Spec Pack'}
+                                {specBusy.has(row.edition_id) ? 'Отваряне…' : 'Отвори PDF'}
                               </button>
 
                               <button
@@ -219,7 +219,7 @@ const openLatestSpecs = async (row) => {
                                 disabled={specBusy.has(row.edition_id)}
                                 style={{ fontWeight: 600 }}
                               >
-                                {specBusy.has(row.edition_id) ? 'Генериране…' : 'Регенерирай Spec Pack'}
+                                {specBusy.has(row.edition_id) ? 'Генериране…' : 'Регенерирай PDF'}
                               </button>
                             </>
                           )}
