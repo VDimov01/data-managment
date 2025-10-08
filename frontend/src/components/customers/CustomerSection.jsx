@@ -186,7 +186,7 @@ export default function CustomerSection() {
         <CustomerForm
           onClose={() => { setOpenForm(false); setEditing(null); }}
           onSave={onSave}
-          initial={editing}
+          editCustomer={editing}
         />
       )}
 

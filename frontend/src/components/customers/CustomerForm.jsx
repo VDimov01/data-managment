@@ -1,83 +1,126 @@
 import { useEffect, useState } from "react";
+import { getCustomer } from "../../services/customerApi";
 
-export default function CustomerForm({ initial = null, onClose, onSave }) {
-  const isEdit = Boolean(initial);
-
-  const [customer_type, setCustomerType] = useState(initial?.customer_type || "Individual");
+const DEFAULTS = {
+  customer_type: "Individual",
 
   // Individual
-  const [first_name, setFirst] = useState(initial?.first_name || "");
-  const [middle_name, setMiddle] = useState(initial?.middle_name || "");
-  const [last_name, setLast] = useState(initial?.last_name || "");
+  first_name: "",
+  middle_name: "",
+  last_name: "",
 
   // Company + representative
-  const [company_name, setCompany] = useState(initial?.company_name || "");
-  const [rep_first_name, setRepFirst] = useState(initial?.rep_first_name || "");
-  const [rep_middle_name, setRepMiddle] = useState(initial?.rep_middle_name || "");
-  const [rep_last_name, setRepLast] = useState(initial?.rep_last_name || "");
+  company_name: "",
+  rep_first_name: "",
+  rep_middle_name: "",
+  rep_last_name: "",
 
   // Contact & address
-  const [email, setEmail] = useState(initial?.email || "");
-  const [phone, setPhone] = useState(initial?.phone || "");
-  const [secondary_phone, setPhone2] = useState(initial?.secondary_phone || "");
-  const [country, setCountry] = useState(initial?.country || "BG");
-  const [city, setCity] = useState(initial?.city || "");
-  const [address_line, setAddress] = useState(initial?.address_line || "");
-  const [postal_code, setPostal] = useState(initial?.postal_code || "");
+  email: "",
+  phone: "",
+  secondary_phone: "",
+  country: "BG",
+  city: "",
+  address_line: "",
+  postal_code: "",
 
   // IDs & misc
-  const [tax_id, setTax] = useState(initial?.tax_id || "");
-  const [vat_number, setVat] = useState(initial?.vat_number || "");
-  const [national_id, setNatId] = useState(initial?.national_id || "");
-  const [is_active, setActive] = useState(initial?.is_active ? true : true);
-  const [notes, setNotes] = useState(initial?.notes || "");
+  tax_id: "",
+  vat_number: "",
+  national_id: "",
+  is_active: true,
+  notes: ""
+};
 
-  // Keep type-specific minimal validation hints
+export default function CustomerForm({ editCustomer = null, onClose, onSave }) {
+  const isEdit = Boolean(editCustomer?.customer_id);
+
+  const [initial, setInitial] = useState(null);
+  const [form, setForm] = useState(DEFAULTS);
   const [err, setErr] = useState("");
 
+  // Fetch full record if editing
   useEffect(() => {
-    setErr("");
-  }, [customer_type, first_name, last_name, company_name]);
+    let cancelled = false;
+    (async () => {
+      if (!isEdit) {
+        setInitial(null);
+        setForm(DEFAULTS);
+        return;
+      }
+      try {
+        const data = await getCustomer(editCustomer.customer_id);
+        if (cancelled) return;
+        setInitial(data || null);
+
+        // hydrate form from server row; coerce booleans
+        setForm({
+          ...DEFAULTS,
+          ...(data || {}),
+          customer_type: data?.customer_type === "Company" ? "Company" : "Individual",
+          is_active: !!(data?.is_active ?? true),
+          // if backend decrypts national_id, this will be plain text;
+          // if you still see 'v1:...' here, your decrypt isn’t wired.
+          national_id: data?.national_id ?? ""
+        });
+      } catch (e) {
+        if (!cancelled) {
+          setInitial(null);
+          setForm(DEFAULTS);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+    // re-run if you pick another row to edit
+  }, [isEdit, editCustomer?.customer_id]);
+
+  // generic change handlers
+  const setField = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+  const onText = (k) => (e) => setField(k, e.target.value);
+  const onCheck = (k) => (e) => setField(k, !!e.target.checked);
+
+  // reset errors when the key fields change
+  useEffect(() => { setErr(""); }, [form.customer_type, form.first_name, form.last_name, form.company_name]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Minimal front-side validation mirroring backend
-    if (customer_type === "Individual" && !first_name && !last_name) {
+    // same validation you had, but against `form`
+    if (form.customer_type === "Individual" && !form.first_name && !form.last_name) {
       setErr("За индивидуален клиент, поне едно от имената е задължително. (собствено име, фамилия)");
       return;
     }
-    if (customer_type === "Company" && !company_name) {
+    if (form.customer_type === "Company" && !form.company_name) {
       setErr("За фирмен клиент, името на фирмата е задължително.");
       return;
     }
 
     const payload = {
-      customer_type,
+      customer_type: form.customer_type,
       // individual
-      first_name: emptyNull(first_name),
-      middle_name: emptyNull(middle_name),
-      last_name: emptyNull(last_name),
+      first_name: emptyNull(form.first_name),
+      middle_name: emptyNull(form.middle_name),
+      last_name: emptyNull(form.last_name),
       // company
-      company_name: emptyNull(company_name),
-      rep_first_name: emptyNull(rep_first_name),
-      rep_middle_name: emptyNull(rep_middle_name),
-      rep_last_name: emptyNull(rep_last_name),
+      company_name: emptyNull(form.company_name),
+      rep_first_name: emptyNull(form.rep_first_name),
+      rep_middle_name: emptyNull(form.rep_middle_name),
+      rep_last_name: emptyNull(form.rep_last_name),
       // contacts
-      email: emptyNull(email),
-      phone: emptyNull(phone),
-      secondary_phone: emptyNull(secondary_phone),
+      email: emptyNull(form.email),
+      phone: emptyNull(form.phone),
+      secondary_phone: emptyNull(form.secondary_phone),
       // address
-      country: emptyNull(country),
-      city: emptyNull(city),
-      address_line: emptyNull(address_line),
-      postal_code: emptyNull(postal_code),
+      country: emptyNull(form.country),
+      city: emptyNull(form.city),
+      address_line: emptyNull(form.address_line),
+      postal_code: emptyNull(form.postal_code),
       // ids
-      tax_id: emptyNull(tax_id),
-      vat_number: emptyNull(vat_number),
-      national_id: emptyNull(national_id),
+      tax_id: emptyNull(form.tax_id),
+      vat_number: emptyNull(form.vat_number),
+      national_id: emptyNull(form.national_id),
       // misc
-      notes: emptyNull(notes),
-      is_active: is_active ? 1 : 0
+      notes: emptyNull(form.notes),
+      is_active: form.is_active ? 1 : 0
     };
 
     try {
@@ -88,7 +131,9 @@ export default function CustomerForm({ initial = null, onClose, onSave }) {
   };
 
   return (
-    <div className="cust-modal-overlay" onMouseDown={(e) => { if (e.target.classList.contains("cust-modal-overlay")) onClose?.(); }}>
+    <div className="cust-modal-overlay" onMouseDown={(e) => {
+      if (e.target.classList.contains("cust-modal-overlay")) onClose?.();
+    }}>
       <div className="cust-modal" role="dialog" aria-modal="true">
         <div className="cust-modal-header">
           <h3>{isEdit ? "Редактирай информация за клиент" : "Добави клиент"}</h3>
@@ -98,26 +143,29 @@ export default function CustomerForm({ initial = null, onClose, onSave }) {
         <form className="cust-form" onSubmit={handleSubmit}>
           <div className="cust-row">
             <label>Тип</label>
-            <select value={customer_type} onChange={(e) => setCustomerType(e.target.value)}>
+            <select
+              value={form.customer_type}
+              onChange={(e) => setField("customer_type", e.target.value === "Company" ? "Company" : "Individual")}
+            >
               <option value="Individual">Индивидуален клиент</option>
               <option value="Company">Фирмен клиент</option>
             </select>
           </div>
 
-          {customer_type === "Individual" ? (
+          {form.customer_type === "Individual" ? (
             <>
               <div className="cust-grid">
                 <div className="cust-field">
                   <label>Собствено име</label>
-                  <input value={first_name} onChange={(e) => setFirst(e.target.value)} />
+                  <input value={form.first_name} onChange={onText("first_name")} />
                 </div>
                 <div className="cust-field">
-                  <label>Башино име</label>
-                  <input value={middle_name} onChange={(e) => setMiddle(e.target.value)} />
+                  <label>Бащино име</label>
+                  <input value={form.middle_name} onChange={onText("middle_name")} />
                 </div>
                 <div className="cust-field">
                   <label>Фамилия</label>
-                  <input value={last_name} onChange={(e) => setLast(e.target.value)} />
+                  <input value={form.last_name} onChange={onText("last_name")} />
                 </div>
               </div>
             </>
@@ -125,20 +173,20 @@ export default function CustomerForm({ initial = null, onClose, onSave }) {
             <>
               <div className="cust-field">
                 <label>Име на фирмата *</label>
-                <input value={company_name} onChange={(e) => setCompany(e.target.value)} required />
+                <input value={form.company_name} onChange={onText("company_name")} required />
               </div>
               <div className="cust-grid">
                 <div className="cust-field">
                   <label>Представител — Собствено име</label>
-                  <input value={rep_first_name} onChange={(e) => setRepFirst(e.target.value)} />
+                  <input value={form.rep_first_name} onChange={onText("rep_first_name")} />
                 </div>
                 <div className="cust-field">
                   <label>Представител — Бащино име</label>
-                  <input value={rep_middle_name} onChange={(e) => setRepMiddle(e.target.value)} />
+                  <input value={form.rep_middle_name} onChange={onText("rep_middle_name")} />
                 </div>
                 <div className="cust-field">
                   <label>Представител — Фамилия</label>
-                  <input value={rep_last_name} onChange={(e) => setRepLast(e.target.value)} />
+                  <input value={form.rep_last_name} onChange={onText("rep_last_name")} />
                 </div>
               </div>
             </>
@@ -147,70 +195,72 @@ export default function CustomerForm({ initial = null, onClose, onSave }) {
           <div className="cust-grid">
             <div className="cust-field">
               <label>Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input type="email" value={form.email} onChange={onText("email")} />
             </div>
             <div className="cust-field">
               <label>Телефон</label>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <input value={form.phone} onChange={onText("phone")} />
             </div>
             <div className="cust-field">
               <label>Допълнителен телефон</label>
-              <input value={secondary_phone} onChange={(e) => setPhone2(e.target.value)} />
+              <input value={form.secondary_phone} onChange={onText("secondary_phone")} />
             </div>
           </div>
 
           <div className="cust-grid">
             <div className="cust-field">
               <label>Държава</label>
-              <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="BG" />
+              <input value={form.country} onChange={onText("country")} placeholder="BG" />
             </div>
             <div className="cust-field">
               <label>Град</label>
-              <input value={city} onChange={(e) => setCity(e.target.value)} />
+              <input value={form.city} onChange={onText("city")} />
             </div>
             <div className="cust-field">
               <label>Пощенски код</label>
-              <input value={postal_code} onChange={(e) => setPostal(e.target.value)} />
+              <input value={form.postal_code} onChange={onText("postal_code")} />
             </div>
           </div>
 
           <div className="cust-field">
             <label>Адрес</label>
-            <input value={address_line} onChange={(e) => setAddress(e.target.value)} />
+            <input value={form.address_line} onChange={onText("address_line")} />
           </div>
 
           <div className="cust-grid">
             <div className="cust-field">
               <label>Данъчен номер (ЕИК/UIC)</label>
-              <input value={tax_id} onChange={(e) => setTax(e.target.value)} />
+              <input value={form.tax_id} onChange={onText("tax_id")} />
             </div>
             <div className="cust-field">
               <label>ДДС номер</label>
-              <input value={vat_number} onChange={(e) => setVat(e.target.value)} />
+              <input value={form.vat_number} onChange={onText("vat_number")} />
             </div>
             <div className="cust-field">
               <label>ЕГН</label>
-              <input value={national_id} onChange={(e) => setNatId(e.target.value)} />
+              <input value={form.national_id} onChange={onText("national_id")} />
             </div>
           </div>
 
           <div className="cust-row">
             <label className="cust-check">
-              <input type="checkbox" checked={!!is_active} onChange={(e) => setActive(e.target.checked)} />
+              <input type="checkbox" checked={!!form.is_active} onChange={onCheck("is_active")} />
               Активен
             </label>
           </div>
 
           <div className="cust-field">
             <label>Бележки</label>
-            <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <textarea rows={3} value={form.notes} onChange={onText("notes")} />
           </div>
 
           {err && <div className="cust-err">{err}</div>}
 
           <div className="cust-actions">
             <button type="button" className="cust-btn" onClick={onClose}>Отказ</button>
-            <button type="submit" className="cust-btn primary">{isEdit ? "Запази промените" : "Създай клиент"}</button>
+            <button type="submit" className="cust-btn primary">
+              {isEdit ? "Запази промените" : "Създай клиент"}
+            </button>
           </div>
         </form>
       </div>

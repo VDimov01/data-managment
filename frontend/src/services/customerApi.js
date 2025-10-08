@@ -13,6 +13,13 @@ export async function listCustomers({ q = "", page = 1, limit = 20 } = {}) {
   return res.json(); // { page, limit, total, totalPages, customers: [...] }
 }
 
+export async function getCustomer(customer_id) {
+  const res = await fetch(`${API_BASE}/api/customers/${customer_id}`, { method: "GET", credentials: 'include' });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to fetch customer: ${res.status}`);
+  return res.json(); // { customer_id, ... }
+}
+
 export async function createCustomer(payload) {
   const res = await fetch(`${API_BASE}/api/customers`, {
     method: "POST",

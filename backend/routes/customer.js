@@ -3,17 +3,20 @@ const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { getPool } = require('../db');
+const {
+  encryptNationalId, decryptNationalId, hashNationalId, last4, mask
+} = require('../services/cryptoCust');
+
 const pool = getPool();
 
 function toBool01(v, def = 1) {
   if (v == null) return def;
   const s = String(v).trim().toLowerCase();
-  if (v === true || s === '1' || s === 'true' || s === 'yes' ) return 1;
-  if (v === false || s === '0' || s === 'false'|| s === 'no'  ) return 0;
+  if (v === true || s === '1' || s === 'true' || s === 'yes') return 1;
+  if (v === false || s === '0' || s === 'false' || s === 'no') return 0;
   return def;
 }
 
-/** Parse/validate payload */
 function parseCustomerBody(body = {}, isUpdate = false) {
   const t = String(body.customer_type || '').trim();
   const customer_type = (t === 'Company' || t === 'Individual') ? t : null;
@@ -38,11 +41,10 @@ function parseCustomerBody(body = {}, isUpdate = false) {
 
   const tax_id       = body.tax_id       != null ? String(body.tax_id).trim()       : null;
   const vat_number   = body.vat_number   != null ? String(body.vat_number).trim()   : null;
-  const national_id  = body.national_id  != null ? String(body.national_id).trim()  : null;
+  const national_id  = body.national_id  != null ? String(body.national_id).trim()  : null; // plaintext from client
 
   const notes    = body.notes    != null ? String(body.notes).trim() : null;
   const is_active = toBool01(body.is_active, 1);
-
   const public_uuid = body.public_uuid ? String(body.public_uuid).trim() : null;
 
   if (!isUpdate) {
@@ -61,13 +63,13 @@ function parseCustomerBody(body = {}, isUpdate = false) {
     company_name, rep_first_name, rep_middle_name, rep_last_name,
     email, phone, secondary_phone,
     country, city, address_line, postal_code,
-    tax_id, vat_number, national_id,
+    tax_id, vat_number, national_id, // plaintext; we’ll encrypt it below
     notes, is_active,
     public_uuid
   };
 }
 
-/** GET /api/customers?q=&page=&limit= */
+// -------- LIST --------
 router.get('/', async (req, res) => {
   const q = (req.query.q || '').toString().trim();
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -101,7 +103,8 @@ router.get('/', async (req, res) => {
               company_name, rep_first_name, rep_middle_name, rep_last_name,
               email, phone, secondary_phone,
               country, city, address_line, postal_code,
-              tax_id, vat_number, national_id,
+              tax_id, vat_number,
+              national_id_enc, national_id_last4,
               display_name, notes, is_active,
               created_at, updated_at
        FROM customer
@@ -111,46 +114,73 @@ router.get('/', async (req, res) => {
       [...params, limit, offset]
     );
 
-    res.json({ page, limit, total: cnt, totalPages: Math.max(1, Math.ceil(cnt/limit)), customers: rows });
+    // Don’t decrypt everything for a list; return masked + last4
+    const customers = rows.map(r => ({
+      ...r,
+      national_id: r.national_id_last4 ? `***${r.national_id_last4}` : null
+    }));
+
+    res.json({ page, limit, total: cnt, totalPages: Math.max(1, Math.ceil(cnt/limit)), customers });
   } catch (e) {
     console.error('GET /api/customers', e);
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-/** GET /api/customers/:id */
+// -------- GET BY ID (decrypt full) --------
 router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid id' });
   try {
-    const [rows] = await pool.query(`SELECT * FROM customer WHERE customer_id=?`, [id]);
+    const [rows] = await pool.query(
+      `SELECT * FROM customer WHERE customer_id=?`, [id]
+    );
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(rows[0]);
+
+    const row = rows[0];
+    let national_id = null;
+    try { national_id = decryptNationalId(row.national_id_enc); } catch {}
+    row.national_id = national_id;
+    delete row.national_id_enc;
+    res.json(row);
   } catch (e) {
     console.error('GET /api/customers/:id', e);
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-/** GET /api/customers/by-uuid/:uuid  (for public pages) */
+// -------- GET BY UUID (decrypt full for public page if you really need it) --------
 router.get('/by-uuid/:uuid', async (req, res) => {
   const uuid = String(req.params.uuid || '').trim();
   if (!uuid || uuid.length > 36) return res.status(400).json({ error: 'Invalid uuid' });
   try {
     const [rows] = await pool.query(`SELECT * FROM customer WHERE public_uuid=?`, [uuid]);
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(rows[0]);
+
+    const row = rows[0];
+    let national_id = null;
+    try { national_id = decryptNationalId(row.national_id_enc); } catch {}
+    row.national_id = national_id;
+    delete row.national_id_enc;
+    res.json(row);
   } catch (e) {
     console.error('GET /api/customers/by-uuid/:uuid', e);
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-/** POST /api/customers */
+// -------- CREATE (encrypt) --------
 router.post('/', async (req, res) => {
   try {
     const c = parseCustomerBody(req.body, false);
     const pub = c.public_uuid || uuidv4();
+
+    let national_id_enc = null, national_id_hash = null, national_id_last4 = null;
+    if (c.national_id) {
+      national_id_enc = encryptNationalId(c.national_id);
+      national_id_hash = hashNationalId(c.national_id);   // Buffer(32)
+      national_id_last4 = last4(c.national_id);
+    }
 
     const [r] = await pool.query(
       `INSERT INTO customer
@@ -159,28 +189,34 @@ router.post('/', async (req, res) => {
         company_name, rep_first_name, rep_middle_name, rep_last_name,
         email, phone, secondary_phone,
         country, city, address_line, postal_code,
-        tax_id, vat_number, national_id,
+        tax_id, vat_number,
+        national_id_enc, national_id_hash, national_id_last4,
         notes, is_active)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         pub, c.customer_type,
         c.first_name, c.middle_name, c.last_name,
         c.company_name, c.rep_first_name, c.rep_middle_name, c.rep_last_name,
         c.email, c.phone, c.secondary_phone,
         c.country, c.city, c.address_line, c.postal_code,
-        c.tax_id, c.vat_number, c.national_id,
+        c.tax_id, c.vat_number,
+        national_id_enc, national_id_hash, national_id_last4,
         c.notes, c.is_active
       ]
     );
 
     res.status(201).json({ customer_id: r.insertId, public_uuid: pub });
   } catch (e) {
+    // probable duplicate (national_id_hash unique)
+    if (e && e.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'Customer with the same national ID already exists' });
+    }
     console.error('POST /api/customers', e);
     res.status(400).json({ error: e.message || 'Invalid payload' });
   }
 });
 
-/** PUT /api/customers/:id */
+// -------- UPDATE (encrypt if provided) --------
 router.put('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid id' });
@@ -190,8 +226,23 @@ router.put('/:id', async (req, res) => {
     if (!exists.length) return res.status(404).json({ error: 'Not found' });
 
     const c = parseCustomerBody(req.body, true);
-    // Allow rotating public_uuid if you want (not required)
     const pub = c.public_uuid || null;
+
+    // if national_id provided -> rotate enc/hash/last4; otherwise leave as is
+    let national_id_enc = null, national_id_hash = null, national_id_last4 = null;
+    let setNI = '';
+    const args = [];
+
+    if (c.national_id != null && c.national_id !== '') {
+      national_id_enc = encryptNationalId(c.national_id);
+      national_id_hash = hashNationalId(c.national_id);
+      national_id_last4 = last4(c.national_id);
+      setNI = `,
+        national_id_enc=?,
+        national_id_hash=?,
+        national_id_last4=?`;
+      args.push(national_id_enc, national_id_hash, national_id_last4);
+    }
 
     await pool.query(
       `UPDATE customer SET
@@ -201,7 +252,7 @@ router.put('/:id', async (req, res) => {
         company_name=?, rep_first_name=?, rep_middle_name=?, rep_last_name=?,
         email=?, phone=?, secondary_phone=?,
         country=?, city=?, address_line=?, postal_code=?,
-        tax_id=?, vat_number=?, national_id=?,
+        tax_id=?, vat_number=?${setNI},
         notes=?, is_active=?
        WHERE customer_id=?`,
       [
@@ -211,7 +262,8 @@ router.put('/:id', async (req, res) => {
         c.company_name, c.rep_first_name, c.rep_middle_name, c.rep_last_name,
         c.email, c.phone, c.secondary_phone,
         c.country, c.city, c.address_line, c.postal_code,
-        c.tax_id, c.vat_number, c.national_id,
+        c.tax_id, c.vat_number,
+        ...args,
         c.notes, c.is_active,
         id
       ]
@@ -219,12 +271,15 @@ router.put('/:id', async (req, res) => {
 
     res.json({ message: 'Updated' });
   } catch (e) {
+    if (e && e.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'Customer with the same national ID already exists' });
+    }
     console.error('PUT /api/customers/:id', e);
     res.status(400).json({ error: e.message || 'Invalid payload' });
   }
 });
 
-/** DELETE /api/customers/:id (hard delete for now) */
+// -------- DELETE --------
 router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid id' });
