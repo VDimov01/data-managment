@@ -119,7 +119,6 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
                   <td>
                     <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                       <button className="btn" onClick={() => onOpenLatest(r.uuid)}>Отвори</button>
-                      <button className="btn" onClick={() => onRegenerate(r.contract_id)}>Регенерирай</button>
                       <button className="btn" onClick={() => setAttachmentsFor(r)}>Приложения към договора</button>
                       {
                         String(r.status).toLowerCase() === 'issued' && (
@@ -128,7 +127,10 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
                       }
                       {String(r.status).toLowerCase() !== 'issued' && String(r.status).toLowerCase() !== 'withdrawn' && 
                       String(r.status).toLowerCase() !== 'cancelled' && String(r.status).toLowerCase() !== 'signed' && (
+                        <>
+                        <button className="btn" onClick={() => onRegenerate(r.contract_id)}>Регенерирай</button>
                         <button className="btn success" onClick={async () => {await onIssue(r.contract_id); await load();}}>Издаване</button>
+                        </>
                       )}
                       {String(r.status).toLowerCase() !== 'withdrawn' && String(r.status).toLowerCase() !== 'draft' && (
 

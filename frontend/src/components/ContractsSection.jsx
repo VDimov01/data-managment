@@ -91,7 +91,7 @@ function buildBuyerSnapshot(c) {
 export default function ContractsSection({ apiBase = "http://localhost:5000" }) {
   const api = makeApi(apiBase);
 
-  const [tab, setTab] = useState("create"); // 'create' | 'browse'
+  const [tab, setTab] = useState("browse"); // 'create' | 'browse'
 
   const [specs, setSpecs] = useState([]);     // attachments list
   const [genLoading, setGenLoading] = useState(false);
@@ -340,8 +340,8 @@ async function handleIssueAllHandover() {
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
       <div className="tabs">
-        <button className={`tab ${tab === 'create' ? 'active' : ''}`} onClick={() => setTab('create')}>New contract</button>
         <button className={`tab ${tab === 'browse' ? 'active' : ''}`} onClick={() => setTab('browse')}>Browse</button>
+        <button className={`tab ${tab === 'create' ? 'active' : ''}`} onClick={() => setTab('create')}>New contract</button>
       </div>
 
       {tab === "create" && (
