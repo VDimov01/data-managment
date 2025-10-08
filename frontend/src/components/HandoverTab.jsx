@@ -62,6 +62,14 @@ export default function HandoverTab({ apiBase, contract }) {
 
   React.useEffect(()=>{ load(); }, [contract?.contract_id]);
 
+  const openPdf = async (id) => {
+    try {
+      const data = await apiCall(apiBase, `/handover/${id}/pdf/latest`);
+      console.log('openPdf', {data});
+      if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (e) { alert(`Open PDF failed: ${e.message}`); }
+  }
+
   const createDrafts = async () => {
     if (!contract?.contract_id) return;
     if (!confirm('Създаване на чернови за всички линии по договора?')) return;
@@ -242,7 +250,10 @@ export default function HandoverTab({ apiBase, contract }) {
           {isDraft ? (
             <button className="btn success" onClick={() => doIssue(row.handover_record_id)}>Генерирай PDF</button>
           ) : (
-            <button className="btn" onClick={() => doRegen(row.handover_record_id)}>Регенерирай PDF</button>
+            <>
+            <button className="btn" onClick={() => openPdf(row.handover_record_id)}>Отвори</button>
+            <button className="btn" onClick={() => doRegen(row.handover_record_id)}>Регенерирай</button>
+            </>
           )}
           {row.status !== 'signed' && (
             <button className="btn" onClick={() => doSigned(row.handover_record_id)}>Маркирай като подписан</button>
