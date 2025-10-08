@@ -10,7 +10,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   listEditionImages, uploadEditionImages, patchEditionImage, deleteEditionImage
-} from "../services/api";
+} from "../../services/api";
 
 const PARTS = ["main","exterior","interior","unsorted"];
 
@@ -231,9 +231,9 @@ const onDragEnd = async ({ active, over }) => {
         <label>Upload to:</label>
         <select value={uploadPart} onChange={e=>setUploadPart(e.target.value)}>
           <option value="unsorted">Unsorted</option>
-          <option value="main">Main (first file becomes primary)</option>
+          {/* <option value="main">Main (first file becomes primary)</option>
           <option value="exterior">Exterior</option>
-          <option value="interior">Interior</option>
+          <option value="interior">Interior</option> */}
         </select>
         <input type="file" accept="image/*" multiple onChange={onUpload} disabled={uploading}/>
         <button onClick={refresh} disabled={busy||uploading}>{busy ? "Refreshing…" : "Refresh"}</button>

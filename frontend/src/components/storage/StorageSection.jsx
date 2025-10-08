@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { fetchVehicles, fetchShops } from "../services/api";
-import AvailableEditions from "./AvailableEditions";
-import Modal from "./Modal";
+import { fetchVehicles, fetchShops } from "../../services/api";
+import AvailableEditions from "../editions/AvailableEditions";
+import Modal from "../Modal";
 import VehicleImagesModal from "./VehicleImagesModal";
 import VehicleCreateForm from "./VehicleCreateForm";
 import VehicleQRCell from './VehicleQRCell';
 import PrintLabelsButton from "./PrintLabelsButton";
-import { formatDateDMYDateOnly } from "../utils/dates";
+import { formatDateDMYDateOnly } from "../../utils/dates.js";
 
 const STATUSES = ['InTransit','Available','Reserved','Sold','Service','Demo'];
 
@@ -136,7 +136,7 @@ export default function StorageSection() {
 
     setDeletingIds(prev => new Set(prev).add(vid));
     try {
-      const res = await fetch(`${apiBase}/api/vehicles/${vid}`, { method: 'DELETE' });
+      const res = await fetch(`${apiBase}/api/vehicles/${vid}`, { method: 'DELETE', credentials: 'include' });
       if (res.status === 204) {
         // Remove from local state (no refetch needed)
         setVehicleEntries(prev => prev.filter(v => (v.vehicle_id || v.id) !== vid));

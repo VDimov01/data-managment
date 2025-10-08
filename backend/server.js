@@ -73,28 +73,29 @@ app.get('/api/health', (_, res) => res.json({ ok: true }));
 // Public + auth (no guards)
 app.use('/api/public', publicRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/vehicleImages', vehicleImagesRoutes);
 
 // guard everything else
-app.use('/api', requireAuth);
-
-app.use('/api/offers', offersRoutes);
-app.use("/offers", express.static(path.join(__dirname, "offers")));
-app.use('/api/shops', shopsRoutes);
-app.use('/api/contracts', contractsRoutes);
-app.use("/contracts", express.static(path.join(__dirname, "contracts")));
-app.use('/api/car-images', carImagesRoutes);
-app.use('/api/vehicles', vehicleRoutes);
-app.use('/api/editions', editionsRoutes);
-app.use('/api/colors', colorsRoutes);
-app.use('/api/attributes', attributesRoutes);
-app.use('/api/cascade', cascadeRoutes);
-app.use('/api/customers', customerRoutes);
-app.use('/api/brochures', brochureRoutes);
-app.use('/api/compares', compareRoutes);
-app.use('/api/qr', qrRoutes);
-app.use('/api/labels', labelsRoutes);
-app.use('/api/vehicleImages', vehicleImagesRoutes);
-app.use('/api/handover', handoverRoutes);
+  app.use('/api', requireAuth); // this is the guard.. move it up after you rework the fetches in the frontend
+  
+  app.use('/api/offers', offersRoutes);
+  app.use("/offers", express.static(path.join(__dirname, "offers")));
+  app.use('/api/shops', shopsRoutes);
+  app.use('/api/contracts', contractsRoutes);
+  app.use("/contracts", express.static(path.join(__dirname, "contracts")));
+  app.use('/api/car-images', carImagesRoutes);
+  app.use('/api/vehicles', vehicleRoutes);
+  app.use('/api/editions', editionsRoutes);
+  app.use('/api/colors', colorsRoutes);
+  app.use('/api/attributes', attributesRoutes);
+  app.use('/api/cascade', cascadeRoutes);
+  app.use('/api/brochures', brochureRoutes);
+  app.use('/api/compares', compareRoutes);
+  app.use('/api/qr', qrRoutes);
+  app.use('/api/labels', labelsRoutes);
+  app.use('/api/handover', handoverRoutes);
+  
+  app.use('/api/customers', customerRoutes);
 
 // Test Route
 app.get('/', (req, res) => {

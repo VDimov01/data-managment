@@ -27,7 +27,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
   // load makes
   useEffect(() => {
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/makes`);
+      const r = await fetch(`${apiBase}/api/cascade/makes`, { credentials: 'include' });
       const data = await r.json();
       setMakes(data || []);
     })().catch(console.error);
@@ -38,7 +38,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
     setModels([]); setModelId(""); setYears([]); setEditions([]);
     if (!makeId) return;
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/models?make_id=${makeId}`);
+      const r = await fetch(`${apiBase}/api/cascade/models?make_id=${makeId}`, { credentials: 'include' });
       setModels(await r.json());
     })().catch(console.error);
   }, [makeId, apiBase]);
@@ -48,7 +48,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
     setYears([]); setEditions([]);
     if (!modelId) return;
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/model-years?model_id=${modelId}`);
+      const r = await fetch(`${apiBase}/api/cascade/model-years?model_id=${modelId}`, { credentials: 'include' });
       setYears(await r.json());
     })().catch(console.error);
   }, [modelId, apiBase]);
@@ -58,7 +58,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
     if (!isEdit) return;
     (async () => {
       try {
-        const r = await fetch(`${apiBase}/api/brochures/${initial.brochure_id}/selection`);
+        const r = await fetch(`${apiBase}/api/brochures/${initial.brochure_id}/selection`, { credentials: 'include' });
         if (!r.ok) return; // optional endpoint; skip gracefully
         const sel = await r.json();
         if (sel.selection_mode) setSelectionMode(sel.selection_mode);
@@ -82,7 +82,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
 
   // load editions for a chosen year (helper)
   const loadEditionsForYear = async (model_year_id) => {
-    const r = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${model_year_id}`);
+    const r = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${model_year_id}`, { credentials: 'include' });
     const list = await r.json();
     // Merge into editions pool (unique by edition_id)
     setEditions(prev => {
@@ -143,13 +143,15 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
         r = await fetch(`${apiBase}/api/brochures/${initial.brochure_id}`, {
           method: "PUT",
           headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
+          credentials: 'include'
         });
       } else {
         r = await fetch(`${apiBase}/api/brochures`, {
           method: "POST",
           headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
+          credentials: 'include'
         });
       }
       const data = await r.json().catch(()=>null);
@@ -174,7 +176,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
           <label>Език</label>
           <select value={language} onChange={e=>setLanguage(e.target.value)}>
             <option value="bg">BG</option>
-            <option value="en">EN</option>
+            <option value="en">EN</option>брошура
           </select>
         </div>
         <div>

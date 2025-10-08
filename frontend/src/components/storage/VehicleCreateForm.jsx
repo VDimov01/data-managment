@@ -59,9 +59,9 @@ const [intNew, setIntNew] = useState('');
   useEffect(() => {
     (async () => {
       const [ext, intl, shops] = await Promise.all([
-        fetch(`${apiBase}/api/colors/exterior`).then(r => r.json()),
-        fetch(`${apiBase}/api/colors/interior`).then(r => r.json()),
-        fetch(`${apiBase}/api/shops/new`).then(r => r.json()),
+        fetch(`${apiBase}/api/colors/exterior`, { credentials: 'include' }).then(r => r.json()),
+        fetch(`${apiBase}/api/colors/interior`, { credentials: 'include' }).then(r => r.json()),
+        fetch(`${apiBase}/api/shops/new`, { credentials: 'include' }).then(r => r.json()),
       ]);
       setExtColors(ext || []);
       setIntColors(intl || []);
@@ -122,7 +122,8 @@ const [intNew, setIntNew] = useState('');
       if (!name) return alert('Enter exterior color name or choose existing');
       const r = await fetch(`${apiBase}/api/colors`, {
         method: 'POST', headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ name, type: 'exterior' })
+        body: JSON.stringify({ name, type: 'exterior' }),
+        credentials: 'include'
       });
       const d = await r.json(); if (!r.ok) return alert(d?.error || 'Failed to create exterior color');
       exterior_color_id = d.color_id;
@@ -135,7 +136,8 @@ const [intNew, setIntNew] = useState('');
       if (!name) return alert('Enter interior color name or choose existing/none');
       const r = await fetch(`${apiBase}/api/colors`, {
         method: 'POST', headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ name, type: 'interior' })
+        body: JSON.stringify({ name, type: 'interior' }),
+        credentials: 'include'
       });
       const d = await r.json(); if (!r.ok) return alert(d?.error || 'Failed to create interior color');
       interior_color_id = d.color_id;
@@ -175,7 +177,7 @@ const [intNew, setIntNew] = useState('');
       if (!edition?.edition_id) return alert('No edition selected.');
       const payload = { ...basePayload, edition_id: edition.edition_id };
       const r = await fetch(`${apiBase}/api/vehicles`, {
-        method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload)
+        method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload), credentials: 'include'
       });
       const data = await r.json().catch(()=>({}));
       if (!r.ok) return alert(data?.error || 'Failed to create vehicle');
@@ -188,7 +190,7 @@ const [intNew, setIntNew] = useState('');
       // Keep edition_id same unless you want to allow editing it; send it to be explicit
       const payload = { ...basePayload, edition_id: vehicle.edition_id };
       const r = await fetch(`${apiBase}/api/vehicles/${vehicle.vehicle_id}`, {
-        method: 'PUT', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload)
+        method: 'PUT', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload), credentials: 'include'
       });
       const data = await r.json().catch(()=>({}));
       if (!r.ok) return alert(data?.error || 'Failed to update vehicle');

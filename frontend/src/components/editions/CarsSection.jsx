@@ -1,7 +1,5 @@
 import { useState, useMemo } from "react";
-import CarImageUploader from "./CarImageUploader";
-import AvailableVehicles from "./AvailableVehicles";
-import Modal from "./Modal";
+import Modal from "../Modal";
 import EditionAttributeModal from "./EditionsForm";
 import EditionCompare from "./EditionCompare";
 import AvailableEditions from "./AvailableEditions";
@@ -29,22 +27,6 @@ export default function CarsSection() {
 
   return (
     <div>
-      {/* <AvailableCars onCarSelect={(car) =>
-        setSelectedCars((prev) =>
-          prev.some((c) => c.id === car.id)
-            ? prev.filter((c) => c.id !== car.id)
-            : [...prev, car]
-        )
-      } multiSelect={true} addButton={true} /> */}
-
-      {/* {compareIds.size > 0 && (
-        <CarImageUploader carId={compareIds} carMaker={compareIds} carModel={compareIds} />
-      )} */}
-
-      {/* <h2 style={{ marginTop: "20px" }}>Сравнение на коли</h2>
-      <CarComparison selectedCars={selectedCars} /> */}
-
-
       <h2 style={{ marginTop: "20px" }}>Управление на модели и техните атрибути</h2>
       <AvailableEditions
         refreshKey={refreshKey}

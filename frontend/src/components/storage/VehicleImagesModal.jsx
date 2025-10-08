@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import Modal from "./Modal";
+import Modal from "../Modal";
 import {
   listVehicleImages,
   uploadVehicleImages,
   deleteVehicleImage,
   setPrimaryVehicleImage,
   updateVehicleImageMeta
-} from "../services/api";
+} from "../../services/api";
 
 import {
   DndContext,

@@ -25,7 +25,7 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
   // load makes
   useEffect(() => {
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/makes`);
+      const r = await fetch(`${apiBase}/api/cascade/makes`, { credentials: 'include' });
       const data = await r.json();
       setMakes(data || []);
     })().catch(console.error);
@@ -36,7 +36,7 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
     setModels([]); setModelId(""); setYears([]); setYearId(""); setListEditions([]);
     if (!makeId) return;
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/models?make_id=${makeId}`);
+      const r = await fetch(`${apiBase}/api/cascade/models?make_id=${makeId}`, { credentials: 'include' });
       setModels(await r.json());
     })().catch(console.error);
   }, [makeId, apiBase]);
@@ -46,7 +46,7 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
     setYears([]); setYearId(""); setListEditions([]);
     if (!modelId) return;
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/model-years?model_id=${modelId}`);
+      const r = await fetch(`${apiBase}/api/cascade/model-years?model_id=${modelId}`, { credentials: 'include' });
       setYears(await r.json());
     })().catch(console.error);
   }, [modelId, apiBase]);
@@ -56,7 +56,7 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
     setListEditions([]);
     if (!yearId) return;
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${yearId}`);
+      const r = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${yearId}`, { credentials: 'include' });
       setListEditions(await r.json());
     })().catch(console.error);
   }, [yearId, apiBase]);
@@ -66,7 +66,7 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
     if (!isEdit) return;
     (async () => {
       try {
-        const r = await fetch(`${apiBase}/api/compares/${initial.compare_id}/selection`);
+        const r = await fetch(`${apiBase}/api/compares/${initial.compare_id}/selection`, { credentials: 'include' });
         if (!r.ok) return;
         const sel = await r.json();
 
@@ -75,7 +75,8 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
           const rr = await fetch(`${apiBase}/api/editions/compare`, {
             method: "POST",
             headers: { "Content-Type":"application/json" },
-            body: JSON.stringify({ edition_ids: sel.edition_ids, only_differences: 0 })
+            body: JSON.stringify({ edition_ids: sel.edition_ids, only_differences: 0 }),
+            credentials: 'include'
           });
           const cmp = await rr.json();
           const eds = cmp?.editions || [];
@@ -139,13 +140,15 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
         r = await fetch(`${apiBase}/api/compares/${initial.compare_id}`, {
           method: "PUT",
           headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
+          credentials: 'include'
         });
       } else {
         r = await fetch(`${apiBase}/api/compares`, {
           method: "POST",
           headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
+          credentials: 'include'
         });
       }
       const data = await r.json().catch(()=>null);

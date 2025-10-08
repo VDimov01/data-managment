@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { generateVehicleQr } from '../services/api';
+import { generateVehicleQr } from '../../services/api';
 import PrintSelectedLabelsButton from './PrintSelectedLabelsButton';
 
 export default function VehicleQRCell({ row, apiBase, onRowUpdate }) {

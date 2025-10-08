@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import Modal from "./Modal";
+import Modal from "../Modal.jsx";
 import { niceBytes, buildUrl } from "./ContractsSection.jsx"; // keep your helpers
-import { formatDateDMYLocal } from "../utils/dates.js";
+import { formatDateDMYLocal } from "../../utils/dates.js";
 import HandoverTab from "./HandoverTab.jsx";
 
 export default function AttachmentsModal({ apiBase, contract, onClose }) {
@@ -16,7 +16,7 @@ export default function AttachmentsModal({ apiBase, contract, onClose }) {
     try {
       // GET /api/contracts/:id/specs-pdfs
       const url = buildUrl(apiBase, `/api/contracts/${contract.contract_id}/specs-pdfs`);
-      const r = await fetch(url);
+      const r = await fetch(url, { credentials: 'include' });
       const data = await r.json();
       const list = data.attachments || data.vehicles || []; // tolerate both shapes
       setRows(Array.isArray(list) ? list : []);
@@ -37,7 +37,8 @@ export default function AttachmentsModal({ apiBase, contract, onClose }) {
       const r = await fetch(buildUrl(apiBase, `/api/contracts/${contract.contract_id}/specs-pdfs`), {
         method: "POST",
         headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ return_signed: false })
+        body: JSON.stringify({ return_signed: false }),
+        credentials: 'include'
       });
       const data = await r.json().catch(()=>({}));
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
@@ -55,7 +56,8 @@ export default function AttachmentsModal({ apiBase, contract, onClose }) {
       const r = await fetch(buildUrl(apiBase, `/api/contracts/${contract.contract_id}/specs-pdfs`), {
         method: "POST",
         headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ edition_id, return_signed: true, force: false })
+        body: JSON.stringify({ edition_id, return_signed: true, force: false }),
+        credentials: 'include'
       });
       const data = await r.json().catch(()=>({}));
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
@@ -84,7 +86,8 @@ export default function AttachmentsModal({ apiBase, contract, onClose }) {
       const r = await fetch(buildUrl(apiBase, `/api/contracts/${contract.contract_id}/specs-pdfs`), {
         method: "POST",
         headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ edition_id, return_signed: false, force: true })
+        body: JSON.stringify({ edition_id, return_signed: false, force: true }),
+        credentials: 'include'
       });
       const data = await r.json().catch(()=>({}));
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);

@@ -1,6 +1,6 @@
 // AvailableEditions.jsx
 import { useEffect, useMemo, useState } from "react";
-import {api} from "../services/api";
+import {api} from "../../services/api";
 
 export default function AvailableEditions({
   refreshKey = 0,
@@ -39,7 +39,8 @@ const ensureSpecs = async (row, { regenerate = true } = {}) => {
     const res = await fetch(`${apiBase}/api/editions/${id}/specs-pdf`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ regenerate })
+      body: JSON.stringify({ regenerate }),
+      credentials: 'include'
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data?.error || 'Spec pack failed');
@@ -61,7 +62,7 @@ const openLatestSpecs = async (row) => {
   const id = row.edition_id;
   setSpecBusy(prev => new Set(prev).add(id));
   try {
-    const res = await fetch(`${apiBase}/api/editions/${id}/specs-pdf/latest`);
+    const res = await fetch(`${apiBase}/api/editions/${id}/specs-pdf/latest`, { credentials: 'include' });
     const data = await res.json().catch(() => ({}));
     if (res.status === 404) return alert('No spec pack yet. Generate first.');
     if (!res.ok) throw new Error(data?.error || 'Failed to fetch latest spec pack');
@@ -108,22 +109,16 @@ const openLatestSpecs = async (row) => {
 
   const handleDelete = async (row) => {
     const title = `${row.make} ${row.model} ${row.year} — ${row.edition_name}`;
-    if (!window.confirm(`Delete edition:\n\n${title}\n\nThis cannot be undone.`)) return;
+    if (!window.confirm(`Изтриване на издание:\n\n${title}\n\nТова не може да бъде отменено.`)) return;
 
     setDeletingIds(prev => new Set(prev).add(row.edition_id));
     try {
-      const res = await fetch(`${apiBase}/api/editions/${row.edition_id}`, { method: 'DELETE' });
-      let data = null;
-      try { data = await res.json(); } catch {}
-      if (!res.ok) {
-        alert((data && data.error) || 'Failed to delete edition');
-        return;
-      }
+      await api(`/editions/${row.edition_id}`, { method: 'DELETE' });
       // remove local
       setItems(prev => prev.filter(e => e.edition_id !== row.edition_id));
       if (isSelected(row.edition_id)) onToggleSelect(row);
     } catch (e) {
-      console.error(e); alert('Network error while deleting.');
+      console.error(e); alert('Грешка в мрежата при изтриване.', e.message);
     } finally {
       setDeletingIds(prev => { const n = new Set(prev); n.delete(row.edition_id); return n; });
     }
@@ -133,12 +128,12 @@ const openLatestSpecs = async (row) => {
     <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 12 }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, alignItems: "center", marginBottom: 10 }}>
         <input
-          placeholder="Search make / model / year / edition…"
+          placeholder="Търси по производител, модел, година, издание…"
           value={q}
           onChange={(e) => { setQ(e.target.value); setPage(1); }}
         />
         <select
-          title="Rows per page"
+          title="Редове на страница"
           value={pageSize}
           onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
         >

@@ -27,7 +27,7 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
     setLoading(true);
     try {
       const url = buildUrl(apiBase, '/api/contracts', { page, limit, q: q.trim() || undefined });
-      const r = await fetch(url);
+      const r = await fetch(url, { credentials: 'include' });
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
       // Tolerate various payload shapes
@@ -60,7 +60,7 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
   if (!contractId) return;
   if (!confirm('Маркиране на договора като подписан и продажба на автомобилите?')) return;
   try {
-    const r = await fetch(`${apiBase}/api/contracts/${contractId}/sign`, { method:'POST' });
+    const r = await fetch(`${apiBase}/api/contracts/${contractId}/sign`, { method:'POST', credentials: 'include' });
     const data = await r.json();
     if (!r.ok) throw new Error(data?.error || 'Failed');
     if (data?.warnings?.length) alert(data.warnings.join('\n'));

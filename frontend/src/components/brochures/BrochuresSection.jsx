@@ -44,7 +44,7 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
       if (term) url.searchParams.set("q", term);
       url.searchParams.set("page", page);
       url.searchParams.set("limit", limit);
-      const r = await fetch(url);
+      const r = await fetch(url, { credentials: 'include' });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
       setRows(data.brochures || []);
@@ -65,7 +65,7 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
   const onDelete = async (row) => {
     if (!window.confirm(`Изтрий брошура "${row.title}"?`)) return;
     try {
-      const r = await fetch(`${apiBase}/api/brochures/${row.brochure_id}`, { method: "DELETE" });
+      const r = await fetch(`${apiBase}/api/brochures/${row.brochure_id}`, { method: "DELETE", credentials: 'include' });
       if (r.status === 204) {
         // remove locally
         setRows(prev => prev.filter(x => x.brochure_id !== row.brochure_id));
@@ -82,7 +82,7 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
 
   const onPreview = async (row) => {
     try {
-      const r = await fetch(`${apiBase}/api/brochures/${row.brochure_id}/resolve`);
+      const r = await fetch(`${apiBase}/api/brochures/${row.brochure_id}/resolve`, { credentials: 'include' });
       const data = await r.json();
       if (!r.ok) {
         console.error(data);
@@ -109,7 +109,7 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
     if (!window.confirm(confirmMsg)) return;
 
     try {
-      const r = await fetch(`${apiBase}/api/brochures/${row.brochure_id}/${action}`, { method: "POST" });
+      const r = await fetch(`${apiBase}/api/brochures/${row.brochure_id}/${action}`, { method: "POST", credentials: 'include' });
       const data = await r.json().catch(() => null);
       if (!r.ok) throw new Error(data?.error || `Failed to ${action}`);
 

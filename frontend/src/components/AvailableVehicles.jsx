@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { fetchVehicles, fetchColors, fetchEditions, fetchShopsNew } from "../services/api";
 import Modal from "./Modal";
-import EditionAttributeModal from "./EditionsForm";
-import EditionCompare from "./EditionCompare";
+import EditionAttributeModal from "./editions/EditionsForm";
+import EditionCompare from "./editions/EditionCompare";
 
 export default function AvailableVehicles() {
   const [vehicles, setVehicles] = useState([]);

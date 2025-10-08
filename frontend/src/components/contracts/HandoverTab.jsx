@@ -1,6 +1,6 @@
 // HandoverTab.jsx
 import React from "react";
-import { formatDateDMYDateOnly } from "../utils/dates";
+import { formatDateDMYDateOnly } from "../../utils/dates";
 
 function buildUrl(apiBase, path, params = {}) {
   const base = (apiBase || '').replace(/\/+$/, '');
@@ -15,7 +15,8 @@ async function apiCall(apiBase, path, { method='GET', body } = {}) {
   const r = await fetch(buildUrl(apiBase, `/api${path}`), {
     method,
     headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: 'include'
   });
   const data = await r.json().catch(()=> ({}));
   if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);

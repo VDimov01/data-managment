@@ -10,6 +10,7 @@ export function makeApi(apiBase) {
       method,
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
+      credentials: 'include'
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
@@ -306,7 +307,7 @@ async function handleCreateHandoverDrafts() {
   setCreatingHandover(true);
   try {
     await fetch(buildUrl(apiBase, `/api/handover/bulk-from-contract/${contract.contract_id}`), {
-      method: 'POST'
+      method: 'POST', credentials: 'include'
     }).then(r => r.json()).then(d => { if (d.error) throw new Error(d.error); });
     alert('Създадени са чернови за всички линии.');
   } catch (e) {
@@ -318,12 +319,12 @@ async function handleIssueAllHandover() {
   if (!contract?.contract_id) return;
   setIssuingAllHandover(true);
   try {
-    const data = await fetch(buildUrl(apiBase, `/api/handover/by-contract/${contract.contract_id}`))
+    const data = await fetch(buildUrl(apiBase, `/api/handover/by-contract/${contract.contract_id}`), { credentials: 'include' })
       .then(r => r.json());
     const list = Array.isArray(data.items) ? data.items : [];
     for (const hr of list) {
       if (hr.status === 'draft') {
-        const d = await fetch(buildUrl(apiBase, `/api/handover/${hr.handover_record_id}/issue`), { method:'POST' })
+        const d = await fetch(buildUrl(apiBase, `/api/handover/${hr.handover_record_id}/issue`), { method:'POST', credentials: 'include' })
           .then(r=>r.json());
         if (d?.pdf?.signedUrl) window.open(d.pdf.signedUrl, '_blank', 'noopener,noreferrer');
       }
@@ -519,7 +520,7 @@ async function handleIssueAllHandover() {
           onOpenLatest={async (uuid) => {
             try {
               const url = buildUrl(apiBase, `/api/contracts/${uuid}/pdf/latest`);
-              const r = await fetch(url);
+              const r = await fetch(url, { method: "GET", credentials: 'include' });
               const data = await r.json();
               if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
               if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer");
@@ -530,7 +531,7 @@ async function handleIssueAllHandover() {
           onRegenerate={async (id) => {
             try {
               const url = buildUrl(apiBase, `/api/contracts/${id}/pdf`);
-              const r = await fetch(url, { method: "POST" });
+              const r = await fetch(url, { method: "POST", credentials: 'include' });
               const data = await r.json();
               if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
               if (data?.pdf?.signedUrl && confirm("Open regenerated PDF?")) {
@@ -543,7 +544,7 @@ async function handleIssueAllHandover() {
           onIssue={async (id) => {
             try {
               const url = buildUrl(apiBase, `/api/contracts/${id}/issue`);
-              const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ override_reserved: false }) });
+              const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ override_reserved: false }), credentials: 'include' });
               const data = await r.json();
               if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
               if (data?.pdf?.signedUrl && confirm("Open PDF now?")) {
@@ -593,7 +594,7 @@ function CustomerPicker({ apiBase, value, onChange }) {
     try {
       setLoading(true);
       const url = buildUrl(apiBase, '/api/customers', { page: 1, limit: 50, q: q.trim() || undefined });
-      const r = await fetch(url);
+      const r = await fetch(url, { credentials: 'include' });
       const data = await r.json();
       setList(data.customers || data.items || data.rows || []);
     } catch (e) {
@@ -707,7 +708,7 @@ function VehiclePicker({ apiBase, onPick }) {
     setLoading(true);
     try {
       const url = buildUrl(apiBase, '/api/vehicles', { available: 1, q: q.trim() || undefined });
-      const r = await fetch(url);
+      const r = await fetch(url, { credentials: 'include' });
       const res = await r.json();
       // tolerate various payloads
       const rows = Array.isArray(res) ? res : (res.vehicles || res.items || res.rows || []);

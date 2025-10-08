@@ -11,7 +11,7 @@ export default function AttachCustomersPanelCompare({ apiBase, compareId }) {
       url.searchParams.set("page", 1);
       url.searchParams.set("limit", 50);
       if (q.trim()) url.searchParams.set("q", q.trim());
-      const r = await fetch(url);
+      const r = await fetch(url, { credentials: 'include' });
       const data = await r.json();
       setCustomers(data.customers || data.items || []); // adapt to your payload
     } catch (e) {
@@ -33,7 +33,8 @@ export default function AttachCustomersPanelCompare({ apiBase, compareId }) {
       const r = await fetch(`${apiBase}/api/compares/${compareId}/attach`, {
         method: "POST",
         headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ customer_id, is_visible: 1 })
+        body: JSON.stringify({ customer_id, is_visible: 1 }),
+        credentials: 'include'
       });
       if (!r.ok) {
         const j = await r.json().catch(()=>null);
@@ -47,7 +48,7 @@ export default function AttachCustomersPanelCompare({ apiBase, compareId }) {
 
   const detach = async (customer_id) => {
     try {
-      const r = await fetch(`${apiBase}/api/compares/${compareId}/attach/${customer_id}`, { method: "DELETE" });
+      const r = await fetch(`${apiBase}/api/compares/${compareId}/attach/${customer_id}`, { method: "DELETE", credentials: 'include' });
       if (r.status !== 204) {
         const j = await r.json().catch(()=>null);
         return alert(j?.error || "Неуспешно премахване");

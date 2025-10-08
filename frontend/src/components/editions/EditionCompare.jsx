@@ -53,7 +53,8 @@ export default function EditionCompare({ apiBase = "http://localhost:5000", edit
     const res = await fetch(`${apiBase}/api/editions/compare`, {
       method: "POST",
       headers: { "Content-Type":"application/json" },
-      body: JSON.stringify({ edition_ids: ids, only_differences: false }) // we filter client-side
+      body: JSON.stringify({ edition_ids: ids, only_differences: false }), // we filter client-side
+      credentials: 'include'
     });
     const json = await res.json();
     if (!res.ok) { console.error(json); alert(json.error || "compare failed"); return; }

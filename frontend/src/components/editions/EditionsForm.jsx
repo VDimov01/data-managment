@@ -88,6 +88,7 @@ async function regenerateSpecsForEdition(apiBase, edition_id) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ regenerate: true }),
+    credentials: 'include'
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || 'Spec pack generation failed');
@@ -161,7 +162,7 @@ useEffect(() => {
       setMode('select'); // open in Select mode
 
       // 1) MAKES
-      const makesData = await fetch(`${apiBase}/api/cascade/makes`).then(r => r.json());
+      const makesData = await fetch(`${apiBase}/api/cascade/makes`, { credentials: 'include' }).then(r => r.json());
       if (cancelled) return;
       setMakes(makesData);
 
@@ -173,7 +174,7 @@ useEffect(() => {
       setMakeId(String(makeMatch.make_id));
 
       // 2) MODELS (for that make)
-      const modelsData = await fetch(`${apiBase}/api/cascade/models?make_id=${makeMatch.make_id}`).then(r => r.json());
+      const modelsData = await fetch(`${apiBase}/api/cascade/models?make_id=${makeMatch.make_id}`, { credentials: 'include' }).then(r => r.json());
       if (cancelled) return;
       setModels(modelsData);
 
@@ -185,7 +186,7 @@ useEffect(() => {
       setModelId(String(modelMatch.model_id));
 
       // 3) YEARS (for that model)
-      const yearsData = await fetch(`${apiBase}/api/cascade/model-years?model_id=${modelMatch.model_id}`).then(r => r.json());
+      const yearsData = await fetch(`${apiBase}/api/cascade/model-years?model_id=${modelMatch.model_id}`, { credentials: 'include' }).then(r => r.json());
       if (cancelled) return;
       setYears(yearsData);
 
@@ -198,7 +199,7 @@ useEffect(() => {
       setModelYearId(String(yearMatch.model_year_id));
 
       // 4) EDITIONS (for that year)
-      const edsData = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${yearMatch.model_year_id}`).then(r => r.json());
+      const edsData = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${yearMatch.model_year_id}`, { credentials: 'include' }).then(r => r.json());
       if (cancelled) return;
       setEditions(edsData);
 
@@ -221,13 +222,13 @@ useEffect(() => {
 
   // ---------- Shared loaders (SELECT MODE) ----------
   const loadMakes = async () => {
-    const r = await fetch(`${apiBase}/api/cascade/makes`);
+    const r = await fetch(`${apiBase}/api/cascade/makes`, { credentials: 'include' });
     setMakes(await r.json());
   };
   useEffect(() => { loadMakes().catch(console.error); }, [apiBase]);
 
   const loadModels = async (mkId) => {
-    const r = await fetch(`${apiBase}/api/cascade/models?make_id=${mkId}`);
+    const r = await fetch(`${apiBase}/api/cascade/models?make_id=${mkId}`, { credentials: 'include' });
     setModels(await r.json());
   };
   useEffect(() => {
@@ -237,7 +238,7 @@ useEffect(() => {
   }, [makeId]);
 
   const loadYears = async (mdId) => {
-    const r = await fetch(`${apiBase}/api/cascade/model-years?model_id=${mdId}`);
+    const r = await fetch(`${apiBase}/api/cascade/model-years?model_id=${mdId}`, { credentials: 'include' });
     setYears(await r.json());
   };
   useEffect(() => {
@@ -247,7 +248,7 @@ useEffect(() => {
   }, [modelId]);
 
   const loadEditions = async (myId) => {
-    const r = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${myId}`);
+    const r = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${myId}`, { credentials: 'include' });
     setEditions(await r.json());
   };
   useEffect(() => {
@@ -260,10 +261,10 @@ useEffect(() => {
 // attributes for selected edition (merge EFFECTIVE + SPECS, incl. JSON for ALL types)
 const loadEditionAttributes = async (edId) => {
   // 1) attribute defs + effective values (edition/year/model)
-  const defs = await fetch(`${apiBase}/api/editions/${edId}/attributes?effective=1&lang=bg`).then(r => r.json());
+  const defs = await fetch(`${apiBase}/api/editions/${edId}/attributes?effective=1&lang=bg`, { credentials: 'include' }).then(r => r.json());
 
   // 2) JSON/EAV sidecar
-  const specs = await fetch(`${apiBase}/api/editions/${edId}/specs?lang=bg`).then(r => r.json());
+  const specs = await fetch(`${apiBase}/api/editions/${edId}/specs?lang=bg`, { credentials: 'include' }).then(r => r.json());
   const eavNum  = new Map((specs?.eav?.numeric  || []).map(row => [row.code, row.val]));
   const eavBool = new Map((specs?.eav?.boolean || []).map(row => [row.code, row.val ? 1 : 0]));
   const jsonAttrs = specs?.json?.attributes || {};
@@ -348,7 +349,7 @@ const loadEditionAttributes = async (edId) => {
 
     if (makeSel.mode !== 'existing' || !makeSel.value) return;
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/models?make_id=${makeSel.value}`);
+      const r = await fetch(`${apiBase}/api/cascade/models?make_id=${makeSel.value}`, { credentials: 'include' });
       setCModels(await r.json());
     })().catch(console.error);
   }, [makeSel.mode, makeSel.value, apiBase]);
@@ -361,7 +362,7 @@ const loadEditionAttributes = async (edId) => {
 
     if (modelSel.mode !== 'existing' || !modelSel.value) return;
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/model-years?model_id=${modelSel.value}`);
+      const r = await fetch(`${apiBase}/api/cascade/model-years?model_id=${modelSel.value}`, { credentials: 'include' });
       setCYears(await r.json());
     })().catch(console.error);
   }, [modelSel.mode, modelSel.value, apiBase]);
@@ -373,7 +374,7 @@ const loadEditionAttributes = async (edId) => {
 
     if (yearSel.mode !== 'existing' || !yearSel.value) return;
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${yearSel.value}`);
+      const r = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${yearSel.value}`, { credentials: 'include' });
       setCEds(await r.json());
     })().catch(console.error);
   }, [yearSel.mode, yearSel.value, apiBase]);
@@ -418,7 +419,8 @@ const loadEditionAttributes = async (edId) => {
     const r = await fetch(`${apiBase}/api/editions`, {
       method: "POST",
       headers: { "Content-Type":"application/json" },
-      body: JSON.stringify({ make: makeName, model: modelName, year: yearNumber, editionName })
+      body: JSON.stringify({ make: makeName, model: modelName, year: yearNumber, editionName }),
+      credentials: 'include'
     });
     const data = await r.json();
 
@@ -564,7 +566,8 @@ const submitSpecs = async (e) => {
   const r = await fetch(`${apiBase}/api/editions/${editionId}/specs`, {
     method: "POST",
     headers: { "Content-Type":"application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    credentials: 'include'
   });
   const data = await r.json();
 

@@ -3,6 +3,7 @@ export async function createOffer(data) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+    credentials: 'include'
   });
 
   return res.json();
@@ -13,6 +14,7 @@ export const sendOfferEmail = async (offerId, clientEmail) => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ offerId, client_email: clientEmail }),
+    credentials: 'include'
   });
 
   const data = await res.json();
@@ -21,55 +23,55 @@ export const sendOfferEmail = async (offerId, clientEmail) => {
 };
 
 export const fetchCars = async () => {
-  const res = await fetch("http://localhost:5000/api/cars");
+  const res = await fetch("http://localhost:5000/api/cars", { credentials: 'include' });
   if (!res.ok) throw new Error("Failed to fetch cars");
   return res.json();
 };
 
 export const fetchVehicles = async () => {
-  const res = await fetch("http://localhost:5000/api/vehicles");
+  const res = await fetch("http://localhost:5000/api/vehicles", { credentials: 'include' });
   if (!res.ok) throw new Error("Failed to fetch vehicles");
   return res.json();
 };
 
 export const fetchEditions = async () => {
-  const res = await fetch("http://localhost:5000/api/editions");
+  const res = await fetch("http://localhost:5000/api/editions", { credentials: 'include' });
   if (!res.ok) throw new Error("Failed to fetch editions");
   return res.json();
 }
 
 export const fetchColors = async () => {
-  const res = await fetch("http://localhost:5000/api/colors");
+  const res = await fetch("http://localhost:5000/api/colors", { credentials: 'include' });
   if (!res.ok) throw new Error("Failed to fetch colors");
   return res.json();
 };
 
 export const fetchShopsNew = async () => {
-  const res = await fetch("http://localhost:5000/api/shops/new");
+  const res = await fetch("http://localhost:5000/api/shops/new", { credentials: 'include' });
   if (!res.ok) throw new Error("Failed to fetch new shops");
   return res.json();
 };
 
 export const fetchClients = async () => {
-  const res = await fetch("http://localhost:5000/api/clients");
+  const res = await fetch("http://localhost:5000/api/clients", { credentials: 'include' });
   if (!res.ok) throw new Error("Failed to fetch clients");
   return res.json();
 }
 
 export const fetchCompanies = async () => {
-  const res = await fetch("http://localhost:5000/api/companies");
+  const res = await fetch("http://localhost:5000/api/companies", { credentials: 'include' });
   if (!res.ok) throw new Error("Failed to fetch companies");
   return res.json();
 }
 
 export const fetchStorage = async () => {
-  const res = await fetch("http://localhost:5000/api/storage");
+  const res = await fetch("http://localhost:5000/api/storage", { credentials: 'include' });
   if (!res.ok) throw new Error("Failed to fetch storage");
   return res.json();
 }
 
 export const fetchShops = async () => {
-  const res = await fetch("http://localhost:5000/api/shops/new");
+  const res = await fetch("http://localhost:5000/api/shops/new", { credentials: 'include' });
   if (!res.ok) throw new Error("Failed to fetch shops");
   return res.json();
 }
@@ -80,26 +82,26 @@ export async function searchContracts(query = "", page = 1, limit = 10) {
     page: String(page),
     limit: String(limit),
   });
-  const res = await fetch(`http://localhost:5000/api/contracts/search?${params.toString()}`);
+  const res = await fetch(`http://localhost:5000/api/contracts/search?${params.toString()}`, { credentials: 'include' });
   if (!res.ok) throw new Error("Failed to search contracts");
   return res.json();
 }
 
 export const fetchImages = async (carId, carMaker, carModel) => {
-    const res = await fetch(`http://localhost:5000/api/car-images/${carId}^${carMaker}^${carModel}`);
+    const res = await fetch(`http://localhost:5000/api/car-images/${carId}^${carMaker}^${carModel}`, { credentials: 'include' });
     if(!res.ok) throw new Error("Failed to fetch images");
     return res.json();
   };
 
 export async function generateVehicleQr(apiBase, vehicleId) {
-  const r = await fetch(`${apiBase}/api/qr/vehicles/${vehicleId}`, { method: 'POST' });
+  const r = await fetch(`${apiBase}/api/qr/vehicles/${vehicleId}`, { method: 'POST', credentials: 'include' });
   if (!r.ok) throw new Error(await r.text());
   return r.json(); // { qr_png_path, destination, ... }
 }
 
 // --- Vehicle images (private) ---
 export async function listVehicleImages(apiBase, vehicleId) {
-  const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images`);
+  const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images`, { credentials: 'include' });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
@@ -110,13 +112,14 @@ export async function uploadVehicleImages(apiBase, vehicleId, files) {
   const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images`, {
     method: 'POST',
     body: fd,
+    credentials: 'include'
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json(); // { created: [...] }
 }
 
 export async function setPrimaryVehicleImage(apiBase, vehicleId, imageId) {
-  const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images/${imageId}/primary`, { method: 'POST' });
+  const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images/${imageId}/primary`, { method: 'POST', credentials: 'include' });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
@@ -125,14 +128,15 @@ export async function updateVehicleImageMeta(apiBase, vehicleId, imageId, { capt
   const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images/${imageId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ caption, sort_order })
+    body: JSON.stringify({ caption, sort_order }),
+    credentials: 'include'
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 
 export async function deleteVehicleImage(apiBase, vehicleId, imageId) {
-  const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images/${imageId}`, { method: 'DELETE' });
+  const r = await fetch(`${apiBase}/api/vehicleImages/${vehicleId}/images/${imageId}`, { method: 'DELETE', credentials: 'include' });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
@@ -153,14 +157,14 @@ export async function getPublicVehicleImages(apiBase, uuid) {
 
 // Edition attributes (your existing resolver)
 export async function getEditionAttributes(apiBase, editionId, lang = 'bg') {
-  const r = await fetch(`${apiBase}/api/editions/${editionId}/specs?lang=${lang}`);
+  const r = await fetch(`${apiBase}/api/editions/${editionId}/specs?lang=${lang}`, { credentials: 'include' });
   if (!r.ok) throw new Error(await r.text());
   return r.json(); // shape depends on your resolver
 }
 
 export async function listEditionImages(apiBase, editionId, maker, model, year) {
   const safe = (s) => encodeURIComponent(String(s ?? "").trim().replace(/-/g, " ").replace(/\s+/g, " "));
-  const r = await fetch(`${apiBase}/api/car-images/${editionId}-${safe(maker)}-${safe(model)}-${safe(year)}`);
+  const r = await fetch(`${apiBase}/api/car-images/${editionId}-${safe(maker)}-${safe(model)}-${safe(year)}`, { credentials: 'include' });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
@@ -170,7 +174,7 @@ export async function uploadEditionImages(apiBase, editionId, maker, model, year
   const fd = new FormData();
   for (const f of files) fd.append("images", f);
   const r = await fetch(`${apiBase}/api/car-images/${editionId}-${safe(maker)}-${safe(model)}-${safe(year)}-${part}`, {
-    method: "POST", body: fd
+    method: "POST", body: fd, credentials: 'include'
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
@@ -181,6 +185,7 @@ export async function patchEditionImage(apiBase, id, patch) {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(patch),
+    credentials: 'include'
   });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || 'Patch failed');
@@ -189,7 +194,7 @@ export async function patchEditionImage(apiBase, id, patch) {
 
 
 export async function deleteEditionImage(apiBase, imageId) {
-  const r = await fetch(`${apiBase}/api/car-images/${imageId}`, { method: "DELETE" });
+  const r = await fetch(`${apiBase}/api/car-images/${imageId}`, { method: "DELETE", credentials: 'include' });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }

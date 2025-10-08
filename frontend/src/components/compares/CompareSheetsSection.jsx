@@ -39,7 +39,7 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
       if (term) url.searchParams.set("q", term);
       url.searchParams.set("page", page);
       url.searchParams.set("limit", limit);
-      const r = await fetch(url);
+      const r = await fetch(url, { credentials: 'include' });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
       setRows(data.compares || []);
@@ -60,7 +60,7 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
   const onDelete = async (row) => {
     if (!window.confirm(`Изтриване на сравнение: "${row.title}"?`)) return;
     try {
-      const r = await fetch(`${apiBase}/api/compares/${row.compare_id}`, { method: "DELETE" });
+      const r = await fetch(`${apiBase}/api/compares/${row.compare_id}`, { method: "DELETE", credentials: 'include' });
       if (r.status === 204) {
         setRows(prev => prev.filter(x => x.compare_id !== row.compare_id));
         setTotal(t => Math.max(0, t - 1));
@@ -76,7 +76,7 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
 
   const onPreview = async (row) => {
     try {
-      const r = await fetch(`${apiBase}/api/compares/${row.compare_id}/resolve`);
+      const r = await fetch(`${apiBase}/api/compares/${row.compare_id}/resolve`, { credentials: 'include' });
       const data = await r.json();
       if (!r.ok) {
         console.error(data);
