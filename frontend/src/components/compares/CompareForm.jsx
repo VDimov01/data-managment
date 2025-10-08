@@ -93,7 +93,7 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
         setLanguage(sel.language || "bg");
         setSnapshot(!!sel.is_snapshot);
       } catch (e) {
-        console.error("prefill compare selection failed", e);
+        console.error("Автоматичното попълване на селекцията е неуспешно", e);
       }
     })();
   }, [isEdit, initial, apiBase]);
@@ -121,8 +121,8 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
   };
 
   const save = async () => {
-    if (!title.trim()) return alert("Title is required");
-    if (selected.length === 0) return alert("Select at least one edition");
+    if (!title.trim()) return alert("Заглавието е задължително");
+    if (selected.length === 0) return alert("Изберете поне едно издание");
 
     const body = {
       title: title.trim(),
@@ -163,12 +163,12 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
     <div className="cmp-form">
       <div className="cmp-grid">
   <div className="cmp-field cmp-col-2">
-    <label>Title *</label>
+    <label>Заглавие *</label>
     <input value={title} onChange={(e)=>setTitle(e.target.value)} />
   </div>
 
   <div className="cmp-field">
-    <label>Language</label>
+    <label>Език</label>
     <select value={language} onChange={e=>setLanguage(e.target.value)}>
       <option value="bg">BG</option>
       <option value="en">EN</option>
@@ -176,15 +176,15 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
   </div>
 
   <div className="cmp-field">
-    <label>Only differences</label>
+    <label>Покажи само разликите</label>
     <div className="cmp-check">
       <input type="checkbox" checked={onlyDiff} onChange={()=>setOnlyDiff(v=>!v)} />
-      <span>Show only differing attributes</span>
+      <span>Покажи само различаващите се атрибути</span>
     </div>
   </div>
 
   <div className="cmp-field cmp-col-2">
-    <label>Description</label>
+    <label>Описание</label>
     <textarea rows={2} value={description} onChange={e=>setDescription(e.target.value)} />
   </div>
 
@@ -192,43 +192,43 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
     <label>Snapshot</label>
     <div className="cmp-check">
       <input type="checkbox" checked={snapshot} onChange={()=>setSnapshot(v=>!v)} />
-      <span>Freeze data in compare</span>
+      <span>Замрази данните в сравнението</span>
     </div>
   </div>
 </div>
 
       <fieldset className="cmp-fieldset">
-  <legend>Add editions</legend>
+  <legend>Добави издания</legend>
 
   <div className="cmp-grid">
     <div className="cmp-field">
-      <label>Make</label>
+      <label>Марка</label>
       <select value={makeId} onChange={(e)=>setMakeId(e.target.value)}>
-        <option value="">Select make…</option>
+        <option value="">Изберете марка…</option>
         {makes.map(m => <option key={m.make_id} value={m.make_id}>{m.name}</option>)}
       </select>
     </div>
 
     <div className="cmp-field">
-      <label>Model</label>
+      <label>Модел</label>
       <select value={modelId} onChange={(e)=>setModelId(e.target.value)} disabled={!makeId}>
-        <option value="">Select model…</option>
+        <option value="">Изберете модел…</option>
         {models.map(m => <option key={m.model_id} value={m.model_id}>{m.name}</option>)}
       </select>
     </div>
 
     <div className="cmp-field">
-      <label>Year</label>
+      <label>Година</label>
       <select value={yearId} onChange={(e)=>setYearId(e.target.value)} disabled={!modelId}>
-        <option value="">Select year…</option>
+        <option value="">Изберете година…</option>
         {years.map(y => <option key={y.model_year_id} value={y.model_year_id}>{y.year}</option>)}
       </select>
     </div>
 
     <div className="cmp-field">
-      <label>Edition</label>
+      <label>Издание</label>
       <select onChange={addEdition} disabled={!yearId}>
-        <option value="">Add an edition…</option>
+        <option value="">Добави издание…</option>
         {listEditions.map(ed => (
           <option key={ed.edition_id} value={ed.edition_id}>
             {ed.name} ({ed.year})
@@ -239,18 +239,18 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
   </div>
 
   <div className="cmp-basket">
-    {selected.length === 0 && <div className="cmp-muted">No editions selected yet.</div>}
+    {selected.length === 0 && <div className="cmp-muted">Все още няма избрани издания.</div>}
     {selected.map(e => (
       <div key={e.edition_id} className="cmp-chip">
         <span>{e.make_name ? `${e.make_name} ` : ""}{e.model_name ? `${e.model_name} ` : ""}{e.year} — {e.edition_name}</span>
-        <button type="button" onClick={() => removeEdition(e.edition_id)} title="Remove">×</button>
+        <button type="button" onClick={() => removeEdition(e.edition_id)} title="Премахни">×</button>
       </div>
     ))}
   </div>
 </fieldset>
 
       <div className="cmp-actions-end">
-        <button className="cmp-primary" onClick={save}>{isEdit ? "Save Changes" : "Create Compare"}</button>
+        <button className="cmp-primary" onClick={save}>{isEdit ? "Запази промените" : "Създай сравнение"}</button>
       </div>
     </div>
   );

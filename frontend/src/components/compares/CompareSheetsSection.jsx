@@ -46,7 +46,7 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
       setTotal(data.total || 0);
     } catch (e) {
       console.error(e);
-      setErr(e.message || "Failed to load compare sheets");
+      setErr(e.message || "Неуспешно зареждане на сравнения");
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,7 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
   const onEdit = (row) => { setEditing(row); setOpenForm(true); };
 
   const onDelete = async (row) => {
-    if (!window.confirm(`Delete compare "${row.title}"?`)) return;
+    if (!window.confirm(`Изтриване на сравнение: "${row.title}"?`)) return;
     try {
       const r = await fetch(`${apiBase}/api/compares/${row.compare_id}`, { method: "DELETE" });
       if (r.status === 204) {
@@ -66,11 +66,11 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
         setTotal(t => Math.max(0, t - 1));
       } else {
         const j = await r.json().catch(()=>null);
-        alert(j?.error || "Delete failed");
+        alert(j?.error || "Неуспешно изтриване");
       }
     } catch (e) {
       console.error(e);
-      alert("Delete failed");
+      alert("Неуспешно изтриване");
     }
   };
 
@@ -80,12 +80,12 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
       const data = await r.json();
       if (!r.ok) {
         console.error(data);
-        return alert(data.error || "Resolve failed");
+        return alert(data.error || "Неуспешно разрешаване");
       }
       setPreviewData({ title: row.title, ...data });
       setOpenPreview(true);
     } catch (e) {
-      console.error(e); alert("Preview failed");
+      console.error(e); alert("Неуспешно предварително преглеждане");
     }
   };
 
@@ -98,20 +98,20 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
     <div className="cmp-container">
       <div className="cmp-toolbar">
         <input
-          placeholder="Search title/description…"
+          placeholder="Търси по заглавие..."
           value={q}
           onChange={(e) => { setQ(e.target.value); setPage(1); }}
         />
         <div className="cmp-toolbar-right">
           <select value={limit} onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}>
-            {[10,20,50,100].map(n => <option key={n} value={n}>{n}/page</option>)}
+            {[10,20,50,100].map(n => <option key={n} value={n}>{n}/страница</option>)}
           </select>
-          <button className="cmp-primary" onClick={onCreate}>+ New Compare</button>
+          <button className="cmp-primary" onClick={onCreate}>+ Ново сравнение</button>
         </div>
       </div>
 
-      {loading && <p className="cmp-muted">Loading…</p>}
-      {err && <p className="cmp-error">Error: {err}</p>}
+      {loading && <p className="cmp-muted">Зареждане...</p>}
+      {err && <p className="cmp-error">Грешка: {err}</p>}
 
       {!loading && !err && (
         <>
@@ -120,18 +120,18 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Title</th>
-                  <th>Diffs</th>
-                  <th>Lang</th>
+                  <th>Заглавие</th>
+                  <th>Само разлики</th>
+                  <th>Език</th>
                   <th>Snapshot</th>
-                  <th>Created</th>
-                  <th style={{width:220}}>Actions</th>
+                  <th>Създаден</th>
+                  <th style={{width:220}}>Действия</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="cmp-muted">No compare sheets.</td>
+                    <td colSpan={7} className="cmp-muted">Няма сравнения.</td>
                   </tr>
                 )}
                 {rows.map(r => (
@@ -144,10 +144,10 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
                     <td>{r.created_at?.slice(0,19).replace('T',' ') || ""}</td>
                     <td>
                       <div className="cmp-actions">
-                        <button onClick={() => onPreview(r)}>Preview</button>
-                        <button onClick={() => onOpenAttach(r)}>Attach</button>
-                        <button onClick={() => onEdit(r)}>Edit</button>
-                        <button className="cmp-danger" onClick={() => onDelete(r)}>Delete</button>
+                        <button className="btn" onClick={() => onPreview(r)}>Преглед</button>
+                        <button className="btn" onClick={() => onOpenAttach(r)}>Закачи към клиенти</button>
+                        <button className="btn" onClick={() => onEdit(r)}>Редактиране</button>
+                        <button className="cmp-danger" onClick={() => onDelete(r)}>Изтриване</button>
                       </div>
                     </td>
                   </tr>
@@ -169,7 +169,7 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
       {/* Create/Edit */}
       <Modal
         open={openForm}
-        title={editing ? `Edit Compare #${editing.compare_id}` : "Create Compare"}
+        title={editing ? `Редактирай сравнение #${editing.compare_id}` : "Създай сравнение между издания"}
         onClose={() => setOpenForm(false)}
         maxWidth={980}
       >
@@ -187,13 +187,13 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
         onClose={() => { setOpenPreview(false); setPreviewData(null); }}
         maxWidth={1100}
       >
-        {previewData ? <ComparePreview data={previewData} /> : <p>Loading…</p>}
+        {previewData ? <ComparePreview data={previewData} /> : <p>Зареждане…</p>}
       </Modal>
 
       {/* Attach to customers */}
       <Modal
         open={openAttach}
-        title={attachFor ? `Attach to customers — ${attachFor.title}` : "Attach"}
+        title={attachFor ? `Закачи към клиенти — ${attachFor.title}` : "Закачи"}
         onClose={() => { setOpenAttach(false); setAttachFor(null); }}
         maxWidth={900}
       >
@@ -246,7 +246,7 @@ function ComparePreview({ data }) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={1 + editions.length} className="cmp-muted">No data</td>
+                <td colSpan={1 + editions.length} className="cmp-muted">Няма налични данни</td>
               </tr>
             )}
           </tbody>
@@ -280,7 +280,7 @@ function Pagination({ page, totalPages, onPrev, onNext, onJump }) {
 
   return (
     <div className="cmp-pages">
-      <button onClick={onPrev} disabled={page<=1}>Prev</button>
+      <button onClick={onPrev} disabled={page<=1}>Предишна</button>
       {pages.map((p, i) => p === "…" ? (
         <span key={`e-${i}`} className="cmp-ellipsis">…</span>
       ) : (
@@ -292,7 +292,7 @@ function Pagination({ page, totalPages, onPrev, onNext, onJump }) {
           {p}
         </button>
       ))}
-      <button onClick={onNext} disabled={page>=totalPages}>Next</button>
+      <button onClick={onNext} disabled={page>=totalPages}>Следваща</button>
     </div>
   );
 }
