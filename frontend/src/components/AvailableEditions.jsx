@@ -1,5 +1,6 @@
 // AvailableEditions.jsx
 import { useEffect, useMemo, useState } from "react";
+import {api} from "../services/api";
 
 export default function AvailableEditions({
   refreshKey = 0,
@@ -79,9 +80,7 @@ const openLatestSpecs = async (row) => {
   const load = async () => {
     setLoading(true); setErr(null);
     try {
-      const r = await fetch(`${apiBase}/api/editions`);
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
+      const data = await api(`/editions`);
       setItems(data || []);
     } catch (e) { console.error(e); setErr(e.message || "Failed to load"); }
     finally { setLoading(false); }
