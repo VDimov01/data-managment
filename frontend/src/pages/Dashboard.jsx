@@ -6,7 +6,8 @@ import ContractsSection from "../components/ContractsSection";
 import BrochuresSection from "../components/brochures/BrochuresSection";
 import CustomerSection from '../components/customers/CustomerSection';
 import CompareSheetsSection from "../components/compares/CompareSheetsSection";
-
+import { useAuth } from "../auth/AuthContext";
+import { api } from "../services/api";
 
 
 export default function Dashboard() {
@@ -14,20 +15,17 @@ export default function Dashboard() {
   const lastname = localStorage.getItem("lastname");
   const [cars, setCars] = useState([]);
   const [activeTab, setActiveTab] = useState("cars"); // cars | offers | storage
-
+  const {user} = useAuth();
   const apiBase = "http://localhost:5000";
 
-  const handleLogout = () => {
-    ["token", "username", "firstname", "lastname"].forEach((item) =>
-      localStorage.removeItem(item)
-    );
+  const handleLogout = async () => {
+    await api('/auth/logout', { method: 'POST' });
     window.location.href = "/login";
   };
 
-
   return (
     <div className="dashboard-container">
-      <h1>Welcome, {firstname} {lastname}!</h1>
+      <h1>Добре дошъл, {user.name}!</h1>
 
       {/* Tab Buttons */}
       <div className="tab-buttons">

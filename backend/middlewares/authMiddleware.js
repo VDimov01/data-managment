@@ -1,17 +1,34 @@
+// backend/middlewares/authMiddleware.js
 const jwt = require('jsonwebtoken');
 
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader?.split(' ')[1];
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
-  if (!token) return res.status(401).json({ error: 'Missing token' });
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid token' });
-
-    req.user = user;
-    next();
-  });
+function readToken(req) {
+  const h = req.headers['authorization'] || '';
+  const m = /^Bearer\s+(.+)$/.exec(h);
+  if (m) return m[1];
+  if (req.cookies && req.cookies.auth_token) return req.cookies.auth_token;
+  return null;
 }
 
-module.exports = authenticateToken;
+function requireAuth(req, res, next) {
+  try {
+    const token = readToken(req);
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload; // { sub, uuid, email, username, role }
+    next();
+  } catch {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+}
+
+function requireRole(role) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    if (role && req.user.role !== role) return res.status(403).json({ error: 'Forbidden' });
+    next();
+  };
+}
+
+module.exports = { requireAuth, requireRole };

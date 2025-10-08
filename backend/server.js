@@ -2,9 +2,16 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const { requireAuth } = require('./middlewares/authMiddleware');
+
 const { v4: uuidv4 } = require('uuid');
 const db = require('./db');
-const authRoutes = require('./routes/auth');
+
+const authRouter = require('./routes/auth');
+const publicRouter = require('./routes/public');
+
+
 const offersRoutes = require('./routes/offers');
 const shopsRoutes = require('./routes/shops');
 const carImagesRoutes = require('./routes/carImages');
@@ -16,7 +23,6 @@ const cascadeRoutes = require('./routes/cascade');
 const customerRoutes = require('./routes/customer');
 const brochureRoutes = require('./routes/brochures');
 const compareRoutes = require('./routes/compares');
-const publicRoutes = require('./routes/public');
 const qrRoutes = require('./routes/qr');
 const labelsRoutes = require('./routes/labels');
 const vehicleImagesRoutes = require('./routes/vehicleImages');
@@ -27,13 +33,50 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+// Allow-list multiple origins (comma-separated)
+const ORIGINS = (process.env.FRONTEND_ORIGINS || 'http://localhost:5173')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+// app.set('trust proxy', 1); // needed for secure cookies behind a proxy
+
+app.use(cors({
+  origin(origin, cb) {
+    // allow same-origin/non-browser or no origin
+    if (!origin) return cb(null, true);
+    if (ORIGINS.includes(origin)) return cb(null, true);
+    return cb(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 
 // Middlewares
-app.use(cors());
 app.use(express.json());
-//app.use(express.json({ limit: '2mb' }));
 
-app.use('/api/login', authRoutes);
+app.use(cors({
+  origin(origin, cb) {
+    // allow same-origin/non-browser or no origin
+    if (!origin) return cb(null, true);
+    if (ORIGINS.includes(origin)) return cb(null, true);
+    return cb(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
+
+app.use(express.json({ limit: '5mb' }));
+app.use(cookieParser());
+
+// health
+app.get('/api/health', (_, res) => res.json({ ok: true }));
+
+// Public + auth (no guards)
+app.use('/api/public', publicRouter);
+app.use('/api/auth', authRouter);
+
+// guard everything else
+app.use('/api', requireAuth);
+
 app.use('/api/offers', offersRoutes);
 app.use("/offers", express.static(path.join(__dirname, "offers")));
 app.use('/api/shops', shopsRoutes);
@@ -48,7 +91,6 @@ app.use('/api/cascade', cascadeRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/brochures', brochureRoutes);
 app.use('/api/compares', compareRoutes);
-app.use('/api/public', publicRoutes);
 app.use('/api/qr', qrRoutes);
 app.use('/api/labels', labelsRoutes);
 app.use('/api/vehicleImages', vehicleImagesRoutes);

@@ -193,3 +193,33 @@ export async function deleteEditionImage(apiBase, imageId) {
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
+
+export function buildUrl(base, path, params = {}) {
+  const b = (base || '').replace(/\/+$/, '');
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && String(v).trim() !== '') qs.append(k, v);
+  });
+  return `${b}${path}${qs.toString() ? `?${qs.toString()}` : ''}`;
+}
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+export async function api(path, { method = 'GET', body, headers } = {}) {
+  const r = await fetch(`${API_BASE}/api${path}`, {
+    method,
+    headers: body
+      ? { 'Content-Type': 'application/json', ...(headers || {}) }
+      : headers,
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: 'include', // <-- send the auth cookie
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const err = new Error(data?.error || `HTTP ${r.status}`);
+    err.status = r.status;
+    throw err;
+  }
+  return data;
+}
+

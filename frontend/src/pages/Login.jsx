@@ -1,62 +1,44 @@
-import { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 
 export default function Login() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const { login } = useAuth();
   const navigate = useNavigate();
+  const [id, setId] = React.useState('');       // email or username
+  const [pw, setPw] = React.useState('');
+  const [err, setErr] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
 
-  const handleLogin = async (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-
+    setErr('');
+    setBusy(true);
     try {
-      const res = await fetch('http://localhost:5000/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Login failed');
-        return;
-      }
-
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('adminUUID', data.uuid);
-      localStorage.setItem('username', data.username);
-      localStorage.setItem('firstname', data.firstname);
-      localStorage.setItem('lastname', data.lastname);
-      navigate("/dashboard");
-    } catch (err) {
-      console.error(err);
-      setError('Network error: ' + (err.message || 'Login failed'));
+      await login({ emailOrUsername: id, password: pw });
+      navigate('/dashboard', { replace: true });
+    } catch (e) {
+      setErr(e.message || 'Login failed');
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
-    <div className="login-container">
-      <form onSubmit={handleLogin} className="login-form">
-        <h2>Admin Login</h2>
-        {error && <p className="error">{error}</p>}
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button type="submit">Log In</button>
+    <div style={{ maxWidth: 360, margin: '80px auto', padding: 16 }}>
+      <h2>Admin Login</h2>
+      <form onSubmit={onSubmit}>
+        <label style={{ display: 'block', marginTop: 12 }}>Email / Username</label>
+        <input className="inp" value={id} onChange={e => setId(e.target.value)} />
+
+        <label style={{ display: 'block', marginTop: 12 }}>Password</label>
+        <input className="inp" type="password" value={pw} onChange={e => setPw(e.target.value)} />
+
+        {err && <div style={{ color: '#b91c1c', marginTop: 8 }}>{err}</div>}
+
+        <button className="btn primary" type="submit" style={{ marginTop: 16 }} disabled={busy}>
+          {busy ? 'Signing in…' : 'Sign in'}
+        </button>
       </form>
     </div>
   );
