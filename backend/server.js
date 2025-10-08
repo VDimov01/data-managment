@@ -59,30 +59,6 @@ app.get('/', (req, res) => {
   res.send('Server is running 🚀');
 });
 
-// Sample route: create offer with UUID
-// app.post('/api/offers', async (req, res) => {
-//   const { client_first_name, client_last_name, client_email } = req.body;
-
-//   if (!client_first_name || !client_last_name || !client_email) {
-//     return res.status(400).json({ error: 'Missing client data' });
-//   }
-
-//   const offerId = uuidv4();
-//   const createdAt = new Date();
-
-//   try {
-//     await db.execute(
-//       'INSERT INTO offers (id, client_first_name, client_last_name, client_email, created_at) VALUES (?, ?, ?, ?, ?)',
-//       [offerId, client_first_name, client_last_name, client_email, createdAt]
-//     );
-
-//     res.status(201).json({ success: true, offerId });
-//   } catch (err) {
-//     console.error('Error creating offer:', err);
-//     res.status(500).json({ error: 'Failed to create offer' });
-//   }
-// });
-
 // Start Server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
