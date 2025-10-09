@@ -32,26 +32,34 @@ export default function AvailableEditions({
 
   const [specBusy, setSpecBusy] = useState(new Set()); // edition_ids in-flight
 
+const getSigned = (d) =>
+  d?.signedUrl ||
+  d?.pdf?.signedUrl ||
+  d?.attachments?.signedUrl ||
+  d?.row?.signedUrl ||
+  null;
+
 const ensureSpecs = async (row, { regenerate = true } = {}) => {
   const id = row.edition_id;
   setSpecBusy(prev => new Set(prev).add(id));
   try {
-    const res = await api(`/editions/${id}/specs-pdf`, {
+    const data = await api(`/editions/${id}/specs-pdf`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ regenerate }),
+      body: { regenerate },
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error || 'Spec pack failed');
 
-    const url = data?.pdf?.signedUrl || data?.signedUrl || data.attachments.signedUrl;
-    if (url && confirm('Open the latest Spec Pack now?')) {
-      window.open(url, '_blank', 'noopener,noreferrer');
+    const url = getSigned(data);
+    if (url) {
+      if (confirm('Отвори ли последния Spec Pack сега?')) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        alert('Spec Pack генериран успешно.');
+      }
     } else {
-      alert('Spec Pack generated.');
+      alert('Spec Pack генериран, но не бе върнат подписан URL.');
     }
   } catch (e) {
-    alert(e.message);
+    alert(e.message || 'Spec pack failed');
   } finally {
     setSpecBusy(prev => { const n = new Set(prev); n.delete(id); return n; });
   }
@@ -61,20 +69,21 @@ const openLatestSpecs = async (row) => {
   const id = row.edition_id;
   setSpecBusy(prev => new Set(prev).add(id));
   try {
-    const res = await api(`/editions/${id}/specs-pdf/latest`);
-    const data = await res.json().catch(() => ({}));
-    if (res.status === 404) return alert('No spec pack yet. Generate first.');
-    if (!res.ok) throw new Error(data?.error || 'Failed to fetch latest spec pack');
-
-    const url = data?.signedUrl || data?.pdf?.signedUrl || data.attachments.signedUrl;
-    if (!url) return alert('No signed URL returned.');
+    const data = await api(`/editions/${id}/specs-pdf/latest`);
+    const url = getSigned(data);
+    if (!url) return alert('Няма подписан линк. Генерирайте Spec Pack първо.');
     window.open(url, '_blank', 'noopener,noreferrer');
   } catch (e) {
-    alert(e.message);
+    if (e.status === 404) {
+      alert('Няма Spec Pack за това издание. Генерирайте първо.');
+    } else {
+      alert(e.message || 'Failed to fetch latest spec pack');
+    }
   } finally {
     setSpecBusy(prev => { const n = new Set(prev); n.delete(id); return n; });
   }
 };
+
 
 
   const load = async () => {
