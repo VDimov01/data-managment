@@ -65,13 +65,18 @@ router.post('/login', async (req, res) => {
 
 // POST /api/auth/logout
 router.post('/logout', (req, res) => {
-  res.clearCookie('auth_token');
+  res.clearCookie('dm_session', {
+    httpOnly: true,
+    secure: process.env.COOKIE_SECURE === '1',
+    sameSite: process.env.COOKIE_SECURE === '1' ? 'none' : 'lax',
+    path: '/',
+  });
   res.json({ ok: true });
 });
 
 // GET /api/auth/me  (optional: mount requireAuth here to trust req.user)
 router.get('/me', (req, res) => {
-  const token = (req.cookies && req.cookies.auth_token) ||
+  const token = (req.cookies && req.cookies.dm_session) ||
                 ((req.headers.authorization || '').split(' ')[1] || null);
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   try {

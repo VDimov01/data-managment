@@ -7,7 +7,7 @@ function readToken(req) {
   const h = req.headers['authorization'] || '';
   const m = /^Bearer\s+(.+)$/.exec(h);
   if (m) return m[1];
-  if (req.cookies && req.cookies.auth_token) return req.cookies.auth_token;
+  if (req.cookies && req.cookies.dm_session) return req.cookies.dm_session;
   return null;
 }
 
