@@ -4,7 +4,7 @@ import {api} from "../../services/api";
 
 export default function AvailableEditions({
   refreshKey = 0,
-  apiBase = "https://diligent-commitment-production-b9a8.up.railway.app:8080", // default to deployed backend
+  apiBase = "https://data-managment-production.up.railway.app:5000", // default to deployed backend
   initialPageSize = 10,
   onEdit,
   selectedIds = new Set(),

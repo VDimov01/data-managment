@@ -30,7 +30,7 @@ export default function CarsSection() {
       <h2 style={{ marginTop: "20px" }}>Управление на модели и техните атрибути</h2>
       <AvailableEditions
         refreshKey={refreshKey}
-        apiBase={process.env.VITE_API_BASE || "https://diligent-commitment-production-b9a8.up.railway.app:8080"}
+        apiBase={process.env.VITE_API_BASE || "https://data-managment-production.up.railway.app:5000"}
         onEdit={(edition) => { setEditEdition(edition); setOpen(true); }}
         selectedIds={compareIds}
         onToggleSelect={toggleSelect}
@@ -51,7 +51,7 @@ export default function CarsSection() {
       <Modal open={open} title="Добави издание + атрибути" onClose={() => { setOpen(false); setEditEdition(null); }}>
         <EditionAttributeModal
           key={editEdition ? `ed-${editEdition.edition_id}` : 'new'}
-          apiBase={process.env.VITE_API_BASE || "https://diligent-commitment-production-b9a8.up.railway.app:8080"}
+          apiBase={process.env.VITE_API_BASE || "https://data-managment-production.up.railway.app:5000"}
           onSaved={() => setOpen(true)}
           edition={editEdition}
           onCreated={handleEditionSaved}
@@ -62,7 +62,7 @@ export default function CarsSection() {
       {compareArray.length >= 1 && (
         <>
           <h3 style={{ marginTop:16 }}>Сравнение</h3>
-          <EditionCompare apiBase={process.env.VITE_API_BASE || "https://diligent-commitment-production-b9a8.up.railway.app:8080"} editionIds={compareArray} />
+          <EditionCompare apiBase={process.env.VITE_API_BASE || "https://data-managment-production.up.railway.app:5000"} editionIds={compareArray} />
         </>
       )}
     </div>
