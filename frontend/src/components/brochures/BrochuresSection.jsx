@@ -41,7 +41,7 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
    async function load() {
     setLoading(true);
     try {
-      const data = await api(`/brochures${qs({ q: term, year: yearFilter || '', locked })}`);
+      const data = await api(`/brochures${qs({ q: term })}`);
       setRows(Array.isArray(data) ? data : []);
     } catch (e) {
       alert(e.message);
