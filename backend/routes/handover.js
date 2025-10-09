@@ -12,6 +12,9 @@ const {
   getSignedReadUrl,
 } = require('../services/handoverPDF');
 
+const { decryptNationalId } = require('../services/cryptoCust.js');
+
+
 // ---- txn helper
 async function withTxn(fn) {
   const conn = await pool.getConnection();
@@ -526,8 +529,10 @@ router.post('/bulk-from-contract/:contract_id', async (req, res) => {
         if (!row) continue;
 
         const buyer_snapshot = buyerSnap || await (async () => {
-          const [[cust]] = await conn.query(`SELECT customer_id, display_name, national_id FROM customer WHERE customer_id = ?`, [ctr.customer_id]);
-          return { captured_at_utc: new Date().toISOString(), customer_id: cust.customer_id, display_name: cust.display_name || '' };
+          const [[cust]] = await conn.query(`SELECT customer_id, display_name, national_id_enc FROM customer WHERE customer_id = ?`, [ctr.customer_id]);
+          let national_id = null;
+          try{ national_id = decryptNationalId(cust.national_id_enc) } catch{}
+          return { captured_at_utc: new Date().toISOString(), customer_id: cust.customer_id, display_name: cust.display_name || '', national_id };
         })();
 
         await conn.query(

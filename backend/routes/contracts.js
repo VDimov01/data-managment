@@ -5,7 +5,7 @@ const {getPool} = require('../db'); // adjust if your pool lives elsewhere
 const pool = getPool();
 const React = require('react');
 const { ensureEditionSpecsPdf, getSignedUrl } = require('../services/specsPDF');
-
+const { decryptNationalId } = require('../services/cryptoCust.js');
 
 const {
   renderContractPdfBuffer,
@@ -37,13 +37,19 @@ async function loadBuyer(conn, customer_id) {
       c.company_name, c.vat_number, c.address_line, c.city, c.country, c.email, c.phone,
       c.rep_first_name, c.rep_middle_name, c.rep_last_name,
       c.first_name, c.middle_name, c.last_name, c.display_name,
-      c.national_id, c.tax_id
+      c.national_id_enc, c.tax_id
     FROM customer c
     WHERE c.customer_id = ?
     `,
     [customer_id]
   );
   if (!rows.length) throw new Error('Customer not found');
+  
+  let national_id = null;
+  try { national_id = decryptNationalId(rows[0].national_id_enc); } catch {}
+
+  rows[0].national_id = national_id;
+
   return rows[0];
 }
 
