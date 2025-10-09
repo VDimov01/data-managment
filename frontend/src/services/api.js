@@ -24,9 +24,7 @@ export const fetchShopsNew = async () => {
 };
 
 export const fetchShops = async () => {
-  const res = await api("/shops/new");
-  if (!res.ok) throw new Error("Failed to fetch shops");
-  return res.json();
+  return api("/shops/new");
 }
 
 export async function searchContracts(query = "", page = 1, limit = 10) {
