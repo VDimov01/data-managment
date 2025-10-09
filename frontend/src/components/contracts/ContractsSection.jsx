@@ -2,22 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ContractsList from "./ContractsList.jsx";
 import { API_BASE } from "../../services/api.js";
+import {api, qs} from '../../services/api.js';
 
-/** Tiny API wrapper using apiBase from props */
-export function makeApi(apiBase) {
-  return async function api(path, { method = "GET", body } = {}) {
-    const url = buildUrl(apiBase, `/api${path}`);
-    const r = await fetch(url, {
-      method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-      credentials: 'include'
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
-    return data;
-  };
-}
 
 /** Safe URL builder that works with absolute or relative apiBase */
 export function buildUrl(apiBase, path, params = {}) {
@@ -534,28 +520,28 @@ async function handleIssueAllHandover() {
         </>
       )}
 
-      {tab === "browse" && (
+            {tab === "browse" && (
         <ContractsList
           apiBase={apiBase}
           onOpenLatest={async (uuid) => {
             try {
-              const url = buildUrl(apiBase, `/api/contracts/${uuid}/pdf/latest`);
-              const r = await fetch(url, { method: "GET", credentials: 'include' });
-              const data = await r.json();
-              if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
-              if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+              const data = await api(`/contracts/${uuid}/pdf/latest`);
+              const url = data?.signedUrl || data?.pdf?.signedUrl;
+              if (url) {
+                window.open(url, "_blank", "noopener,noreferrer");
+              } else {
+                alert("Няма наличен PDF за този договор.");
+              }
             } catch (e) {
               alert(`Open latest failed: ${e.message}`);
             }
           }}
           onRegenerate={async (id) => {
             try {
-              const url = buildUrl(apiBase, `/api/contracts/${id}/pdf`);
-              const r = await fetch(url, { method: "POST", credentials: 'include' });
-              const data = await r.json();
-              if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
-              if (data?.pdf?.signedUrl && confirm("Open regenerated PDF?")) {
-                window.open(data.pdf.signedUrl, "_blank", "noopener,noreferrer");
+              const data = await api(`/contracts/${id}/pdf`, { method: "POST" });
+              const url = data?.pdf?.signedUrl || data?.signedUrl;
+              if (url && confirm("Open regenerated PDF?")) {
+                window.open(url, "_blank", "noopener,noreferrer");
               }
             } catch (e) {
               alert(`Regenerate failed: ${e.message}`);
@@ -563,20 +549,21 @@ async function handleIssueAllHandover() {
           }}
           onIssue={async (id) => {
             try {
-              const url = buildUrl(apiBase, `/api/contracts/${id}/issue`);
-              const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ override_reserved: false }), credentials: 'include' });
-              const data = await r.json();
-              if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
-              if (data?.pdf?.signedUrl && confirm("Open PDF now?")) {
-                window.open(data.pdf.signedUrl, "_blank", "noopener,noreferrer");
+              const data = await api(`/contracts/${id}/issue`, {
+                method: "POST",
+                body: { override_reserved: false },
+              });
+              const url = data?.pdf?.signedUrl || data?.signedUrl;
+              if (url && confirm("Open PDF now?")) {
+                window.open(url, "_blank", "noopener,noreferrer");
               }
-              // setContract(prev => ({ ...prev, status: "issued", issued_at: new Date().toISOString() }));
             } catch (e) {
               alert(`Issue failed: ${e.message}`);
             }
           }}
         />
       )}
+
 
       <style>{css}</style>
     </div>
@@ -611,18 +598,22 @@ function CustomerPicker({ apiBase, value, onChange }) {
   const [loading, setLoading] = useState(false);
 
   const loadCustomers = async () => {
-    try {
-      setLoading(true);
-      const url = buildUrl(apiBase, '/api/customers', { page: 1, limit: 50, q: q.trim() || undefined });
-      const r = await fetch(url, { credentials: 'include' });
-      const data = await r.json();
-      setList(data.customers || data.items || data.rows || []);
-    } catch (e) {
-      alert(`Customer search failed: ${e.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    const params = new URLSearchParams({ page: "1", limit: "50" });
+    const qq = q.trim();
+    if (qq) params.set("q", qq);
+
+    // GET /api/customers?page=1&limit=50&q=...
+    const data = await api(`/customers?${params.toString()}`);
+    setList(data.customers || data.items || data.rows || []);
+  } catch (e) {
+    alert(`Customer search failed: ${e.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => { loadCustomers(); /* auto-search on q */ }, [q]);
 
@@ -725,20 +716,23 @@ function VehiclePicker({ apiBase, onPick }) {
   const [loading, setLoading] = useState(false);
 
   const doSearch = async () => {
-    setLoading(true);
-    try {
-      const url = buildUrl(apiBase, '/api/vehicles', { available: 1, q: q.trim() || undefined });
-      const r = await fetch(url, { credentials: 'include' });
-      const res = await r.json();
-      // tolerate various payloads
-      const rows = Array.isArray(res) ? res : (res.vehicles || res.items || res.rows || []);
-      setList(rows);
-    } catch (e) {
-      alert(`Vehicle search failed: ${e.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const params = new URLSearchParams({ available: "1" });
+    const qq = q.trim();
+    if (qq) params.set("q", qq);
+
+    // GET /api/vehicles?available=1&q=...
+    const res = await api(`/vehicles?${params.toString()}`);
+    const rows = Array.isArray(res) ? res : (res.vehicles || res.items || res.rows || []);
+    setList(rows);
+  } catch (e) {
+    alert(`Vehicle search failed: ${e.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="row">
