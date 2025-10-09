@@ -1,43 +1,39 @@
 // backend/services/gcs.js
 const { Storage } = require('@google-cloud/storage');
 
-/**
- * Single source of truth for the Storage client.
- * Priority:
- * 1) GCP_SA_JSON (full JSON pasted in env) -> pass credentials directly
- * 2) GOOGLE_APPLICATION_CREDENTIALS (path)   -> ADC picks it up
- * 3) Default ADC (works on GCP)
- */
+function parseJsonSafe(str) {
+  try { return JSON.parse(str); } catch { return null; }
+}
+
 function makeStorage() {
-  if (process.env.GCP_SA_JSON) {
-    const cred = JSON.parse(process.env.GCP_SA_JSON);
-    if (!cred.client_email || !cred.private_key) {
-      throw new Error('[gcs] GCP_SA_JSON missing client_email/private_key');
-    }
-    return new Storage({
-      projectId: cred.project_id,
-      credentials: {
-        client_email: cred.client_email,
-        private_key: cred.private_key,
-      },
-    });
+  // Preferred: provide creds via env, avoid temp files entirely.
+  // Railway: set GCP_SA_JSON_B64 (base64 of the whole JSON file) OR GCP_SA_JSON (raw JSON string).
+  const b64 = process.env.GCP_SA_JSON_B64;
+  const raw = process.env.GCP_SA_JSON;
+
+  if (b64) {
+    const json = Buffer.from(b64, 'base64').toString('utf8');
+    const creds = parseJsonSafe(json);
+    if (!creds) throw new Error('GCS: GCP_SA_JSON_B64 is not valid base64-JSON');
+    return new Storage({ credentials: creds, projectId: creds.project_id });
   }
-  // If GOOGLE_APPLICATION_CREDENTIALS is set (file path), Storage() will pick it up.
-  return new Storage();
+
+  if (raw) {
+    const creds = parseJsonSafe(raw);
+    if (!creds) throw new Error('GCS: GCP_SA_JSON is not valid JSON');
+    return new Storage({ credentials: creds, projectId: creds.project_id });
+  }
+
+  // Fallback to GOOGLE_APPLICATION_CREDENTIALS if you’ve set it
+  return new Storage(); // will use ADC
 }
 
 const storage = makeStorage();
 
 const BUCKET_PRIVATE = process.env.BUCKET_PRIVATE || 'dm-assets-private';
-const BUCKET_PUBLIC  = process.env.BUCKET_PUBLIC  || 'test-bucket-2004';
+const BUCKET_PUBLIC  = process.env.BUCKET_PUBLIC  || 'dm-assets-public';
 
 const bucketPrivate = storage.bucket(BUCKET_PRIVATE);
 const bucketPublic  = storage.bucket(BUCKET_PUBLIC);
 
-module.exports = {
-  storage,
-  bucketPrivate,
-  bucketPublic,
-  BUCKET_PRIVATE,
-  BUCKET_PUBLIC,
-};
+module.exports = { storage, bucketPrivate, bucketPublic, BUCKET_PRIVATE, BUCKET_PUBLIC };
