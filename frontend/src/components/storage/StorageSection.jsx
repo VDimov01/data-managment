@@ -7,6 +7,7 @@ import VehicleCreateForm from "./VehicleCreateForm";
 import VehicleQRCell from './VehicleQRCell';
 import PrintLabelsButton from "./PrintLabelsButton";
 import { formatDateDMYDateOnly } from "../../utils/dates.js";
+import { api, API_BASE } from "../../services/api";
 
 const STATUSES = ['InTransit','Available','Reserved','Sold','Service','Demo'];
 
@@ -20,7 +21,7 @@ const status_to_bg = {
 }
 
 export default function StorageSection() {
-  const apiBase = "http://localhost:5000";
+  const apiBase = API_BASE;
 
   const [open, setOpen] = useState(false);
   const [editionForVehicle, setEditionForVehicle] = useState(null);
@@ -136,7 +137,7 @@ export default function StorageSection() {
 
     setDeletingIds(prev => new Set(prev).add(vid));
     try {
-      const res = await fetch(`${apiBase}/api/vehicles/${vid}`, { method: 'DELETE', credentials: 'include' });
+      const res = await api(`/vehicles/${vid}`, { method: 'DELETE' });
       if (res.status === 204) {
         // Remove from local state (no refetch needed)
         setVehicleEntries(prev => prev.filter(v => (v.vehicle_id || v.id) !== vid));

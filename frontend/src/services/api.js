@@ -1,5 +1,6 @@
 export const fetchVehicles = async () => {
-  const res = await api("/vehicles");
+  const res = await fetch(`${API_BASE}/api/vehicles`, { credentials: 'include' });
+  console.log(API_BASE);
   if (!res.ok) throw new Error("Failed to fetch vehicles");
   return res.json();
 };
