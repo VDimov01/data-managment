@@ -1,52 +1,183 @@
-/* login.css */
+/* Base + variables */
+:root{
+  --bg: #f6f7fb;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #6b7280;
+  --line: #eceff4;
 
-.login-container {
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #f3f4f6;
+  --primary: #2563eb;
+  --primary-strong: #1d4ed8;
+  --ring: 46 144 250; /* rgb for focus ring */
+
+  --radius: 14px;
+  --shadow: 0 10px 30px rgba(2,6,23,.08);
 }
 
-.login-form {
-  background-color: white;
+@media (prefers-color-scheme: dark) {
+  :root{
+    --bg: #0b1220;
+    --card: #0f172a;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --line: #1f2937;
+
+    --primary: #3b82f6;
+    --primary-strong: #2563eb;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; color: var(--text); background:
+  radial-gradient(1200px 600px at 10% -10%, rgba(59,130,246,.12), transparent 60%),
+  radial-gradient(1200px 600px at 110% 110%, rgba(59,130,246,.12), transparent 60%),
+  var(--bg);
+}
+
+/* Layout */
+.auth-wrap{
+  min-height: 100%;
+  display: grid;
+  place-items: center;
   padding: 24px;
+}
+
+.auth-card{
+  width: 100%;
+  max-width: 420px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+/* Header */
+.brand{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.brand-mark{
+  width: 28px; height: 28px;
   border-radius: 8px;
-  width: 320px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+}
+.brand-name{
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+.auth-title{
+  margin: 6px 0 2px;
+  font-size: 22px;
+  font-weight: 700;
+}
+.auth-subtitle{
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
 }
 
-.login-form h2 {
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
-  font-weight: bold;
+/* Form */
+.auth-form{ display: grid; gap: 14px; margin-top: 18px; }
+.field{ display: grid; gap: 6px; }
+.label{ font-size: 12px; color: var(--muted); }
+
+.input{
+  background: #fff0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 12px;
+  color: var(--text);
+  outline: none;
+  transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+.input:focus-visible{
+  border-color: rgba(var(--ring), .55);
+  box-shadow: 0 0 0 4px rgba(var(--ring), .20);
 }
 
-.login-form input {
-  width: 100%;
-  margin-bottom: 12px;
-  padding: 10px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
+.input.with-addon{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  padding: 0;
 }
-
-.login-form button {
-  width: 100%;
-  padding: 10px;
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-weight: bold;
+.input.with-addon > input{
+  border: 0; outline: none;
+  padding: 12px 12px;
+  color: inherit;
+  background: transparent;
+}
+.input.with-addon .addon{
+  border: 0;
+  background: transparent;
+  padding: 0 10px;
+  color: var(--muted);
   cursor: pointer;
 }
 
-.login-form button:hover {
-  background-color: #2563eb;
+/* Button */
+.btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #e5e7eb;
+  color: #111827;
+  font-weight: 600;
+  transition: filter .15s ease, transform .02s ease;
+  cursor: pointer;
+}
+.btn:active{ transform: translateY(1px); }
+.btn:disabled{ opacity: .6; cursor: not-allowed; }
+
+.btn.primary{
+  background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+  color: white;
+}
+.btn.primary:focus-visible{
+  box-shadow: 0 0 0 4px rgba(var(--ring), .25);
 }
 
-.login-form .error {
-  color: #dc2626;
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
+.btn-inner{
+  display: inline-flex; align-items: center; gap: 10px;
 }
+
+.w-full{ width: 100%; }
+
+/* Alert */
+.alert{
+  margin-top: 2px;
+  padding: 10px 12px;
+  border: 1px solid rgba(220,38,38,.25);
+  background: rgba(220,38,38,.08);
+  color: #b91c1c;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+/* Footer */
+.auth-footer{
+  margin-top: 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Bits */
+.muted{ color: var(--muted); }
+
+.spinner{
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.45);
+  border-top-color: rgba(255,255,255,1);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

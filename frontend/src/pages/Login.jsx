@@ -1,17 +1,21 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import './login.css';
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [id, setId] = React.useState('');       // email or username
+
+  const [id, setId] = React.useState(''); // email or username
   const [pw, setPw] = React.useState('');
+  const [showPw, setShowPw] = React.useState(false);
   const [err, setErr] = React.useState('');
   const [busy, setBusy] = React.useState(false);
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (busy) return;
     setErr('');
     setBusy(true);
     try {
@@ -25,21 +29,82 @@ export default function Login() {
   };
 
   return (
-    <div style={{ maxWidth: 360, margin: '80px auto', padding: 16 }}>
-      <h2>Admin Login</h2>
-      <form onSubmit={onSubmit}>
-        <label style={{ display: 'block', marginTop: 12 }}>Email / Username</label>
-        <input className="inp" value={id} onChange={e => setId(e.target.value)} />
+    <main className="auth-wrap">
+      <div className="auth-card">
+        <header className="auth-header">
+          <div className="brand">
+            <div className="brand-mark" aria-hidden="true" />
+            <span className="brand-name">Admin</span>
+          </div>
+          <h1 className="auth-title">Sign in</h1>
+          <p className="auth-subtitle">Access your dashboard</p>
+        </header>
 
-        <label style={{ display: 'block', marginTop: 12 }}>Password</label>
-        <input className="inp" type="password" value={pw} onChange={e => setPw(e.target.value)} />
+        <form className="auth-form" onSubmit={onSubmit} noValidate>
+          <div className="field">
+            <label htmlFor="id" className="label">Email or username</label>
+            <input
+              id="id"
+              className="input"
+              type="text"
+              inputMode="email"
+              autoComplete="username"
+              placeholder="you@example.com"
+              value={id}
+              onChange={(e) => setId(e.target.value)}
+              disabled={busy}
+              required
+            />
+          </div>
 
-        {err && <div style={{ color: '#b91c1c', marginTop: 8 }}>{err}</div>}
+          <div className="field">
+            <label htmlFor="pw" className="label">Password</label>
+            <div className="input with-addon">
+              <input
+                id="pw"
+                type={showPw ? 'text' : 'password'}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                value={pw}
+                onChange={(e) => setPw(e.target.value)}
+                disabled={busy}
+                required
+              />
+              <button
+                type="button"
+                className="addon"
+                onClick={() => setShowPw(v => !v)}
+                aria-label={showPw ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
+              >
+                {showPw ? '🙈' : '👁️'}
+              </button>
+            </div>
+          </div>
 
-        <button className="btn primary" type="submit" style={{ marginTop: 16 }} disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
-    </div>
+          {err && (
+            <div className="alert" role="alert">
+              {err}
+            </div>
+          )}
+
+          <button className="btn primary w-full" type="submit" disabled={busy || !id || !pw}>
+            {busy ? (
+              <span className="btn-inner">
+                <span className="spinner" aria-hidden="true" />
+                Signing in…
+              </span>
+            ) : (
+              'Sign in'
+            )}
+          </button>
+        </form>
+
+        <footer className="auth-footer">
+          <span className="muted">Forgot password?</span>
+          {/* hook this up later if you add a flow */}
+        </footer>
+      </div>
+    </main>
   );
 }
