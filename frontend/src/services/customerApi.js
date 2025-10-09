@@ -1,6 +1,7 @@
 // Small helpers for your unified /api/customers backend
 import { api } from "./api";
-const API_BASE ="http://localhost:5000";
+const LOCAL_API_BASE ="http://localhost:5000";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://data-managment-production.up.railway.app";
 
 export async function listCustomers({ q = "", page = 1, limit = 20 } = {}) {
   const url = new URL(`${API_BASE}/api/customers`);

@@ -3,6 +3,7 @@ import { listCustomers, createCustomer, updateCustomer, deleteCustomer } from ".
 import CustomerList from "./CustomerList";
 import CustomerForm from "./CustomerForm";
 import ConfirmDialog from "./ConfirmDialog";
+import { api } from "../../services/api";
 
 export default function CustomerSection() {
   const [q, setQ] = useState("");
