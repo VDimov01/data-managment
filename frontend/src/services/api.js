@@ -29,7 +29,7 @@ export async function searchContracts(query = "", page = 1, limit = 10) {
     limit: String(limit),
   });
 
-  return await api(`/contracts/search?${params.toString()}`);
+  return api(`/contracts/search?${params.toString()}`);
 }
 
 export const fetchImages = async (carId, carMaker, carModel) => {
@@ -72,30 +72,22 @@ export async function deleteVehicleImage(apiBase, vehicleId, imageId) {
 
 // Public vehicle by UUID
 export async function getPublicVehicle(apiBase, uuid) {
-  const r = await api(`/public/vehicles/${uuid}`);
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  return api(`/public/vehicles/${uuid}`);
 }
 
 // Public vehicle images (private bucket, proxied by backend)
 export async function getPublicVehicleImages(apiBase, uuid) {
-  const r = await api(`public/vehicles/${uuid}/images`);
-  if (!r.ok) throw new Error(await r.text());
-  return r.json(); // [{ vehicle_image_id, stream_url }]
+  return api(`public/vehicles/${uuid}/images`);
 }
 
 // Edition attributes (your existing resolver)
 export async function getEditionAttributes(apiBase, editionId, lang = 'bg') {
-  const r = await api(`/editions/${editionId}/specs?lang=${lang}`);
-  if (!r.ok) throw new Error(await r.text());
-  return r.json(); // shape depends on your resolver
+  return api(`/editions/${editionId}/specs?lang=${lang}`);
 }
 
 export async function listEditionImages(apiBase, editionId, maker, model, year) {
   const safe = (s) => encodeURIComponent(String(s ?? "").trim().replace(/-/g, " ").replace(/\s+/g, " "));
-  const r = await api(`/car-images/${editionId}-${safe(maker)}-${safe(model)}-${safe(year)}`);
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  return api(`/car-images/${editionId}-${safe(maker)}-${safe(model)}-${safe(year)}`);
 }
 
 export async function uploadEditionImages(apiBase, editionId, maker, model, year, files, part='unsorted') {
