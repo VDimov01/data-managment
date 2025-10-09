@@ -38,15 +38,35 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
   const [openAttach, setOpenAttach] = useState(false);
   const [attachFor, setAttachFor] = useState(null); // brochure row
 
+  const [yearFilter, setYearFilter] = useState("");
+  const [locked, setLocked] = useState(false);
+
    async function load() {
-    setLoading(true);
-    try {
-      const data = await api(`/brochures${qs({ q: term })}`);
-      setRows(Array.isArray(data) ? data : []);
-    } catch (e) {
-      alert(e.message);
-    } finally { setLoading(false); }
-  }
+      setLoading(true);
+      setErr(null);
+      try {
+        const data = await api(`/brochures${qs({
+          q: term || undefined,
+          page,
+          limit,
+        })}`);
+
+        // tolerate a few payload shapes
+        const items = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data)
+            ? data
+            : (data.rows || data.brochures || []);
+
+        setRows(items);
+        setTotal(Number.isFinite(Number(data?.total)) ? Number(data.total) : items.length);
+      } catch (e) {
+        setErr(e.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [term, page, limit, apiBase]);
 
@@ -54,22 +74,17 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
   const onEdit = (row) => { setEditing(row); setOpenForm(true); console.log(row); };
 
   const onDelete = async (row) => {
-    if (!window.confirm(`Изтрий брошура "${row.title}"?`)) return;
-    try {
-      const r = await api(`/brochures/${row.brochure_id}`, { method: "DELETE" });
-      if (r.status === 204) {
-        // remove locally
-        setRows(prev => prev.filter(x => x.brochure_id !== row.brochure_id));
-        setTotal(t => Math.max(0, t - 1));
-      } else {
-        const j = await r.json().catch(()=>null);
-        alert(j?.error || "Неуспешно изтриване");
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Неуспешно изтриване");
-    }
-  };
+  if (!window.confirm(`Изтрий брошура "${row.title}"?`)) return;
+  try {
+    await api(`/brochures/${row.brochure_id}`, { method: "DELETE" });
+    setRows(prev => prev.filter(x => x.brochure_id !== row.brochure_id));
+    setTotal(t => Math.max(0, t - 1));
+  } catch (e) {
+    console.error(e);
+    alert(e.message || "Неуспешно изтриване");
+  }
+};
+
 
   const onPreview = async (row) => {
     try {
