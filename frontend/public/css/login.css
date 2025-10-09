@@ -1,6 +1,6 @@
 /* Base + variables */
 :root{
-  --bg: #f6f7fb;
+  --bg: #e7ebf4; /* was #f6f7fb */
   --card: #ffffff;
   --text: #0f172a;
   --muted: #6b7280;
@@ -31,8 +31,8 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; color: var(--text); background:
-  radial-gradient(1200px 600px at 10% -10%, rgba(59,130,246,.12), transparent 60%),
-  radial-gradient(1200px 600px at 110% 110%, rgba(59,130,246,.12), transparent 60%),
+  radial-gradient(1200px 600px at 10% -10%, rgba(59,130,246,.18), transparent 60%),
+  radial-gradient(1200px 600px at 110% 110%, rgba(59,130,246,.18), transparent 60%),
   var(--bg);
 }
 
@@ -52,6 +52,7 @@ body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 28px;
+  color: var(--text);
 }
 
 /* Header */
@@ -84,10 +85,11 @@ body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI
 /* Form */
 .auth-form{ display: grid; gap: 14px; margin-top: 18px; }
 .field{ display: grid; gap: 6px; }
-.label{ font-size: 12px; color: var(--muted); }
+.label{ font-size: 12px;  color: color-mix(in srgb, var(--muted) 85%, #000 15%);  }
 
 .input{
-  background: #fff0;
+  border-color: #d7dce6;                  /* darker than before for clarity */
+  background: rgba(255,255,255,.9);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 12px 12px;
@@ -181,3 +183,18 @@ body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI
   animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* darker scheme gets a notch deeper too */
+@media (prefers-color-scheme: dark) {
+  :root{
+    --bg: #0a1020;                        /* was #0b1220 */
+  }
+  body{
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(59,130,246,.25), transparent 60%),
+      radial-gradient(1200px 600px at 110% 110%, rgba(59,130,246,.25), transparent 60%),
+      var(--bg);
+  }
+  .input { background: rgba(17,24,39,.6); border-color: #253044; }
+  .auth-card { background: #0f172a; }     /* keep card darker in dark mode */
+}
