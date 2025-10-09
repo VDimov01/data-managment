@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import {api, qs} from '../../services/api.js'
 
 /* =================== Attach to Customers panel =================== */
 

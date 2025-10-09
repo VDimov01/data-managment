@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCustomer } from "../../services/customerApi";
+import {api, qs} from '../../services/api.js';
 
 const DEFAULTS = {
   customer_type: "Individual",

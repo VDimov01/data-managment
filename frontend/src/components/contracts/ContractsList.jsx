@@ -1,7 +1,7 @@
 /** ---------- Browse tab ---------- */
 import React, { useEffect, useState } from "react";
 import AttachmentsModal from "./AttachmentsModal.jsx";
-import { api, qs } from "../services/api"; // <-- use the shared API helper
+import { api, qs } from "../../services/api"; // <-- use the shared API helper
 
 const statusBG = {
   draft: "Чернова",
