@@ -181,10 +181,11 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
                     <td>{r.created_at?.slice(0,19).replace('T',' ') || ""}</td>
                     <td>
                       <div className="br-actions">
-                        <button onClick={() => onPreview(r)}>Преглед</button>
-                        <button onClick={() => onOpenAttach(r)}>Прикрепи</button>
-                        <button onClick={() => onEdit(r)}>Редактирай</button>
+                        <button className="btn" onClick={() => onPreview(r)}>Преглед</button>
+                        <button className="btn" onClick={() => onOpenAttach(r)}>Прикрепи</button>
+                        <button className="btn" onClick={() => onEdit(r)}>Редактирай</button>
                         <button
+                          className="btn"
                           onClick={() => onToggleSnapshot(r)}
                           title={r.is_snapshot ? "Отключи (върни в динамичен режим)" : "Заключи (замрази като моментна снимка)"}
                         >
