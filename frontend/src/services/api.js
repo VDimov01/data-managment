@@ -122,6 +122,19 @@ export function buildUrl(base, path, params = {}) {
   return `${b}${path}${qs.toString() ? `?${qs.toString()}` : ''}`;
 }
 
+// frontend/src/services/api.js
+export function qs(params = {}) {
+  const u = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    const s = String(v).trim();
+    if (s !== '') u.append(k, s);
+  });
+  const q = u.toString();
+  return q ? `?${q}` : '';
+}
+
+
 // services/api.js
 const fallbackApiBase = (() => {
   if (import.meta.env.DEV) return 'http://localhost:5000';

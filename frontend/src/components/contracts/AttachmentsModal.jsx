@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import Modal from "../Modal.jsx";
-import { niceBytes, buildUrl } from "./ContractsSection.jsx"; // keep your helpers
+import { niceBytes } from "./ContractsSection.jsx"; // keep your helper
 import { formatDateDMYLocal } from "../../utils/dates.js";
 import HandoverTab from "./HandoverTab.jsx";
+import { api } from "../../services/api"; // <-- use shared API helper
 
 export default function AttachmentsModal({ apiBase, contract, onClose }) {
   const [loading, setLoading] = useState(false);
@@ -15,10 +16,8 @@ export default function AttachmentsModal({ apiBase, contract, onClose }) {
     setLoading(true);
     try {
       // GET /api/contracts/:id/specs-pdfs
-      const url = buildUrl(apiBase, `/api/contracts/${contract.contract_id}/specs-pdfs`);
-      const r = await fetch(url, { credentials: 'include' });
-      const data = await r.json();
-      const list = data.attachments || data.vehicles || []; // tolerate both shapes
+      const data = await api(`/contracts/${contract.contract_id}/specs-pdfs`);
+      const list = data.attachments || data.vehicles || [];
       setRows(Array.isArray(list) ? list : []);
     } catch (e) {
       alert(`Зареждането се провали: ${e.message}`);
@@ -33,15 +32,10 @@ export default function AttachmentsModal({ apiBase, contract, onClose }) {
     if (!confirm("Да генерираме спецификациите за всички автомобили по договора?")) return;
     setGenerating(true);
     try {
-      // POST /api/contracts/:id/specs-pdfs
-      const r = await fetch(buildUrl(apiBase, `/api/contracts/${contract.contract_id}/specs-pdfs`), {
+      await api(`/contracts/${contract.contract_id}/specs-pdfs`, {
         method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ return_signed: false }),
-        credentials: 'include'
+        body: { return_signed: false },
       });
-      const data = await r.json().catch(()=>({}));
-      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
       await load();
     } catch (e) {
       alert(`Генерирането се провали: ${e.message}`);
@@ -52,20 +46,16 @@ export default function AttachmentsModal({ apiBase, contract, onClose }) {
 
   const openSpec = async (edition_id) => {
     try {
-      setPerBusy(prev => ({...prev, [edition_id]: true}));
-      const r = await fetch(buildUrl(apiBase, `/api/contracts/${contract.contract_id}/specs-pdfs`), {
+      setPerBusy(prev => ({ ...prev, [edition_id]: true }));
+      const data = await api(`/contracts/${contract.contract_id}/specs-pdfs`, {
         method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ edition_id, return_signed: true, force: false }),
-        credentials: 'include'
+        body: { edition_id, return_signed: true, force: false },
       });
-      const data = await r.json().catch(()=>({}));
-      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
-      // Find signed URL for this edition
       const signedUrl = Array.isArray(data?.attachments)
         ? (data.attachments.find(x => x.edition_id === edition_id)?.signedUrl)
-        : null;
+        : (data?.signedUrl || data?.pdf?.signedUrl || null);
+
       if (signedUrl) {
         window.open(signedUrl, "_blank", "noopener,noreferrer");
       } else {
@@ -75,27 +65,23 @@ export default function AttachmentsModal({ apiBase, contract, onClose }) {
     } catch (e) {
       alert(`Отварянето се провали: ${e.message}`);
     } finally {
-      setPerBusy(prev => ({...prev, [edition_id]: false}));
+      setPerBusy(prev => ({ ...prev, [edition_id]: false }));
     }
   };
 
   const regenerateOne = async (edition_id) => {
     if (!confirm("Регенериране на спецификациите за тази модификация?")) return;
     try {
-      setPerBusy(prev => ({...prev, [edition_id]: true}));
-      const r = await fetch(buildUrl(apiBase, `/api/contracts/${contract.contract_id}/specs-pdfs`), {
+      setPerBusy(prev => ({ ...prev, [edition_id]: true }));
+      await api(`/contracts/${contract.contract_id}/specs-pdfs`, {
         method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ edition_id, return_signed: false, force: true }),
-        credentials: 'include'
+        body: { edition_id, return_signed: false, force: true },
       });
-      const data = await r.json().catch(()=>({}));
-      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
       await load();
     } catch (e) {
       alert(`Регенерирането се провали: ${e.message}`);
     } finally {
-      setPerBusy(prev => ({...prev, [edition_id]: false}));
+      setPerBusy(prev => ({ ...prev, [edition_id]: false }));
     }
   };
 

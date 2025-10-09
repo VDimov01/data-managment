@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Modal from "../Modal";
 import BrochureForm from "./BrochureForm";
 import AttachCustomersPanel from "./AttachCustomersPanel";
+import {api, qs} from '../../services/api.js'
 
 const selectionModeBG = {
   ALL_YEARS: "Всички издания",
@@ -37,25 +38,15 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
   const [openAttach, setOpenAttach] = useState(false);
   const [attachFor, setAttachFor] = useState(null); // brochure row
 
-  const load = async () => {
-    setLoading(true); setErr(null);
+   async function load() {
+    setLoading(true);
     try {
-      const url = new URL(`${apiBase}/api/brochures`);
-      if (term) url.searchParams.set("q", term);
-      url.searchParams.set("page", page);
-      url.searchParams.set("limit", limit);
-      const r = await fetch(url, { credentials: 'include' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
-      setRows(data.brochures || []);
-      setTotal(data.total || 0);
+      const data = await api(`/brochures${qs({ q: term, year: yearFilter || '', locked })}`);
+      setRows(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
-      setErr(e.message || "Неуспешно зареждане на брошури");
-    } finally {
-      setLoading(false);
-    }
-  };
+      alert(e.message);
+    } finally { setLoading(false); }
+  }
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [term, page, limit, apiBase]);
 
@@ -65,7 +56,7 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
   const onDelete = async (row) => {
     if (!window.confirm(`Изтрий брошура "${row.title}"?`)) return;
     try {
-      const r = await fetch(`${apiBase}/api/brochures/${row.brochure_id}`, { method: "DELETE", credentials: 'include' });
+      const r = await api(`/brochures/${row.brochure_id}`, { method: "DELETE" });
       if (r.status === 204) {
         // remove locally
         setRows(prev => prev.filter(x => x.brochure_id !== row.brochure_id));
@@ -82,12 +73,7 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
 
   const onPreview = async (row) => {
     try {
-      const r = await fetch(`${apiBase}/api/brochures/${row.brochure_id}/resolve`, { credentials: 'include' });
-      const data = await r.json();
-      if (!r.ok) {
-        console.error(data);
-        return alert(data.error || "Неуспешно извличане на данни");
-      }
+      const data = await api(`/brochures/${row.brochure_id}/resolve`);
       setPreviewData({ title: row.title, ...data });
       setOpenPreview(true);
     } catch (e) {
@@ -102,33 +88,29 @@ export default function BrochuresSection({ apiBase = "http://localhost:5000" }) 
 
   // 👇 NEW: lock/unlock toggle handler
   const onToggleSnapshot = async (row) => {
-    const action = row.is_snapshot ? "unlock" : "lock";
-    const confirmMsg = row.is_snapshot
-      ? "Отключи тази брошура? Ще започне да се обновява автоматично."
-      : "Заключи тази брошура? Ще запамети текущите данни и ще спре автоматичното обновяване.";
-    if (!window.confirm(confirmMsg)) return;
+  const action = row.is_snapshot ? "unlock" : "lock";
+  const confirmMsg = row.is_snapshot
+    ? "Отключи тази брошура? Ще започне да се обновява автоматично."
+    : "Заключи тази брошура? Ще запамети текущите данни и ще спре автоматичното обновяване.";
+  if (!window.confirm(confirmMsg)) return;
 
-    try {
-      const r = await fetch(`${apiBase}/api/brochures/${row.brochure_id}/${action}`, { method: "POST", credentials: 'include' });
-      const data = await r.json().catch(() => null);
-      if (!r.ok) throw new Error(data?.error || `Failed to ${action}`);
+  try {
+    await api(`/brochures/${row.brochure_id}/${action}`, { method: "POST" });
 
-      // optimistic UI update
-      setRows(prev =>
-        prev.map(x =>
-          x.brochure_id === row.brochure_id
-            ? { ...x, is_snapshot: action === "lock" ? 1 : 0 }
-            : x
-        )
-      );
-
-      // (optional) re-fetch to refresh timestamps/derived fields
-      // await load();
-    } catch (e) {
-      console.error(e);
-      alert(e.message || `Failed to ${action}`);
-    }
-  };
+    // optimistic UI update
+    setRows(prev =>
+      prev.map(x =>
+        x.brochure_id === row.brochure_id
+          ? { ...x, is_snapshot: action === "lock" ? 1 : 0 }
+          : x
+      )
+    );
+    // optionally re-fetch: await load();
+  } catch (e) {
+    console.error(e);
+    alert(e.message || `Failed to ${action}`);
+  }
+};
 
   return (
     <div className="br-container">

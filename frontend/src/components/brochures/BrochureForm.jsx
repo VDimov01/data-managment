@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import EditionPicker from "./EditionPicker";
+import { api, qs } from "../../services/api";
 
 /* ======================= Brochure Form ======================= */
 
@@ -26,31 +27,21 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
 
   // load makes
   useEffect(() => {
-    (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/makes`, { credentials: 'include' });
-      const data = await r.json();
-      setMakes(data || []);
-    })().catch(console.error);
+      api(`/cascade/makes`).then(setMakes).catch(()=>{});
   }, [apiBase]);
 
   // load models by make
   useEffect(() => {
     setModels([]); setModelId(""); setYears([]); setEditions([]);
     if (!makeId) return;
-    (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/models?make_id=${makeId}`, { credentials: 'include' });
-      setModels(await r.json());
-    })().catch(console.error);
+      api(`/cascade/models${qs({ make_id: makeId })}`).then(setModels).catch(()=>{});
   }, [makeId, apiBase]);
 
   // load years by model
   useEffect(() => {
     setYears([]); setEditions([]);
     if (!modelId) return;
-    (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/model-years?model_id=${modelId}`, { credentials: 'include' });
-      setYears(await r.json());
-    })().catch(console.error);
+      api(`/cascade/years${qs({ model_id: modelId })}`).then(setYears).catch(()=>{});
   }, [modelId, apiBase]);
 
   // When editing, fetch selection (year_ids / edition_ids) if endpoint exists
@@ -58,9 +49,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
     if (!isEdit) return;
     (async () => {
       try {
-        const r = await fetch(`${apiBase}/api/brochures/${initial.brochure_id}/selection`, { credentials: 'include' });
-        if (!r.ok) return; // optional endpoint; skip gracefully
-        const sel = await r.json();
+        const sel = await api(`/brochures/${initial.brochure_id}/selection`);
         if (sel.selection_mode) setSelectionMode(sel.selection_mode);
         if (Array.isArray(sel.year_ids)) setSelectedYearIds(new Set(sel.year_ids.map(String)));
         if (Array.isArray(sel.edition_ids)) setSelectedEditionIds(new Set(sel.edition_ids.map(String)));
@@ -82,15 +71,13 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
 
   // load editions for a chosen year (helper)
   const loadEditionsForYear = async (model_year_id) => {
-    const r = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${model_year_id}`, { credentials: 'include' });
-    const list = await r.json();
-    // Merge into editions pool (unique by edition_id)
-    setEditions(prev => {
-      const map = new Map(prev.map(e => [e.edition_id, e]));
-      list.forEach(e => map.set(e.edition_id, e));
-      return Array.from(map.values());
-    });
-  };
+  const list = await api(`/editions${qs({ model_year_id })}`);
+  setEditions(prev => {
+    const map = new Map(prev.map(e => [e.edition_id, e]));
+    (Array.isArray(list) ? list : []).forEach(e => map.set(e.edition_id, e));
+    return Array.from(map.values());
+  });
+};
 
   const toggleYear = async (y) => {
     const id = String(y.model_year_id);
@@ -138,26 +125,19 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
     }
 
     try {
-      let r;
+      let data;
       if (isEdit) {
-        r = await fetch(`${apiBase}/api/brochures/${initial.brochure_id}`, {
+        data = await api(`/brochures/${initial.brochure_id}`, {
           method: "PUT",
           headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(body),
-          credentials: 'include'
+          body: JSON.stringify(body)
         });
       } else {
-        r = await fetch(`${apiBase}/api/brochures`, {
+        data = await api(`/brochures`, {
           method: "POST",
           headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(body),
-          credentials: 'include'
+          body: JSON.stringify(body)
         });
-      }
-      const data = await r.json().catch(()=>null);
-      if (!r.ok) {
-        console.error(data);
-        return alert(data?.error || "Неуспешно записване");
       }
       onSaved?.();
     } catch (e) {

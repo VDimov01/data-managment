@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { api, qs } from "../../services/api";
 
 export default function CompareForm({ apiBase, initial = null, onSaved }) {
   const isEdit = !!initial;
@@ -12,82 +13,94 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
   // cascade pickers
   const [makes, setMakes] = useState([]);
   const [models, setModels] = useState([]);
-  const [years, setYears]   = useState([]);
+  const [years, setYears] = useState([]);
   const [listEditions, setListEditions] = useState([]);
 
   const [makeId, setMakeId] = useState("");
   const [modelId, setModelId] = useState("");
   const [yearId, setYearId] = useState("");
 
-  // basket of selected editions (array of {edition_id, name, year, model_name, make_name})
+  // basket of selected editions
   const [selected, setSelected] = useState([]);
 
   // load makes
   useEffect(() => {
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/makes`, { credentials: 'include' });
-      const data = await r.json();
-      setMakes(data || []);
-    })().catch(console.error);
-  }, [apiBase]);
+      try {
+        const data = await api(`/cascade/makes`);
+        setMakes(data || []);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, []);
 
   // load models by make
   useEffect(() => {
     setModels([]); setModelId(""); setYears([]); setYearId(""); setListEditions([]);
     if (!makeId) return;
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/models?make_id=${makeId}`, { credentials: 'include' });
-      setModels(await r.json());
-    })().catch(console.error);
-  }, [makeId, apiBase]);
+      try {
+        const data = await api(`/cascade/models${qs({ make_id: makeId })}`);
+        setModels(data || []);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [makeId]);
 
   // load years by model
   useEffect(() => {
     setYears([]); setYearId(""); setListEditions([]);
     if (!modelId) return;
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/model-years?model_id=${modelId}`, { credentials: 'include' });
-      setYears(await r.json());
-    })().catch(console.error);
-  }, [modelId, apiBase]);
+      try {
+        const data = await api(`/cascade/model-years${qs({ model_id: modelId })}`);
+        setYears(data || []);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [modelId]);
 
   // load editions by year
   useEffect(() => {
     setListEditions([]);
     if (!yearId) return;
     (async () => {
-      const r = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${yearId}`, { credentials: 'include' });
-      setListEditions(await r.json());
-    })().catch(console.error);
-  }, [yearId, apiBase]);
+      try {
+        const data = await api(`/cascade/editions${qs({ model_year_id: yearId })}`);
+        setListEditions(data || []);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [yearId]);
 
-  // prefill when editing: fetch selection (edition_ids) & resolve edition meta
+  // prefill when editing
   useEffect(() => {
     if (!isEdit) return;
     (async () => {
       try {
-        const r = await fetch(`${apiBase}/api/compares/${initial.compare_id}/selection`, { credentials: 'include' });
-        if (!r.ok) return;
-        const sel = await r.json();
+        // selection info for this compare
+        const sel = await api(`/compares/${initial.compare_id}/selection`);
 
-        // load edition metadata via editions/compare (returns editions list)
+        // resolve edition metadata (to render chips nicely)
         if (Array.isArray(sel.edition_ids) && sel.edition_ids.length > 0) {
-          const rr = await fetch(`${apiBase}/api/editions/compare`, {
+          const cmp = await api(`/editions/compare`, {
             method: "POST",
-            headers: { "Content-Type":"application/json" },
-            body: JSON.stringify({ edition_ids: sel.edition_ids, only_differences: 0 }),
-            credentials: 'include'
+            body: { edition_ids: sel.edition_ids, only_differences: 0 },
           });
-          const cmp = await rr.json();
           const eds = cmp?.editions || [];
-          // normalize to basket format
-          setSelected(eds.map(e => ({
-            edition_id: e.edition_id,
-            edition_name: e.edition_name,
-            year: e.year,
-            model_name: e.model_name,
-            make_name: e.make_name
-          })));
+          setSelected(
+            eds.map(e => ({
+              edition_id: e.edition_id,
+              edition_name: e.edition_name,
+              year: e.year,
+              model_name: e.model_name,
+              make_name: e.make_name
+            }))
+          );
         }
 
         setOnlyDiff(!!sel.only_differences);
@@ -97,7 +110,7 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
         console.error("Автоматичното попълване на селекцията е неуспешно", e);
       }
     })();
-  }, [isEdit, initial, apiBase]);
+  }, [isEdit, initial?.compare_id]);
 
   const addEdition = (e) => {
     const id = Number(e.target.value);
@@ -106,14 +119,19 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
     if (exists) return;
     const meta = listEditions.find(x => x.edition_id === id);
     if (!meta) return;
-    setSelected(prev => [...prev, {
-      edition_id: meta.edition_id,
-      edition_name: meta.name,
-      year: meta.year,
-      model_name: meta.model_name || "", // optional if your cascade returns it
-      make_name: meta.make_name || ""
-    }]);
-    // reset pickers to allow adding same edition again if needed
+
+    setSelected(prev => [
+      ...prev,
+      {
+        edition_id: meta.edition_id,
+        edition_name: meta.name,
+        year: meta.year,
+        model_name: meta.model_name || "",
+        make_name: meta.make_name || ""
+      }
+    ]);
+
+    // reset pickers
     setMakeId(""); setModelId(""); setYearId(""); setListEditions([]);
   };
 
@@ -131,129 +149,120 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
       only_differences: onlyDiff ? 1 : 0,
       language,
       snapshot: snapshot ? 1 : 0,
-      edition_ids: selected.map(x => x.edition_id)
+      edition_ids: selected.map(x => x.edition_id),
     };
 
     try {
-      let r;
       if (isEdit) {
-        r = await fetch(`${apiBase}/api/compares/${initial.compare_id}`, {
-          method: "PUT",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(body),
-          credentials: 'include'
-        });
+        await api(`/compares/${initial.compare_id}`, { method: "PUT", body });
       } else {
-        r = await fetch(`${apiBase}/api/compares`, {
-          method: "POST",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(body),
-          credentials: 'include'
-        });
-      }
-      const data = await r.json().catch(()=>null);
-      if (!r.ok) {
-        console.error(data);
-        return alert(data?.error || "Save failed");
+        await api(`/compares`, { method: "POST", body });
       }
       onSaved?.();
     } catch (e) {
-      console.error(e); alert("Save failed");
+      console.error(e);
+      alert(e.message || "Save failed");
     }
   };
 
   return (
     <div className="cmp-form">
       <div className="cmp-grid">
-  <div className="cmp-field cmp-col-2">
-    <label>Заглавие *</label>
-    <input value={title} onChange={(e)=>setTitle(e.target.value)} />
-  </div>
+        <div className="cmp-field cmp-col-2">
+          <label>Заглавие *</label>
+          <input value={title} onChange={(e)=>setTitle(e.target.value)} />
+        </div>
 
-  <div className="cmp-field">
-    <label>Език</label>
-    <select value={language} onChange={e=>setLanguage(e.target.value)}>
-      <option value="bg">BG</option>
-      <option value="en">EN</option>
-    </select>
-  </div>
+        <div className="cmp-field">
+          <label>Език</label>
+          <select value={language} onChange={e=>setLanguage(e.target.value)}>
+            <option value="bg">BG</option>
+            <option value="en">EN</option>
+          </select>
+        </div>
 
-  <div className="cmp-field">
-    <label>Покажи само разликите</label>
-    <div className="cmp-check">
-      <input type="checkbox" checked={onlyDiff} onChange={()=>setOnlyDiff(v=>!v)} />
-      <span>Покажи само различаващите се атрибути</span>
-    </div>
-  </div>
+        <div className="cmp-field">
+          <label>Покажи само разликите</label>
+          <div className="cmp-check">
+            <input type="checkbox" checked={onlyDiff} onChange={()=>setOnlyDiff(v=>!v)} />
+            <span>Покажи само различаващите се атрибути</span>
+          </div>
+        </div>
 
-  <div className="cmp-field cmp-col-2">
-    <label>Описание</label>
-    <textarea rows={2} value={description} onChange={e=>setDescription(e.target.value)} />
-  </div>
+        <div className="cmp-field cmp-col-2">
+          <label>Описание</label>
+          <textarea rows={2} value={description} onChange={e=>setDescription(e.target.value)} />
+        </div>
 
-  <div className="cmp-field">
-    <label>Snapshot</label>
-    <div className="cmp-check">
-      <input type="checkbox" checked={snapshot} onChange={()=>setSnapshot(v=>!v)} />
-      <span>Замрази данните в сравнението</span>
-    </div>
-  </div>
-</div>
+        <div className="cmp-field">
+          <label>Snapshot</label>
+          <div className="cmp-check">
+            <input type="checkbox" checked={snapshot} onChange={()=>setSnapshot(v=>!v)} />
+            <span>Замрази данните в сравнението</span>
+          </div>
+        </div>
+      </div>
 
       <fieldset className="cmp-fieldset">
-  <legend>Добави издания</legend>
+        <legend>Добави издания</legend>
 
-  <div className="cmp-grid">
-    <div className="cmp-field">
-      <label>Марка</label>
-      <select value={makeId} onChange={(e)=>setMakeId(e.target.value)}>
-        <option value="">Изберете марка…</option>
-        {makes.map(m => <option key={m.make_id} value={m.make_id}>{m.name}</option>)}
-      </select>
-    </div>
+        <div className="cmp-grid">
+          <div className="cmp-field">
+            <label>Марка</label>
+            <select value={makeId} onChange={(e)=>setMakeId(e.target.value)}>
+              <option value="">Изберете марка…</option>
+              {makes.map(m => <option key={m.make_id} value={m.make_id}>{m.name}</option>)}
+            </select>
+          </div>
 
-    <div className="cmp-field">
-      <label>Модел</label>
-      <select value={modelId} onChange={(e)=>setModelId(e.target.value)} disabled={!makeId}>
-        <option value="">Изберете модел…</option>
-        {models.map(m => <option key={m.model_id} value={m.model_id}>{m.name}</option>)}
-      </select>
-    </div>
+          <div className="cmp-field">
+            <label>Модел</label>
+            <select value={modelId} onChange={(e)=>setModelId(e.target.value)} disabled={!makeId}>
+              <option value="">Изберете модел…</option>
+              {models.map(m => <option key={m.model_id} value={m.model_id}>{m.name}</option>)}
+            </select>
+          </div>
 
-    <div className="cmp-field">
-      <label>Година</label>
-      <select value={yearId} onChange={(e)=>setYearId(e.target.value)} disabled={!modelId}>
-        <option value="">Изберете година…</option>
-        {years.map(y => <option key={y.model_year_id} value={y.model_year_id}>{y.year}</option>)}
-      </select>
-    </div>
+          <div className="cmp-field">
+            <label>Година</label>
+            <select value={yearId} onChange={(e)=>setYearId(e.target.value)} disabled={!modelId}>
+              <option value="">Изберете година…</option>
+              {years.map(y => <option key={y.model_year_id} value={y.model_year_id}>{y.year}</option>)}
+            </select>
+          </div>
 
-    <div className="cmp-field">
-      <label>Издание</label>
-      <select onChange={addEdition} disabled={!yearId}>
-        <option value="">Добави издание…</option>
-        {listEditions.map(ed => (
-          <option key={ed.edition_id} value={ed.edition_id}>
-            {ed.name} ({ed.year})
-          </option>
-        ))}
-      </select>
-    </div>
-  </div>
+          <div className="cmp-field">
+            <label>Издание</label>
+            <select onChange={addEdition} disabled={!yearId}>
+              <option value="">Добави издание…</option>
+              {listEditions.map(ed => (
+                <option key={ed.edition_id} value={ed.edition_id}>
+                  {ed.name} ({ed.year})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-  <div className="cmp-basket">
-    {selected.length === 0 && <div className="cmp-muted">Все още няма избрани издания.</div>}
-    {selected.map(e => (
-      <div key={e.edition_id} className="cmp-chip">
-        <span>{e.make_name ? `${e.make_name} ` : ""}{e.model_name ? `${e.model_name} ` : ""}{e.year} — {e.edition_name}</span>
-        <button type="button" onClick={() => removeEdition(e.edition_id)} title="Премахни">×</button>
-      </div>
-    ))}
-  </div>
-</fieldset>
+        <div className="cmp-basket">
+          {selected.length === 0 && <div className="cmp-muted">Все още няма избрани издания.</div>}
+          {selected.map(e => (
+            <div key={e.edition_id} className="cmp-chip">
+              <span>
+                {e.make_name ? `${e.make_name} ` : ""}
+                {e.model_name ? `${e.model_name} ` : ""}
+                {e.year} — {e.edition_name}
+              </span>
+              <button type="button" onClick={() => removeEdition(e.edition_id)} title="Премахни">×</button>
+            </div>
+          ))}
+        </div>
+      </fieldset>
 
       <div className="cmp-actions-end">
-        <button className="cmp-primary" onClick={save}>{isEdit ? "Запази промените" : "Създай сравнение"}</button>
+        <button className="cmp-primary" onClick={save}>
+          {isEdit ? "Запази промените" : "Създай сравнение"}
+        </button>
       </div>
     </div>
   );

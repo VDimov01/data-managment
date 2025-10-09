@@ -299,41 +299,60 @@ async function handleCancel() {
   }
 }
 
-// Add these handlers inside ContractsSection
+// state you already have:
 const [creatingHandover, setCreatingHandover] = useState(false);
 const [issuingAllHandover, setIssuingAllHandover] = useState(false);
 
+// Create drafts for all contract items
 async function handleCreateHandoverDrafts() {
   if (!contract?.contract_id) return;
   setCreatingHandover(true);
   try {
-    await fetch(buildUrl(apiBase, `/api/handover/bulk-from-contract/${contract.contract_id}`), {
-      method: 'POST', credentials: 'include'
-    }).then(r => r.json()).then(d => { if (d.error) throw new Error(d.error); });
-    alert('Създадени са чернови за всички линии.');
+    await api(`/handover/bulk-from-contract/${contract.contract_id}`, { method: "POST" });
+    alert("Създадени са чернови за всички линии.");
   } catch (e) {
     alert(`Грешка: ${e.message}`);
-  } finally { setCreatingHandover(false); }
+  } finally {
+    setCreatingHandover(false);
+  }
 }
 
+// Issue PDFs for all handovers that are still in draft
 async function handleIssueAllHandover() {
   if (!contract?.contract_id) return;
   setIssuingAllHandover(true);
   try {
-    const data = await fetch(buildUrl(apiBase, `/api/handover/by-contract/${contract.contract_id}`), { credentials: 'include' })
-      .then(r => r.json());
-    const list = Array.isArray(data.items) ? data.items : [];
-    for (const hr of list) {
-      if (hr.status === 'draft') {
-        const d = await fetch(buildUrl(apiBase, `/api/handover/${hr.handover_record_id}/issue`), { method:'POST', credentials: 'include' })
-          .then(r=>r.json());
-        if (d?.pdf?.signedUrl) window.open(d.pdf.signedUrl, '_blank', 'noopener,noreferrer');
+    const { items = [] } = await api(`/handover/by-contract/${contract.contract_id}`);
+    const drafts = items.filter((hr) => hr.status === "draft");
+
+    const results = [];
+    for (const hr of drafts) {
+      try {
+        const data = await api(`/handover/${hr.handover_record_id}/issue`, { method: "POST" });
+        results.push({ id: hr.handover_record_id, ok: true, url: data?.pdf?.signedUrl || null });
+      } catch (err) {
+        results.push({ id: hr.handover_record_id, ok: false, error: err.message });
       }
     }
-    alert('Готово.');
+
+    // Open the first generated PDF to avoid popup spam; the rest can be opened from the tab
+    const firstUrl = results.find((r) => r.ok && r.url)?.url;
+    if (firstUrl) window.open(firstUrl, "_blank", "noopener,noreferrer");
+
+    const failed = results.filter((r) => !r.ok);
+    if (failed.length) {
+      alert(
+        `Готово с предупреждения: ${results.length - failed.length} успешни, ${failed.length} неуспешни.\n` +
+        failed.slice(0, 5).map((f) => `#${f.id}: ${f.error}`).join("\n")
+      );
+    } else {
+      alert("Готово.");
+    }
   } catch (e) {
     alert(`Грешка: ${e.message}`);
-  } finally { setIssuingAllHandover(false); }
+  } finally {
+    setIssuingAllHandover(false);
+  }
 }
 
 

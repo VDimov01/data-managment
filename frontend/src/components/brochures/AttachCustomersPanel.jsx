@@ -13,8 +13,7 @@ export default function AttachCustomersPanel({ apiBase, brochureId }) {
   const load = async () => {
     setLoading(true);
     try {
-      const r = await fetch(`${apiBase}/api/brochures/${brochureId}/attachments`, { credentials: 'include' });
-      const data = await r.json();
+      const data = await api(`/brochures/${brochureId}/attachments`);
       setList(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
@@ -26,39 +25,32 @@ export default function AttachCustomersPanel({ apiBase, brochureId }) {
 
   // search customers (uses your /api/customers list/search)
   useEffect(() => {
-    const t = setTimeout(async () => {
-      const qq = searchQ.trim();
-      if (!qq) { setCustResults([]); return; }
-      setSearchLoading(true);
-      try {
-        const url = new URL(`${apiBase}/api/customers`);
-        url.searchParams.set("q", qq);
-        url.searchParams.set("page", "1");
-        url.searchParams.set("limit", "10");
-        const r = await fetch(url, { credentials: 'include' });
-        const data = await r.json();
-        setCustResults(data.customers || []);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setSearchLoading(false);
-      }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [apiBase, searchQ]);
+  const t = setTimeout(async () => {
+    const qq = searchQ.trim();
+    if (!qq) { setCustResults([]); return; }
+    setSearchLoading(true);
+    try {
+      const data = await api(`/customers${qs({ q: qq, page: 1, limit: 10 })}`);
+      // Handle both shapes: array or { customers/items: [...] }
+      const rows =
+        data?.customers ?? data?.items ?? (Array.isArray(data) ? data : []);
+      setCustResults(rows || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, 300);
+  return () => clearTimeout(t);
+}, [searchQ]);
 
   const attach = async (customer_id) => {
     try {
-      const r = await fetch(`${apiBase}/api/brochures/${brochureId}/attachments`, {
+      await api(`/brochures/${brochureId}/attachments`, {
         method: "POST",
         headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ customer_id, is_visible: 1 }),
-        credentials: 'include'
+        body: JSON.stringify({ customer_id, is_visible: 1 })
       });
-      if (!r.ok) {
-        const d = await r.json().catch(()=>null);
-        return alert(d?.error || "Неуспешно прикрепяне към клиента");
-      }
       await load();
       setSearchQ(""); setCustResults([]);
     } catch (e) {
@@ -69,11 +61,7 @@ export default function AttachCustomersPanel({ apiBase, brochureId }) {
   const detach = async (customer_id) => {
     if (!window.confirm("Откачане на брошурата от клиента?")) return;
     try {
-      const r = await fetch(`${apiBase}/api/brochures/${brochureId}/attachments/${customer_id}`, { method: "DELETE", credentials: 'include' });
-      if (r.status !== 204) {
-        const d = await r.json().catch(()=>null);
-        return alert(d?.error || "Неуспешно откачане");
-      }
+      await api(`/brochures/${brochureId}/attachments/${customer_id}`, { method: "DELETE" });
       setList(prev => prev.filter(x => x.customer_id !== customer_id));
     } catch (e) {
       console.error(e); alert("Неуспешно откачане");

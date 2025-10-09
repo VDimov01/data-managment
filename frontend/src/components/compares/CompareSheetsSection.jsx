@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Modal from "../Modal";
 import CompareForm from "./CompareForm";
 import AttachCustomersPanelCompare from "./AttachCustomersPanelCompare";
-
+import { api, qs } from "../../services/api";
 
 export default function CompareSheetsSection({ apiBase = "http://localhost:5000" }) {
   const [q, setQ] = useState("");
@@ -35,13 +35,7 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
   const load = async () => {
     setLoading(true); setErr(null);
     try {
-      const url = new URL(`${apiBase}/api/compares`);
-      if (term) url.searchParams.set("q", term);
-      url.searchParams.set("page", page);
-      url.searchParams.set("limit", limit);
-      const r = await fetch(url, { credentials: 'include' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
+      const data = await api(`/compares${qs({ q: term || undefined, page, limit })}`);
       setRows(data.compares || []);
       setTotal(data.total || 0);
     } catch (e) {
@@ -52,7 +46,7 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [term, page, limit, apiBase]);
+  useEffect(() => { load(); }, [term, page, limit]); // apiBase no longer needed
 
   const onCreate = () => { setEditing(null); setOpenForm(true); };
   const onEdit = (row) => { setEditing(row); setOpenForm(true); };
@@ -60,32 +54,23 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
   const onDelete = async (row) => {
     if (!window.confirm(`Изтриване на сравнение: "${row.title}"?`)) return;
     try {
-      const r = await fetch(`${apiBase}/api/compares/${row.compare_id}`, { method: "DELETE", credentials: 'include' });
-      if (r.status === 204) {
-        setRows(prev => prev.filter(x => x.compare_id !== row.compare_id));
-        setTotal(t => Math.max(0, t - 1));
-      } else {
-        const j = await r.json().catch(()=>null);
-        alert(j?.error || "Неуспешно изтриване");
-      }
+      await api(`/compares/${row.compare_id}`, { method: "DELETE" }); // 204 is fine
+      setRows(prev => prev.filter(x => x.compare_id !== row.compare_id));
+      setTotal(t => Math.max(0, t - 1));
     } catch (e) {
       console.error(e);
-      alert("Неуспешно изтриване");
+      alert(e.message || "Неуспешно изтриване");
     }
   };
 
   const onPreview = async (row) => {
     try {
-      const r = await fetch(`${apiBase}/api/compares/${row.compare_id}/resolve`, { credentials: 'include' });
-      const data = await r.json();
-      if (!r.ok) {
-        console.error(data);
-        return alert(data.error || "Неуспешно разрешаване");
-      }
+      const data = await api(`/compares/${row.compare_id}/resolve`);
       setPreviewData({ title: row.title, ...data });
       setOpenPreview(true);
     } catch (e) {
-      console.error(e); alert("Неуспешно предварително преглеждане");
+      console.error(e);
+      alert(e.message || "Неуспешно предварително преглеждане");
     }
   };
 

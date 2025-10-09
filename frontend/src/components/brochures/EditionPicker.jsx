@@ -10,8 +10,7 @@ export default function EditionPicker({ apiBase, selectedYearIds, selectedEditio
     (async () => {
       const m = new Map();
       for (const y of selectedYearIds) {
-        const r = await fetch(`${apiBase}/api/cascade/editions?model_year_id=${y}`, { credentials: 'include' });
-        const list = await r.json();
+        const list = await api(`/cascade/editions${qs({model_year_id: y})}`);
         if (cancelled) return;
         m.set(String(y), list || []);
       }
