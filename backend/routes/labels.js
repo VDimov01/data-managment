@@ -4,7 +4,7 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const { bucketPrivate } = require('../services/gcs');
-const { fetchVehiclesForLabels } = require('../services/labelsdata');
+const { fetchVehiclesForLabels } = require('../services/labelsData');
 const { ensureVehicleQr } = require('../services/qrUploader'); // you already have this
 const router = express.Router();
 
