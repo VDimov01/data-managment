@@ -1,8 +1,5 @@
 export const fetchVehicles = async () => {
-  const res = await fetch(`${API_BASE}/api/vehicles`, { credentials: 'include' });
-  console.log(API_BASE);
-  if (!res.ok) throw new Error("Failed to fetch vehicles");
-  return res.json();
+  return api("/vehicles");
 };
 
 export const fetchEditions = async () => {
@@ -12,9 +9,7 @@ export const fetchEditions = async () => {
 }
 
 export const fetchColors = async () => {
-  const res = await api("/colors");
-  if (!res.ok) throw new Error("Failed to fetch colors");
-  return res.json();
+  return api("/colors");
 };
 
 export const fetchShopsNew = async () => {
@@ -33,61 +28,46 @@ export async function searchContracts(query = "", page = 1, limit = 10) {
     page: String(page),
     limit: String(limit),
   });
-  const res = await api(`/contracts/search?${params.toString()}`);
-  if (!res.ok) throw new Error("Failed to search contracts");
-  return res.json();
+
+  return await api(`/contracts/search?${params.toString()}`);
 }
 
 export const fetchImages = async (carId, carMaker, carModel) => {
-    const res = await api(`/car-images/${carId}^${carMaker}^${carModel}`);
-    if(!res.ok) throw new Error("Failed to fetch images");
-    return res.json();
+    return api(`/car-images/${carId}^${carMaker}^${carModel}`);
   };
 
 export async function generateVehicleQr(apiBase, vehicleId) {
-  const r = await api(`/qr/vehicles/${vehicleId}`, { method: 'POST' });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json(); // { qr_png_path, destination, ... }
+  return api(`/qr/vehicles/${vehicleId}`, { method: 'POST' });
 }
 
 // --- Vehicle images (private) ---
 export async function listVehicleImages(apiBase, vehicleId) {
-  const r = await api(`/vehicleImages/${vehicleId}/images`);
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  return api(`/vehicleImages/${vehicleId}/images`);
 }
 
 export async function uploadVehicleImages(apiBase, vehicleId, files) {
   const fd = new FormData();
   for (const f of files) fd.append('images', f);
-  const r = await api(`/vehicleImages/${vehicleId}/images`, {
+  return api(`/vehicleImages/${vehicleId}/images`, {
     method: 'POST',
     body: fd
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json(); // { created: [...] }
 }
 
 export async function setPrimaryVehicleImage(apiBase, vehicleId, imageId) {
-  const r = await api(`/vehicleImages/${vehicleId}/images/${imageId}/primary`, { method: 'POST' });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  return api(`/vehicleImages/${vehicleId}/images/${imageId}/primary`, { method: 'POST' });
 }
 
 export async function updateVehicleImageMeta(apiBase, vehicleId, imageId, { caption, sort_order }) {
-  const r = await api(`/vehicleImages/${vehicleId}/images/${imageId}`, {
+  return api(`/vehicleImages/${vehicleId}/images/${imageId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ caption, sort_order })
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
 }
 
 export async function deleteVehicleImage(apiBase, vehicleId, imageId) {
-  const r = await api(`/vehicleImages/${vehicleId}/images/${imageId}`, { method: 'DELETE' });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  return api(`/vehicleImages/${vehicleId}/images/${imageId}`, { method: 'DELETE' });
 }
 
 // Public vehicle by UUID
