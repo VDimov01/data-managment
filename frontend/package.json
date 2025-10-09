@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:prod-api": "cross-env VITE_API_BASE=https://data-managment-production.up.railway.app vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

@@ -208,7 +208,16 @@ export function buildUrl(base, path, params = {}) {
   return `${b}${path}${qs.toString() ? `?${qs.toString()}` : ''}`;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+const fallbackApiBase = (() => {
+  // Dev default if env not set
+  if (import.meta.env.DEV) return 'http://localhost:5000';
+  // In prod, assume same-origin unless overridden
+  return window.location.origin;
+})();
+
+export const API_BASE =
+  (import.meta.env.VITE_API_BASE && import.meta.env.VITE_API_BASE.trim()) ||
+  fallbackApiBase;
 
 export async function api(path, { method = 'GET', body, headers } = {}) {
   const r = await fetch(`${API_BASE}/api${path}`, {
