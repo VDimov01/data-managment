@@ -42,7 +42,7 @@ function groupRank(label) {
   return m ? parseInt(m[1], 10) : 9999;
 }
 
-export default function EditionCompare({ apiBase = "https://data-managment-production.up.railway.app:5000", editionIds = null }) {
+export default function EditionCompare({ apiBase = "https://data-managment-production.up.railway.app", editionIds = null }) {
   const [editionIdsText, setEditionIdsText] = useState("");
   const [onlyDiff, setOnlyDiff] = useState(false);
   const [query, setQuery] = useState("");          // ← search box

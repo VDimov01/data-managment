@@ -15,7 +15,7 @@ import {
 const PARTS = ["main","exterior","interior","unsorted"];
 
 export default function EditionImageUploader({
-  apiBase = "https://data-managment-production.up.railway.app:5000",
+  apiBase = "https://data-managment-production.up.railway.app",
   editionId, makeName, modelName, modelYear
 }) {
   const [rows, setRows] = useState([]);

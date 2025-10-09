@@ -96,7 +96,7 @@ async function regenerateSpecsForEdition(apiBase, edition_id) {
 }
 
 
-export default function EditionAttributeModal({ apiBase = "https://data-managment-production.up.railway.app:5000", onSaved, edition = null, onCreated, onUpdated }) {
+export default function EditionAttributeModal({ apiBase = "https://data-managment-production.up.railway.app", onSaved, edition = null, onCreated, onUpdated }) {
   // mode: 'select' (existing) or 'create' (new)
   const [mode, setMode] = useState('create');
   const [view, setView] = useState('attributes'); // 'attributes' | 'images'
