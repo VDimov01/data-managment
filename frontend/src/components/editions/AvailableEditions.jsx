@@ -36,11 +36,10 @@ const ensureSpecs = async (row, { regenerate = true } = {}) => {
   const id = row.edition_id;
   setSpecBusy(prev => new Set(prev).add(id));
   try {
-    const res = await fetch(`${apiBase}/api/editions/${id}/specs-pdf`, {
+    const res = await api(`/editions/${id}/specs-pdf`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ regenerate }),
-      credentials: 'include'
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data?.error || 'Spec pack failed');
@@ -62,7 +61,7 @@ const openLatestSpecs = async (row) => {
   const id = row.edition_id;
   setSpecBusy(prev => new Set(prev).add(id));
   try {
-    const res = await fetch(`${apiBase}/api/editions/${id}/specs-pdf/latest`, { credentials: 'include' });
+    const res = await api(`/editions/${id}/specs-pdf/latest`);
     const data = await res.json().catch(() => ({}));
     if (res.status === 404) return alert('No spec pack yet. Generate first.');
     if (!res.ok) throw new Error(data?.error || 'Failed to fetch latest spec pack');
