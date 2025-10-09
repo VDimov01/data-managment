@@ -5,7 +5,7 @@ import {
   DragOverlay, useDroppable
 } from "@dnd-kit/core";
 import {
-  SortableContext, useSortable, rectSortingStrategy, arrayMove
+  SortableContext, useSortable, rectSortingStrategy
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -14,8 +14,17 @@ import {
 
 const PARTS = ["main","exterior","interior","unsorted"];
 
+// --- normalize a server row to a consistent client shape
+function mapImage(row) {
+  const id = row.image_id ?? row.id;                    // <- ensure id is set
+  const url = row.image_url || row.url || row.public_url || row.gcs_url || "";
+  const part = row.is_primary ? "main" : (row.part || "unsorted");
+  const sort_order = Number.isFinite(+row.sort_order) ? +row.sort_order : 0;
+  const is_primary = row.is_primary ? 1 : 0;
+  return { id, image_url: url, part, sort_order, is_primary };
+}
+
 export default function EditionImageUploader({
-  apiBase = "https://data-managment-production.up.railway.app",
   editionId, makeName, modelName, modelYear
 }) {
   const [rows, setRows] = useState([]);
@@ -25,26 +34,26 @@ export default function EditionImageUploader({
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-  const safe = (s) => encodeURIComponent(String(s ?? "").trim().replace(/-/g, " ").replace(/\s+/g, " "));
-  const listUrl = `${apiBase}/api/car-images/${editionId}-${safe(makeName)}-${safe(modelName)}-${safe(modelYear)}`;
-  const uploadUrl = (part) => `${apiBase}/api/car-images/${editionId}-${safe(makeName)}-${safe(modelName)}-${safe(modelYear)}-${safe(part)}`;
-
+  // Load list and normalize
   const refresh = async () => {
     if (!editionId) return;
     setBusy(true);
     try {
       const data = await listEditionImages(editionId, makeName, modelName, modelYear);
-      let imgs = Array.isArray(data?.images) ? data.images : [];
-      // Normalize: primary first, then exterior, interior, unsorted; sort by sort_order then id
-      const pr = imgs.find(x => Number(x.is_primary) === 1) || null;
-      const rest = imgs.filter(x => Number(x.is_primary) !== 1);
+      const list = Array.isArray(data?.images) ? data.images : Array.isArray(data) ? data : (data?.items || []);
+      const mapped = list.map(mapImage).filter(x => Number.isFinite(x.id)); // drop bad rows
+
+      // primary first, then exterior, interior, unsorted; then sort_order then id
       const rank = (p) => (p === "main" ? 0 : p === "exterior" ? 1 : p === "interior" ? 2 : 3);
-      rest.sort((a,b)=> rank(a.part||"unsorted")-rank(b.part||"unsorted")
-                    || (a.sort_order??0)-(b.sort_order??0) || a.id-b.id);
-      imgs = pr ? [{...pr, part: "main", sort_order: 1}, ...rest] : rest;
-      setRows(imgs);
+      mapped.sort((a,b) =>
+        rank(a.part) - rank(b.part) ||
+        (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
+        a.id - b.id
+      );
+
+      setRows(mapped);
     } catch (e) {
-      alert(e.message);
+      alert(`Load images failed: ${e.message}`);
     } finally {
       setBusy(false);
     }
@@ -54,7 +63,7 @@ export default function EditionImageUploader({
 
   const grouped = useMemo(() => {
     const g = { main:[], exterior:[], interior:[], unsorted:[] };
-    for (const r of rows) (g[(r.part||"unsorted")] || g.unsorted).push(r);
+    for (const r of rows) (g[r.part] || g.unsorted).push(r);
     return g;
   }, [rows]);
 
@@ -65,161 +74,151 @@ export default function EditionImageUploader({
     unsorted: grouped.unsorted.map(x=>x.id),
   };
 
-  // --- API actions ---
+  // --- API actions
   const patchMeta = async (id, patch) => {
-    // helper throws on failure; returns JSON like { ok: true }
-    await patchEditionImage(id, patch);
+    // Only send primitive diffs; coerce booleans → 0/1
+    const body = { ...patch };
+    if ('is_primary' in body) body.is_primary = body.is_primary ? 1 : 0;
+    await patchEditionImage(id, body);
   };
-
-  const deleteOne = async (id) => {
-    await deleteEditionImage(id); // use your helper
-  };
-
-  // --- Upload -> goes to chosen part (default: unsorted) ---
-  const onUpload = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      for (const f of files) fd.append("images", f);
-        const data = await uploadEditionImages(editionId, makeName, modelName, modelYear, files, uploadPart);
-        if (!data?.success) throw new Error(data?.error || "Upload failed");
-        await refresh();
-        e.target.value = "";
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  // --- DnD logic (multi-container) ---
-  async function persistReorder(prev, next) {
-    const before = new Map(prev.map(x => [x.id, { part: x.part || "unsorted", so: x.sort_order ?? 0 }]));
-    const ops = [];
-    for (const n of next) {
-      const b = before.get(n.id) || {};
-      const np = n.part || "unsorted";
-      const ns = n.sort_order ?? 0;
-      if (b.part !== np || b.so !== ns) {
-        const patch = { part: np, sort_order: ns };
-        if (np === "main") patch.is_primary = 1;     // single primary
-        ops.push(patchMeta(n.id, patch));
-      }
-    }
-      if (ops.length) await Promise.all(ops);
-      // CRUCIAL: pull server truth so next diffs are against persisted state
-      await refresh();
-    }
-
-
-const findPartByItemId = (id) =>
-  Object.keys(idsByPart).find(p => idsByPart[p].includes(id));
-
-const onDragEnd = async ({ active, over }) => {
-  if (!over) return;
-
-  // take an immutable snapshot BEFORE we touch anything
-  const prev = rows;
-
-  // where did we start?
-  const fromPart = Object.keys(idsByPart).find(p => idsByPart[p].includes(active.id));
-  if (!fromPart) return;
-
-  // where are we going?
-  const overId = String(over.id);
-  let toPart, insertAt;
-  if (overId.startsWith("container:")) {
-    toPart = over.data?.current?.part ?? overId.split(":")[1];
-    insertAt = idsByPart[toPart].length; // append
-  } else {
-    toPart = Object.keys(idsByPart).find(p => idsByPart[p].includes(over.id)) || fromPart;
-    insertAt = idsByPart[toPart].indexOf(over.id);
-    if (insertAt < 0) insertAt = idsByPart[toPart].length;
-  }
-
-  // ---- Build a NEW working copy without mutating prev/rows ----
-  // shallow clone array; DO NOT reuse prev objects
-  const working = rows.map(x => ({ ...x }));
-
-  // clone the moving item
-  const idx = working.findIndex(x => x.id === active.id);
-  if (idx < 0) return;
-  const moving = { ...working[idx] }; // cloned
-
-  // if part changes, update only the CLONE
-  if ((moving.part || "unsorted") !== toPart) {
-    moving.part = toPart;
-  }
-
-  // If dropped into main, demote any existing main in the working set
-  if (toPart === "main") {
-    for (let i = 0; i < working.length; i++) {
-      if (working[i].id !== moving.id && (working[i].part || "unsorted") === "main") {
-        working[i] = { ...working[i], part: "unsorted" }; // clone on write
-      }
-    }
-  }
-
-  // Rebuild per-part lists EXCLUDING the old instance of the moving item
-  const pick = (p) => working.filter(x => (x.part || "unsorted") === p && x.id !== moving.id);
-  let mainArr = pick("main");
-  let extArr  = pick("exterior");
-  let intArr  = pick("interior");
-  let unsArr  = pick("unsorted");
-
-  // Insert the cloned moving item in target bucket
-  const insert = (arr) => {
-    const copy = arr.slice();
-    copy.splice(Math.min(insertAt, copy.length), 0, moving);
-    return copy;
-  };
-  if (toPart === "main") {
-    mainArr = [moving]; // single-slot
-  } else if (toPart === "exterior") {
-    extArr = insert(extArr);
-  } else if (toPart === "interior") {
-    intArr = insert(intArr);
-  } else {
-    unsArr = insert(unsArr);
-  }
-
-  // Renumber sort_order immutably; set main=primary
-  const renum = (arr, start=1) => arr.map((x,i)=>({ ...x, sort_order: start + i }));
-  const final = [
-    ...renum(mainArr.length ? [{ ...mainArr[0], part: "main", is_primary: 1, sort_order: 1 }] : []),
-    ...renum(extArr.map(x => ({ ...x, part: "exterior", is_primary: 0 }))),
-    ...renum(intArr.map(x => ({ ...x, part: "interior", is_primary: 0 }))),
-    ...renum(unsArr.map(x => ({ ...x, part: "unsorted", is_primary: 0 }))),
-  ];
-
-  // Optimistic UI
-  setRows(final);
-
-  // Persist diffs (only changed items), then refresh server truth
-  try {
-    await persistReorder(prev, final);
-  } catch (e) {
-    console.error(e);
-    await refresh(); // rollback to server truth if anything failed
-    alert("Reorder failed");
-  }
-};
-
-
 
   const remove = async (img) => {
     if (!confirm("Delete image?")) return;
     const prev = rows;
     try {
-      await deleteOne(img.id);
-      const next = rows.filter(x=>x.id!==img.id);
-      setRows(next);
-      // no need to re-patch order; optional: you could reindex part orders here & PATCH
+      await deleteEditionImage(img.id);
+      setRows(prev.filter(x => x.id !== img.id));
+      // Optional: refresh() to re-pull canonical state
     } catch (e) {
+      console.error(e);
       alert(e.message);
       setRows(prev);
+    }
+  };
+
+  // Upload
+  const onUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      await uploadEditionImages(editionId, makeName, modelName, modelYear, files, uploadPart);
+      await refresh();
+      e.target.value = "";
+    } catch (e) {
+      console.error(e);
+      alert(`Upload failed: ${e.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Persist only diffs; IMPORTANT: never send part:"main" to server
+  async function persistReorder(prev, next) {
+    const before = new Map(prev.map(x => [x.id, x]));
+    const ops = [];
+
+    for (const n of next) {
+      const b = before.get(n.id);
+      if (!b) continue;
+
+      // Build minimal patch
+      const patch = {};
+      const toPart = n.part;
+
+      if (toPart === 'main') {
+        // UI bucket only -> set primary, don’t send part/sort_order
+        if ((b.is_primary|0) !== 1) patch.is_primary = 1;
+        if (Object.keys(patch).length) ops.push(patchMeta(n.id, patch));
+        continue;
+      }
+
+      // not main: update part/sort if changed; ensure not marked primary
+      if ((b.part || 'unsorted') !== toPart) patch.part = toPart;
+      if ((b.sort_order ?? 0) !== (n.sort_order ?? 0)) patch.sort_order = n.sort_order ?? 0;
+      if ((b.is_primary|0) !== 0) patch.is_primary = 0;
+
+      if (Object.keys(patch).length) ops.push(patchMeta(n.id, patch));
+    }
+
+    if (ops.length) await Promise.all(ops);
+    await refresh();
+  }
+
+  const onDragEnd = async ({ active, over }) => {
+    if (!over) return;
+
+    const prev = rows;
+    const fromPart = Object.keys(idsByPart).find(p => idsByPart[p].includes(active.id));
+    if (!fromPart) return;
+
+    const overId = String(over.id);
+    let toPart, insertAt;
+    if (overId.startsWith("container:")) {
+      toPart = over.data?.current?.part ?? overId.split(":")[1];
+      insertAt = idsByPart[toPart].length;
+    } else {
+      toPart = Object.keys(idsByPart).find(p => idsByPart[p].includes(over.id)) || fromPart;
+      insertAt = idsByPart[toPart].indexOf(over.id);
+      if (insertAt < 0) insertAt = idsByPart[toPart].length;
+    }
+
+    // Work on cloned copy
+    const working = rows.map(x => ({ ...x }));
+    const idx = working.findIndex(x => x.id === active.id);
+    if (idx < 0) return;
+    const moving = { ...working[idx] };
+
+    // update UI part only
+    if (moving.part !== toPart) moving.part = toPart;
+
+    // If dropped into main, ensure single-slot
+    if (toPart === "main") {
+      for (let i = 0; i < working.length; i++) {
+        if (working[i].id !== moving.id && working[i].part === "main") {
+          working[i] = { ...working[i], part: "unsorted" };
+        }
+      }
+    }
+
+    // rebuild buckets excluding original moving row
+    const pick = (p) => working.filter(x => x.part === p && x.id !== moving.id);
+    let mainArr = pick("main");
+    let extArr  = pick("exterior");
+    let intArr  = pick("interior");
+    let unsArr  = pick("unsorted");
+
+    const insert = (arr) => {
+      const copy = arr.slice();
+      copy.splice(Math.min(insertAt, copy.length), 0, moving);
+      return copy;
+    };
+    if (toPart === "main") {
+      mainArr = [moving]; // single-slot
+    } else if (toPart === "exterior") {
+      extArr = insert(extArr);
+    } else if (toPart === "interior") {
+      intArr = insert(intArr);
+    } else {
+      unsArr = insert(unsArr);
+    }
+
+    // renumber sort_order for non-main buckets; main has no sort meaning server-side
+    const renum = (arr) => arr.map((x,i)=>({ ...x, sort_order: i+1 }));
+    const final = [
+      ...(mainArr.length ? [{ ...mainArr[0], part: "main", is_primary: 1, sort_order: 1 }] : []),
+      ...renum(extArr.map(x => ({ ...x, part: "exterior", is_primary: 0 }))),
+      ...renum(intArr.map(x => ({ ...x, part: "interior", is_primary: 0 }))),
+      ...renum(unsArr.map(x => ({ ...x, part: "unsorted", is_primary: 0 }))),
+    ];
+
+    setRows(final); // optimistic
+    try {
+      await persistReorder(prev, final);
+    } catch (e) {
+      console.error(e);
+      alert("Reorder failed");
+      await refresh();
     }
   };
 
@@ -231,6 +230,7 @@ const onDragEnd = async ({ active, over }) => {
         <label>Upload to:</label>
         <select value={uploadPart} onChange={e=>setUploadPart(e.target.value)}>
           <option value="unsorted">Unsorted</option>
+          {/* you can enable these later if you want to upload to buckets directly */}
           {/* <option value="main">Main (first file becomes primary)</option>
           <option value="exterior">Exterior</option>
           <option value="interior">Interior</option> */}
@@ -240,22 +240,18 @@ const onDragEnd = async ({ active, over }) => {
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        {/* MAIN (single) */}
         <DroppableSection part="main" title="Main (1)" hint="Drop here to set primary" items={idsByPart.main}>
           {grouped.main.map(img => <Card key={img.id} img={img} onDelete={() => remove(img)} />)}
         </DroppableSection>
 
-        {/* EXTERIOR */}
         <DroppableSection part="exterior" title="Exterior" items={idsByPart.exterior}>
           {grouped.exterior.map(img => <Card key={img.id} img={img} onDelete={() => remove(img)} />)}
         </DroppableSection>
 
-        {/* INTERIOR */}
         <DroppableSection part="interior" title="Interior" items={idsByPart.interior}>
           {grouped.interior.map(img => <Card key={img.id} img={img} onDelete={() => remove(img)} />)}
         </DroppableSection>
 
-        {/* UNSORTED */}
         <DroppableSection part="unsorted" title="Unsorted" items={idsByPart.unsorted}>
           {grouped.unsorted.map(img => <Card key={img.id} img={img} onDelete={() => remove(img)} />)}
         </DroppableSection>
@@ -267,24 +263,17 @@ const onDragEnd = async ({ active, over }) => {
 }
 
 function DroppableSection({ part, title, hint, items, children }) {
-  const { isOver, setNodeRef } = useDroppable({
-    id: `container:${part}`,
-    data: { part }
-  });
-
+  const { isOver, setNodeRef } = useDroppable({ id: `container:${part}`, data: { part } });
   return (
     <div style={{ border:"1px solid #eee", borderRadius:8, margin:"12px 0" }}>
       <div style={{ padding:"8px 12px", background:"#fafafa", display:"flex", gap:8 }}>
         <strong>{title}</strong>
         {hint && <span style={{ fontSize:12, color:"#777" }}>— {hint}</span>}
       </div>
-
-      {/* The droppable area: works even when the list is empty */}
       <div
         ref={setNodeRef}
         style={{
-          padding:12,
-          minHeight: 160,                    // <- ensures visible drop zone when empty
+          padding:12, minHeight: 160,
           background: isOver ? "#f0f7ff" : "transparent",
           outline: isOver ? "2px dashed #4a90e2" : "2px dashed transparent",
           transition: "background .12s ease"
@@ -298,14 +287,9 @@ function DroppableSection({ part, title, hint, items, children }) {
   );
 }
 
-
 function Grid({ children }) {
   return (
-    <div style={{
-      display:"grid",
-      gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))",
-      gap:12
-    }}>
+    <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))", gap:12 }}>
       {children}
     </div>
   );
