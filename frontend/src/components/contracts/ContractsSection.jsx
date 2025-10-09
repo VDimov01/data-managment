@@ -90,8 +90,8 @@ function buildBuyerSnapshot(c) {
   };
 }
 
-export default function ContractsSection({ apiBase = "http://localhost:5000" }) {
-  apiBase = API_BASE;
+export default function ContractsSection() {
+  const apiBase = API_BASE;
 
   const [tab, setTab] = useState("browse"); // 'create' | 'browse'
 
