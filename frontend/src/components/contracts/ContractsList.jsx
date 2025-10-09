@@ -142,7 +142,7 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
                           </>
                         )}
 
-                      {String(r.status).toLowerCase() !== "withdrawn" &&
+                      {String(r.status).toLowerCase() !== "withdrawn" && String(r.status).toLowerCase() !== "signed" &&
                         String(r.status).toLowerCase() !== "draft" && (
                           <button
                             className="btn danger"
