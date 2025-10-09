@@ -33,7 +33,7 @@ export default function EditionImageUploader({
     if (!editionId) return;
     setBusy(true);
     try {
-      const data = await listEditionImages(apiBase, editionId, makeName, modelName, modelYear);
+      const data = await listEditionImages(editionId, makeName, modelName, modelYear);
       let imgs = Array.isArray(data?.images) ? data.images : [];
       // Normalize: primary first, then exterior, interior, unsorted; sort by sort_order then id
       const pr = imgs.find(x => Number(x.is_primary) === 1) || null;
@@ -68,11 +68,11 @@ export default function EditionImageUploader({
   // --- API actions ---
   const patchMeta = async (id, patch) => {
     // helper throws on failure; returns JSON like { ok: true }
-    await patchEditionImage(apiBase, id, patch);
+    await patchEditionImage(id, patch);
   };
 
   const deleteOne = async (id) => {
-    await deleteEditionImage(apiBase, id); // use your helper
+    await deleteEditionImage(id); // use your helper
   };
 
   // --- Upload -> goes to chosen part (default: unsorted) ---
@@ -83,7 +83,7 @@ export default function EditionImageUploader({
     try {
       const fd = new FormData();
       for (const f of files) fd.append("images", f);
-        const data = await uploadEditionImages(apiBase, editionId, makeName, modelName, modelYear, files, uploadPart);
+        const data = await uploadEditionImages(editionId, makeName, modelName, modelYear, files, uploadPart);
         if (!data?.success) throw new Error(data?.error || "Upload failed");
         await refresh();
         e.target.value = "";

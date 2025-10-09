@@ -85,38 +85,34 @@ export async function getEditionAttributes(apiBase, editionId, lang = 'bg') {
   return api(`/editions/${editionId}/specs?lang=${lang}`);
 }
 
-export async function listEditionImages(apiBase, editionId, maker, model, year) {
-  const safe = (s) => encodeURIComponent(String(s ?? "").trim().replace(/-/g, " ").replace(/\s+/g, " "));
-  return api(`/car-images/${editionId}-${safe(maker)}-${safe(model)}-${safe(year)}`);
+// --- Edition images (admin/private) ---
+// Normalizes maker/model/year into the slug you're using for the car-images route
+const safeSlug = (s) =>
+  encodeURIComponent(String(s ?? "").trim().replace(/-/g, " ").replace(/\s+/g, " "));
+
+export async function listEditionImages(editionId, maker, model, year) {
+  // returns JSON (likely { images: [...] } or an array; handle both on caller)
+  return api(`/car-images/${editionId}-${safeSlug(maker)}-${safeSlug(model)}-${safeSlug(year)}`);
 }
 
-export async function uploadEditionImages(apiBase, editionId, maker, model, year, files, part='unsorted') {
-  const safe = (s) => encodeURIComponent(String(s ?? "").trim().replace(/-/g, " ").replace(/\s+/g, " "));
+export async function uploadEditionImages(editionId, maker, model, year, files, part = "unsorted") {
   const fd = new FormData();
   for (const f of files) fd.append("images", f);
-  const r = await api(`/car-images/${editionId}-${safe(maker)}-${safe(model)}-${safe(year)}-${part}`, {
-    method: "POST", body: fd
-  });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  // returns JSON directly
+  return api(
+    `/car-images/${editionId}-${safeSlug(maker)}-${safeSlug(model)}-${safeSlug(year)}-${part}`,
+    { method: "POST", body: fd }
+  );
 }
 
-export async function patchEditionImage(apiBase, id, patch) {
-  const r = await api(`/car-images/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(patch)
-  });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || 'Patch failed');
-  return data; // { ok: true }
+export async function patchEditionImage(imageId, patch) {
+  // returns { ok: true } or the updated image
+  return api(`/car-images/${imageId}`, { method: "PATCH", body: patch });
 }
 
-
-export async function deleteEditionImage(apiBase, imageId) {
-  const r = await api(`/car-images/${imageId}`, { method: "DELETE" });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+export async function deleteEditionImage(imageId) {
+  // returns { ok: true }
+  return api(`/car-images/${imageId}`, { method: "DELETE" });
 }
 
 export function buildUrl(base, path, params = {}) {
