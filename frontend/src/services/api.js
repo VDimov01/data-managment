@@ -59,12 +59,15 @@ export async function setPrimaryVehicleImage(apiBase, vehicleId, imageId) {
 }
 
 export async function updateVehicleImageMeta(apiBase, vehicleId, imageId, { caption, sort_order }) {
-  return api(`/vehicleImages/${vehicleId}/images/${imageId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ caption, sort_order })
-  });
-}
+    return api(`/vehicleImages/${vehicleId}/images/${imageId}`, {
+      method: 'PATCH',
+      body: {
+        // send only what you need; coerce sort_order to int
+        ...(caption !== undefined ? { caption } : {}),
+        ...(sort_order !== undefined ? { sort_order: Number(sort_order) } : {}),
+      },
+    });
+  }
 
 export async function deleteVehicleImage(apiBase, vehicleId, imageId) {
   return api(`/vehicleImages/${vehicleId}/images/${imageId}`, { method: 'DELETE' });

@@ -38,13 +38,22 @@ router.post('/:id/images/:imageId/primary', async (req, res) => {
 
 router.patch('/:id/images/:imageId', async (req, res) => {
   try {
+    // tolerate accidental string body
+    if (typeof req.body === 'string') {
+      try { req.body = JSON.parse(req.body); } catch {
+        return res.status(400).json({ error: 'Invalid JSON' });
+      }
+    }
     await updateImageMeta(Number(req.params.id), Number(req.params.imageId), {
       caption: req.body.caption,
-      sort_order: req.body.sort_order
+      sort_order: req.body.sort_order,
     });
     res.json({ ok: true });
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
+
 
 router.delete('/:id/images/:imageId', async (req, res) => {
   try { await deleteVehicleImage(Number(req.params.id), Number(req.params.imageId)); res.json({ ok: true }); }
