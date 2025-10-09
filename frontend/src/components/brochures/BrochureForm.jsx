@@ -129,14 +129,12 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
       if (isEdit) {
         data = await api(`/brochures/${initial.brochure_id}`, {
           method: "PUT",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(body)
+          body, // pass the plain object
         });
       } else {
         data = await api(`/brochures`, {
           method: "POST",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(body)
+          body, // pass the plain object
         });
       }
       onSaved?.();
