@@ -39,21 +39,9 @@ const ORIGINS = (process.env.FRONTEND_ORIGINS || 'http://localhost:5173')
   .map(s => s.trim())
   .filter(Boolean);
 
-// app.set('trust proxy', 1); // needed for secure cookies behind a proxy
-
-app.use(cors({
-  origin(origin, cb) {
-    // allow same-origin/non-browser or no origin
-    if (!origin) return cb(null, true);
-    if (ORIGINS.includes(origin)) return cb(null, true);
-    return cb(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-}));
+app.set('trust proxy', 1); // needed for secure cookies behind a proxy
 
 // Middlewares
-app.use(express.json());
-
 app.use(cors({
   origin(origin, cb) {
     // allow same-origin/non-browser or no origin

@@ -10,17 +10,19 @@ const pool = getPool();
 const router = express.Router();
 
 const JWT_SECRET  = process.env.JWT_SECRET  || 'dev_secret_change_me';
-const JWT_EXPIRES = process.env.JWT_EXPIRES || '8h';
+const JWT_EXPIRES = process.env.JWT_EXPIRES || '12h';
 
 // Helper: issue token + cookie
 function setAuthCookie(res, token) {
-  const secure = !!Number(process.env.COOKIE_SECURE || '0');
-  res.cookie('auth_token', token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure,
-    maxAge: 1000 * 60 * 60 * 8, // 8h
-  });
+  const cookieOpts = {
+  httpOnly: true,
+  secure: process.env.COOKIE_SECURE === '1',
+  sameSite: process.env.COOKIE_SECURE === '1' ? 'none' : 'lax',
+  path: '/',
+  maxAge: 1000 * 60 * 60 * 12 // 12h
+};
+res.cookie('dm_session', token, cookieOpts);
+
 }
 
 // POST /api/auth/login
