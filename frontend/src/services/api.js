@@ -128,10 +128,9 @@ export function buildUrl(base, path, params = {}) {
   return `${b}${path}${qs.toString() ? `?${qs.toString()}` : ''}`;
 }
 
+// services/api.js
 const fallbackApiBase = (() => {
-  // Dev default if env not set
   if (import.meta.env.DEV) return 'http://localhost:5000';
-  // In prod, assume same-origin unless overridden
   return window.location.origin;
 })();
 
@@ -139,21 +138,89 @@ export const API_BASE =
   (import.meta.env.VITE_API_BASE && import.meta.env.VITE_API_BASE.trim()) ||
   fallbackApiBase;
 
-export async function api(path, { method = 'GET', body, headers } = {}) {
-  const r = await fetch(`${API_BASE}/api${path}`, {
-    method,
-    headers: body
-      ? { 'Content-Type': 'application/json', ...(headers || {}) }
-      : headers,
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: 'include', // <-- send the auth cookie
-  });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    const err = new Error(data?.error || `HTTP ${r.status}`);
-    err.status = r.status;
+/**
+ * api(path, {
+ *   method?: 'GET'|'POST'|...,
+ *   body?: object|FormData|Blob|ArrayBuffer|URLSearchParams,
+ *   headers?: Record<string,string>,
+ *   responseType?: 'auto'|'json'|'text'|'blob'|'arrayBuffer',
+ *   raw?: boolean  // if true, returns the native Response (no parsing)
+ * })
+ */
+export async function api(path, opts = {}) {
+  const {
+    method = 'GET',
+    body,
+    headers,
+    responseType = 'auto',
+    raw = false,
+  } = opts;
+
+  const init = { method, credentials: 'include', headers: { ...(headers || {}) } };
+
+  if (body !== undefined && body !== null) {
+    if (
+      body instanceof FormData ||
+      body instanceof Blob ||
+      body instanceof ArrayBuffer ||
+      body instanceof URLSearchParams
+    ) {
+      // Let the browser set Content-Type (especially for FormData)
+      init.body = body;
+    } else {
+      init.body = JSON.stringify(body);
+      if (!init.headers['Content-Type']) init.headers['Content-Type'] = 'application/json';
+    }
+  }
+
+  const res = await fetch(`${API_BASE}/api${path}`, init);
+
+  if (!res.ok) {
+    // Try to extract a useful error message
+    const ct = res.headers.get('content-type') || '';
+    let message = `HTTP ${res.status}`;
+    try {
+      if (ct.includes('application/json')) {
+        const errJson = await res.json();
+        if (errJson?.error) message = errJson.error;
+      } else {
+        const txt = await res.text();
+        if (txt) message = txt;
+      }
+    } catch {}
+    const err = new Error(message);
+    err.status = res.status;
     throw err;
   }
-  return data;
+
+  if (raw) return res;
+
+  // No content or HEAD: return null
+  if (res.status === 204 || method === 'HEAD') return null;
+
+  const ct = res.headers.get('content-type') || '';
+
+  if (responseType === 'json') return res.json();
+  if (responseType === 'text') return res.text();
+  if (responseType === 'blob') return res.blob();
+  if (responseType === 'arrayBuffer') return res.arrayBuffer();
+
+  // auto
+  if (ct.includes('application/json')) return res.json();
+  if (ct.startsWith('text/')) return res.text();
+  return res.blob(); // default for binary (pdf/png/jpg/…)
 }
+
+// Optional helpers
+export const apiJSON  = (p, o) => api(p, { ...o, responseType: 'json' });
+export const apiBlob  = (p, o) => api(p, { ...o, responseType: 'blob' });
+export const apiText  = (p, o) => api(p, { ...o, responseType: 'text' });
+
+// Read filename from Content-Disposition if you need it
+export function filenameFromResponse(res, fallback = 'download') {
+  const cd = res.headers.get('content-disposition') || '';
+  const m = /filename\*=UTF-8''([^;]+)|filename="?([^"]+)"?/i.exec(cd);
+  return decodeURIComponent(m?.[1] || m?.[2] || fallback);
+}
+
 
