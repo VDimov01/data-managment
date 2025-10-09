@@ -1,6 +1,7 @@
 // frontend/src/components/ContractsSection.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import ContractsList from "./ContractsList.jsx";
+import { API_BASE } from "../../services/api.js";
 
 /** Tiny API wrapper using apiBase from props */
 export function makeApi(apiBase) {
@@ -90,7 +91,7 @@ function buildBuyerSnapshot(c) {
 }
 
 export default function ContractsSection({ apiBase = "http://localhost:5000" }) {
-  const api = makeApi(apiBase);
+  apiBase = API_BASE;
 
   const [tab, setTab] = useState("browse"); // 'create' | 'browse'
 
