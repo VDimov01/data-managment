@@ -12,11 +12,6 @@ export const fetchColors = async () => {
   return api("/colors");
 };
 
-export const fetchShopsNew = async () => {
-  const res = await fetch("http://localhost:5000/api/shops/new", { credentials: 'include' });
-  if (!res.ok) throw new Error("Failed to fetch new shops");
-  return res.json();
-};
 
 export const fetchShops = async () => {
   return api("/shops/new");
