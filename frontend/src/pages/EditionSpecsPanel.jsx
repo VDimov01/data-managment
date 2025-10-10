@@ -64,12 +64,6 @@ export default function EditionSpecsPanel({
     return { seq: 999, en: (category || "Other") };
   }
 
-  const [openGroups, setOpenGroups] = useState(new Set());
-useEffect(() => {
-  // Open all groups by default whenever the data changes
-  setOpenGroups(new Set([...groupsMap.keys()]));
-}, [groupsMap]);
-
   // ---------- Loader ----------
   const loadEditionAttributes = async (edId) => {
   const payload = await api(`/public/editions/${edId}/attributes?lang=${lang}`);
@@ -123,13 +117,11 @@ function normalizeKey(en) {
   return m;
 }, [rows]);
 
-
-  if (err) return <div style={{ padding: 12, color: "#b00020" }}>Error: {err}</div>;
-  if (!rows) return <div style={{ padding: 12 }}>Loading specs…</div>;
-  if (!rows.length) return <div style={{ padding: 12, opacity: 0.7 }}>Няма данни.</div>;
-
-  // Add these just above your return:
-
+  const [openGroups, setOpenGroups] = useState(new Set());
+useEffect(() => {
+  // Open all groups by default whenever the data changes
+  setOpenGroups(new Set([...groupsMap.keys()]));
+}, [groupsMap]);
 
 const toggleGroup = (group) =>
   setOpenGroups((prev) => {
@@ -141,6 +133,16 @@ const toggleGroup = (group) =>
 // Optional: quick controls (use if you want)
 const expandAll = () => setOpenGroups(new Set([...groupsMap.keys()]));
 const collapseAll = () => setOpenGroups(new Set());
+
+
+  if (err) return <div style={{ padding: 12, color: "#b00020" }}>Error: {err}</div>;
+  if (!rows) return <div style={{ padding: 12 }}>Loading specs…</div>;
+  if (!rows.length) return <div style={{ padding: 12, opacity: 0.7 }}>Няма данни.</div>;
+
+  // Add these just above your return:
+
+
+
 
 return (
   <div className="public-specs">
