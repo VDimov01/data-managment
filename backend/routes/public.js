@@ -5,7 +5,7 @@ const { getPool } = require('../db');
 const pool = getPool();
 const { bucketPrivate } = require('../services/gcs');
 const { getVehiclePathParts } = require('../services/vehiclePathParts');
-const { getSignedReadUrl } = require('../services/specsPDF.js');
+const { getSignedReadUrl } = require('../services/contractPDF.js');
 
 
 /** ---------------- helpers (same behavior as brochures.js) ---------------- */
