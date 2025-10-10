@@ -16,6 +16,7 @@
 @import '../public/css/attachmentsModal.css';
 @import '../public/css/vehiclePublicPage.css';
 @import '../public/css/editionSpecsPanel.css';
+@import '../public/css/customerContractsPage.css';
 
 /* ========= PUBLIC THEME (SCOPED) =========
    Safe to live in index.css because it's all under .public-theme

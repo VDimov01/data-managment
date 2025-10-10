@@ -1,0 +1,165 @@
+/* ===== CustomerContractsPage.css (mobile-first) ===== */
+
+/* Root */
+.cont-page {
+  --cont-bg: #f6f7fb;
+  --cont-card-bg: #ffffff;
+  --cont-border: #e5e7eb;
+  --cont-text: #111827;
+  --cont-muted: #6b7280;
+  --cont-primary: #1556b0;
+  --cont-primary-hover: #0f4590;
+  --cont-danger-bg: #fee2e2;
+  --cont-danger: #b91c1c;
+  --cont-shadow: 0 1px 3px rgba(16, 24, 40, .06), 0 1px 2px rgba(16, 24, 40, .04);
+}
+
+.cont-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 14px 20px;
+  background: var(--cont-bg);
+  min-height: 100%;
+  color: var(--cont-text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+/* Toolbar */
+.cont-page-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.cont-page-toolbar h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* States */
+.cont-page-error {
+  color: var(--cont-danger);
+  background: var(--cont-danger-bg);
+  border: 1px solid #fecaca;
+  padding: 8px 10px;
+  border-radius: 10px;
+  margin: 8px 0;
+}
+.cont-page-muted {
+  color: var(--cont-muted);
+  font-size: 14px;
+}
+
+/* List + Card */
+.cont-page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cont-page-card {
+  background: var(--cont-card-bg);
+  border: 1px solid var(--cont-border);
+  border-radius: 14px;
+  box-shadow: var(--cont-shadow);
+  overflow: hidden;
+}
+.cont-page-card-h {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--cont-border);
+}
+.cont-page-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  flex-wrap: wrap;
+}
+.cont-page-sub {
+  color: var(--cont-muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+.cont-page-dot {
+  color: #9ca3af;
+}
+.cont-page-type {
+  color: #334155;
+  font-size: 12px;
+}
+
+/* Badges */
+.cont-page-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid var(--cont-border);
+  line-height: 1.8;
+}
+.cont-page-issued { background: #e6f2ff; color: #1556b0; border-color: #bfdcff; }
+.cont-page-viewed { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+.cont-page-signed { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+
+/* Body */
+.cont-page-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cont-page-vehicles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cont-page-veh {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cont-page-veh-line1 { font-weight: 600; }
+.cont-page-veh-line2 { color: var(--cont-muted); font-size: 12px; }
+
+/* Actions */
+.cont-page-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.cont-page-total {
+  font-size: 14px;
+}
+
+/* Buttons */
+.cont-page-btn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+.cont-page-btn.primary {
+  background: var(--cont-primary);
+  border-color: var(--cont-primary);
+  color: #fff;
+}
+.cont-page-btn.primary:hover { background: var(--cont-primary-hover); }
+
+/* Responsive: show a "Download PDF" button on mobile; "Preview" stays for desktop */
+.cont-page-mobileOnly { display: inline-flex; }
+.cont-page-desktopOnly { display: none; }
+
+/* >= 768px (tablets/desktop) */
+@media (min-width: 768px) {
+  .cont-page { padding: 16px 20px 28px; }
+  .cont-page-card-h { padding: 14px 18px; }
+  .cont-page-body { padding: 14px 18px; }
+  .cont-page-mobileOnly { display: none; }
+  .cont-page-desktopOnly { display: inline-flex; }
+}
