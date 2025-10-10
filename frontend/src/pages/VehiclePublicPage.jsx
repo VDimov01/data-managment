@@ -153,7 +153,7 @@ export default function VehiclePublicPage({ apiBase = "http://localhost:5000" })
 
       {/* Attributes */}
       <div style={{ marginTop: 16, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
-        <EditionSpecsPanel editionId={vehicle.edition_id} />
+        <EditionSpecsPanel apiBase={apiBase} editionId={vehicle.edition_id} />
       </div>
 
       <Lightbox open={lightbox.open} src={lightbox.src} onClose={() => setLightbox({ open: false, src: null })} />
