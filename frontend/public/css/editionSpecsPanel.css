@@ -1,0 +1,40 @@
+/* ===== EditionSpecsPanel (namespace: public-esp) ===== */
+
+.public-esp {
+  border: 1px solid var(--public-border);
+  border-radius: var(--public-radius);
+  overflow: hidden;
+  background: var(--public-card);
+}
+
+.public-esp__group { border-top: 1px solid var(--public-border); }
+.public-esp__group:first-child { border-top: 0; }
+
+.public-esp__groupTitle {
+  padding: 10px 12px;
+  background: var(--public-card-2);
+  font-weight: 700;
+}
+
+/* rows as responsive grid (mobile-first) */
+.public-esp__rows { display: grid; grid-template-columns: 1fr; }
+.public-esp__row {
+  display: grid;
+  grid-template-columns: 1fr;
+  padding: 10px 12px;
+  border-top: 1px solid var(--public-border);
+  background: transparent;
+}
+.public-esp__row:nth-child(odd) { background: var(--public-row-odd); }
+
+.public-esp__name { color: var(--public-text-muted); font-size: 13px; margin-bottom: 4px; }
+.public-esp__val  { font-weight: 600; font-size: 14px; color: var(--public-text); word-break: break-word; }
+
+@media (min-width: 768px) {
+  .public-esp__row {
+    grid-template-columns: 1.1fr 1fr;
+    align-items: center;
+  }
+  .public-esp__name { margin: 0; font-size: 14px; }
+  .public-esp__val  { justify-self: end; text-align: right; }
+}

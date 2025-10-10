@@ -1,0 +1,46 @@
+/* ===== VehiclePublicPage (namespace: public-vp) ===== */
+
+.public-vp { padding-bottom: 24px; }
+
+.public-vp__hero { display: grid; gap: 12px; }
+.public-vp__title {
+  font-size: clamp(20px, 4.6vw, 28px);
+  font-weight: 800;
+  line-height: 1.15;
+}
+.public-vp__subtitle { color: var(--public-text-muted); font-size: 12px; }
+
+/* gallery */
+.public-gallery {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, 1fr);
+}
+.public-gallery__item {
+  background: var(--public-card);
+  border: 1px solid var(--public-border);
+  border-radius: var(--public-radius-sm, 10px);
+  overflow: hidden;
+}
+.public-gallery__img { width: 100%; aspect-ratio: 16/10; object-fit: cover; }
+
+/* key facts grid */
+.public-kv {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.public-kv__item {
+  background: var(--public-card);
+  border: 1px solid var(--public-border);
+  border-radius: var(--public-radius-sm, 10px);
+  padding: 8px 10px;
+}
+.public-kv__label { color: var(--public-text-muted); font-size: 12px; }
+.public-kv__value { font-weight: 700; margin-top: 2px; }
+
+/* desktop enhancements */
+@media (min-width: 768px) {
+  .public-gallery { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .public-kv { grid-template-columns: repeat(4, 1fr); }
+}

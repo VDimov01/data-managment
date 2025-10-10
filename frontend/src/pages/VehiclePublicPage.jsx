@@ -80,85 +80,145 @@ export default function VehiclePublicPage({ apiBase = "http://localhost:5000" })
   const primaryImg = images[0]?.stream_url || null;
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
+  <div className="public-theme">
+    <div className="public-container public-vp">
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      <div className="public-vp__hero">
         <div>
-          <h1 style={{ margin: 0 }}>{title}</h1>
-          <div style={{ opacity: 0.7, fontSize: 14 }}>
+          <h1 className="public-vp__title">{title}</h1>
+          <div className="public-vp__subtitle">
             {vehicle.stock_number ? <>Stock: <b>{vehicle.stock_number}</b> · </> : null}
             VIN …{vehicle.vin_last6 || "—"} · {vehicle.status}
           </div>
         </div>
-        <div style={{ textAlign: "right" }}>
+
+        <div>
           {vehicle.asking_price != null ? (
             <div style={{ fontSize: 22, fontWeight: 700 }}>
               {Number(vehicle.asking_price).toLocaleString()} лв.
             </div>
-          ) : <div style={{ fontSize: 14, opacity: 0.7 }}>Цена при запитване</div>}
-          <a href={`tel:+359`} style={{ display: "inline-block", marginTop: 8, padding: "8px 12px",
-            borderRadius: 8, border: "1px solid #222", textDecoration: "none", color: "#222" }}>
+          ) : (
+            <div className="public-muted">Цена при запитване</div>
+          )}
+          <a
+            href={`tel:+359`}
+            className="public-btn public-btn--primary"
+            style={{ marginTop: 8, display: "inline-block" }}
+          >
             Обади се
           </a>
         </div>
       </div>
 
       {/* Gallery */}
-      <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
-        <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 8, background: "#fff" }}>
-          {primaryImg ? (
-            <img
-              src={primaryImg}
-              alt=""
-              style={{ width: "100%", height: 480, objectFit: "cover", borderRadius: 6, cursor: "zoom-in" }}
-              onClick={() => setLightbox({ open: true, src: primaryImg })}
-            />
-          ) : (
-            <div style={{ height: 480, display: "flex", alignItems: "center", justifyContent: "center", background: "#f8f8f8", borderRadius: 6 }}>
-              No images
-            </div>
-          )}
-          {images.length > 1 && (
-            <div style={{ display: "flex", gap: 8, marginTop: 8, overflowX: "auto" }}>
-              {images.map((im) => (
-                <img
-                  key={im.vehicle_image_id}
-                  src={im.stream_url}
-                  alt=""
-                  onClick={() => setLightbox({ open: true, src: im.stream_url })}
-                  style={{
-                    width: 96, height: 72, objectFit: "cover",
-                    borderRadius: 6, border: "2px solid transparent", cursor: "pointer"
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+      <section className="public-section" style={{ marginTop: 12 }}>
+        <div className="public-section__body">
+          <div className="public-card" style={{ padding: 8 }}>
+            {primaryImg ? (
+              <img
+                src={primaryImg}
+                alt=""
+                className="public-gallery__img"
+                style={{ height: 480, cursor: "zoom-in" }}
+                onClick={() => setLightbox({ open: true, src: primaryImg })}
+              />
+            ) : (
+              <div
+                className="public-card"
+                style={{
+                  height: 480,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                No images
+              </div>
+            )}
 
-        {/* Key facts */}
-        <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, background: "#fff" }}>
-          <h3 style={{ marginTop: 0 }}>Key facts</h3>
-          <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.8 }}>
-            {vehicle.status ? <li>Състояние: {vehicle.status}</li> : null}
-            {vehicle.mileage != null ? <li>Пробег: {vehicle.mileage.toLocaleString()} km</li> : null}
-            {vehicle.exterior_color ? <li>Екстериор: {vehicle.exterior_color}</li> : null}
-            {vehicle.interior_color ? <li>Интериор: {vehicle.interior_color}</li> : null}
-            {vehicle.release_date ? <li>Дата на производство: {vehicle.release_date}</li> : null}
-          </ul>
-          <div style={{ marginTop: 12, fontSize: 12, opacity: 0.7 }}>
-            ID: {vehicle.public_uuid}
+            {images.length > 1 && (
+              <div className="public-gallery" style={{ marginTop: 8, overflowX: "auto" }}>
+                {images.map((im) => (
+                  <div key={im.vehicle_image_id} className="public-gallery__item">
+                    <img
+                      src={im.stream_url}
+                      alt=""
+                      className="public-gallery__img"
+                      style={{ aspectRatio: "4/3", cursor: "pointer" }}
+                      onClick={() => setLightbox({ open: true, src: im.stream_url })}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Key facts */}
+      <section className="public-section">
+        <div className="public-section__header">Основни параметри</div>
+        <div className="public-section__body">
+          <div className="public-kv">
+            {vehicle.status ? (
+              <div className="public-kv__item">
+                <div className="public-kv__label">Състояние</div>
+                <div className="public-kv__value">{vehicle.status}</div>
+              </div>
+            ) : null}
+
+            {vehicle.mileage != null ? (
+              <div className="public-kv__item">
+                <div className="public-kv__label">Пробег</div>
+                <div className="public-kv__value">{vehicle.mileage.toLocaleString()} km</div>
+              </div>
+            ) : null}
+
+            {vehicle.exterior_color ? (
+              <div className="public-kv__item">
+                <div className="public-kv__label">Екстериор</div>
+                <div className="public-kv__value">{vehicle.exterior_color}</div>
+              </div>
+            ) : null}
+
+            {vehicle.interior_color ? (
+              <div className="public-kv__item">
+                <div className="public-kv__label">Интериор</div>
+                <div className="public-kv__value">{vehicle.interior_color}</div>
+              </div>
+            ) : null}
+
+            {vehicle.release_date ? (
+              <div className="public-kv__item">
+                <div className="public-kv__label">Дата на производство</div>
+                <div className="public-kv__value">{vehicle.release_date}</div>
+              </div>
+            ) : null}
+
+            <div className="public-kv__item">
+              <div className="public-kv__label">ID</div>
+              <div className="public-kv__value public-mono">{vehicle.public_uuid}</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Attributes */}
-      <div style={{ marginTop: 16, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
-        <EditionSpecsPanel apiBase={apiBase} editionId={vehicle.edition_id} />
-      </div>
+      <section className="public-section">
+        <div className="public-section__header">Технически характеристики</div>
+        <div className="public-section__body">
+          <EditionSpecsPanel apiBase={apiBase} editionId={vehicle.edition_id} />
+        </div>
+      </section>
 
-      <Lightbox open={lightbox.open} src={lightbox.src} onClose={() => setLightbox({ open: false, src: null })} />
+      <Lightbox
+        open={lightbox.open}
+        src={lightbox.src}
+        onClose={() => setLightbox({ open: false, src: null })}
+      />
     </div>
-  );
+  </div>
+);
+
 }
 

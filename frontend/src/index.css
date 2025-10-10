@@ -14,3 +14,140 @@
 @import '../public/css/customer-brochures.css';
 @import '../public/css/compare-admin.css';
 @import '../public/css/attachmentsModal.css';
+@import '../public/css/vehiclePublicPage.css';
+@import '../public/css/editionSpecsPanel.css';
+
+/* ========= PUBLIC THEME (SCOPED) =========
+   Safe to live in index.css because it's all under .public-theme
+   Wrap your public pages with <div class="public-theme">…</div>
+*/
+.public-theme {
+  /* colors & tokens */
+  --public-bg: #0e1116;          /* dark background */
+  --public-card: #151922;
+  --public-card-2: #12161e;
+  --public-text: #e9eef5;
+  --public-text-muted: #a9b4c0;
+  --public-primary: #4e9eff;
+  --public-primary-ink: #0b1220;
+  --public-border: #232a37;
+  --public-chip: #1d2431;
+  --public-row-odd: rgba(255,255,255,0.03);
+
+  --public-radius: 14px;
+  --public-radius-sm: 10px;
+  --public-shadow: 0 6px 24px rgba(0,0,0,.24), 0 2px 6px rgba(0,0,0,.18);
+
+  --public-safe-top: env(safe-area-inset-top, 0px);
+  --public-safe-right: env(safe-area-inset-right, 0px);
+  --public-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --public-safe-left: env(safe-area-inset-left, 0px);
+
+  color: var(--public-text);
+  background: var(--public-bg);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: light) {
+  .public-theme {
+    --public-bg: #f6f7fb;
+    --public-card: #ffffff;
+    --public-card-2: #f9fafc;
+    --public-text: #0f172a;
+    --public-text-muted: #525f76;
+    --public-border: #e6e8ef;
+    --public-chip: #eef2f8;
+    --public-row-odd: rgba(0,0,0,0.03);
+    --public-primary-ink: #ffffff;
+  }
+}
+
+/* local reset (scoped) */
+.public-theme *, .public-theme *::before, .public-theme *::after { box-sizing: border-box; }
+.public-theme img { max-width: 100%; height: auto; display: block; }
+.public-theme a { color: var(--public-primary); text-decoration: none; }
+.public-theme a:hover { text-decoration: underline; }
+
+/* shared public utilities & atoms (still scoped) */
+.public-container {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px clamp(14px, 4vw, 20px);
+}
+
+.public-card {
+  background: var(--public-card);
+  border: 1px solid var(--public-border);
+  border-radius: var(--public-radius);
+  box-shadow: var(--public-shadow);
+}
+
+.public-section {
+  background: var(--public-card);
+  border: 1px solid var(--public-border);
+  border-radius: var(--public-radius);
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.public-section__header {
+  padding: 12px 14px;
+  background: var(--public-card-2);
+  border-bottom: 1px solid var(--public-border);
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+.public-section__body { padding: 10px 12px; }
+
+.public-btn {
+  appearance: none;
+  border: 1px solid var(--public-border);
+  background: var(--public-card-2);
+  color: var(--public-text);
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+}
+.public-btn:disabled { opacity: .6; pointer-events: none; }
+.public-btn:hover { filter: brightness(1.08); }
+.public-btn--primary {
+  background: var(--public-primary);
+  color: var(--public-primary-ink);
+  border-color: transparent;
+}
+
+.public-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.public-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--public-chip);
+  color: var(--public-text);
+  border: 1px solid var(--public-border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.public-muted { color: var(--public-text-muted); }
+.public-mono  { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+
+.public-stickyActions {
+  position: sticky;
+  bottom: 0;
+  padding: 10px 12px calc(10px + var(--public-safe-bottom));
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, var(--public-bg) 25%);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  z-index: 40;
+}
+
+/* small helpers */
+.public-stack { display: grid; gap: 10px; }
+.public-row { display: flex; gap: 10px; align-items: center; }
+.public-hr { height: 1px; background: var(--public-border); margin: 10px 0; }

@@ -123,30 +123,29 @@ function normalizeKey(en) {
   if (!rows.length) return <div style={{ padding: 12, opacity: 0.7 }}>Няма данни.</div>;
 
   return (
-    <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #eee" }}>
-      {[...groupsMap.entries()].map(([groupTitleBg, items]) => (
-        <div key={groupTitleBg} style={{ borderTop: "1px solid #eee" }}>
-          <div style={{ padding: "12px 16px", background: "#fafafa", fontWeight: 600 }}>
-            {groupTitleBg}
-          </div>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <tbody>
-              {items.map((a) => (
-                <tr key={a.code} style={{ borderTop: "1px solid #f2f2f2" }}>
-                  <td style={{ padding: "10px 16px", width: "45%", color: "#333" }}>
-                    {a.name_bg || a.label || a.code}
-                  </td>
-                  <td style={{ padding: "10px 16px", color: "#111", fontWeight: 500 }}>
-                    {formatValue(a.value, a.unit)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
-    </div>
-  );
+  <div className="public-specs">
+    {[...groupsMap.entries()].map(([groupTitleBg, items]) => (
+      <div key={groupTitleBg} className="public-specs__group">
+        <div className="public-specs__header">{groupTitleBg}</div>
+        <table className="public-specs__table">
+          <tbody>
+            {items.map((a) => (
+              <tr key={a.code} className="public-specs__row">
+                <td className="public-specs__cell public-specs__cell--label">
+                  {a.name_bg || a.label || a.code}
+                </td>
+                <td className="public-specs__cell public-specs__cell--value">
+                  {formatValue(a.value, a.unit)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ))}
+  </div>
+);
+
 }
 
 function formatValue(v, unit) {
