@@ -26,6 +26,13 @@ function Lightbox({ open, src, onClose }) {
   );
 }
 
+const statusBG = {
+  "Available": "Наличен",
+  "Reserved": "Резервиран",
+  "Sold": "Продаден",
+  "InTransit": "В процес на доставка"
+}
+
 export default function VehiclePublicPage({ apiBase = "http://localhost:5000" }) {
   const { uuid } = useParams();
   const [vehicle, setVehicle] = useState(null);
@@ -88,7 +95,7 @@ export default function VehiclePublicPage({ apiBase = "http://localhost:5000" })
           <h1 className="public-vp__title">{title}</h1>
           <div className="public-vp__subtitle">
             {vehicle.stock_number ? <>Stock: <b>{vehicle.stock_number}</b> · </> : null}
-            VIN …{vehicle.vin_last6 || "—"} · {vehicle.status}
+            VIN …{vehicle.vin_last6 || "—"} · {statusBG[vehicle.status]}
           </div>
         </div>
 
@@ -163,7 +170,7 @@ export default function VehiclePublicPage({ apiBase = "http://localhost:5000" })
             {vehicle.status ? (
               <div className="public-kv__item">
                 <div className="public-kv__label">Състояние</div>
-                <div className="public-kv__value">{vehicle.status}</div>
+                <div className="public-kv__value">{statusBG[vehicle.status]}</div>
               </div>
             ) : null}
 
@@ -195,10 +202,10 @@ export default function VehiclePublicPage({ apiBase = "http://localhost:5000" })
               </div>
             ) : null}
 
-            <div className="public-kv__item">
+            {/* <div className="public-kv__item">
               <div className="public-kv__label">ID</div>
               <div className="public-kv__value public-mono">{vehicle.public_uuid}</div>
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
