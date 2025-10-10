@@ -66,102 +66,103 @@ export default function EditionSpecsPanel({
 
   // ---------- Loader ----------
   const loadEditionAttributes = async (edId) => {
-    // 1) attribute defs + effective values (edition/year/model)
-    const defs = await api(
-      `/public/editions/${edId}/attributes?effective=1&lang=${lang}`);
-      console.log("Defs:", defs);
-    // 2) JSON/EAV sidecar
-    const specs = await api(
-      `/public/editions/${edId}/specs?lang=${lang}`);
-    console.log("Specs:", specs);
+  // 1) Effective attributes (typed values already)
+  const attrPayload = await api(`/public/editions/${edId}/attributes?lang=${lang}`);
+  const defs = Array.isArray(attrPayload?.items)
+    ? attrPayload.items
+    : Array.isArray(attrPayload)
+    ? attrPayload
+    : [];
 
-    const eavNum  = new Map((specs?.eav?.numeric  || []).map((row) => [row.code, row.val]));
-    const eavBool = new Map((specs?.eav?.boolean || []).map((row) => [row.code, row.val ? 1 : 0]));
-    const jsonAttrs = specs?.json?.attributes || {};
-    const jsonI18n  = specs?.json_i18n?.[lang]?.attributes || {};
-    const enums     = specs?.enums || {};
+  // 2) Sidecar JSON (adds extra attrs not in defs; i18n text overrides)
+  const specs = await api(`/public/editions/${edId}/specs?lang=${lang}`);
+  const jsonAttrs = specs?.specs_json?.attributes || {};
+  const jsonI18n  = (specs?.specs_i18n?.[lang]?.attributes) || {};
 
-    const jsonHas = (code, dt) => {
-      const o = jsonAttrs[code];
-      return o && (o.dt === dt || (!o.dt && dt === "text")); // tolerate missing dt for text
-    };
-    const jsonVal = (code) => jsonAttrs[code]?.v;
-
-    const localizedBool = (b) =>
-      lang === "en" ? (b ? '✅' : '❌') : (b ? '✅' : '❌');
-
-    // Build raw rows with value
-    const raw = defs.map((a) => {
-      let value = null;
-
-      if (a.data_type === "boolean") {
-        const ev =
-          a.value_boolean != null
-            ? a.value_boolean
-            : eavBool.has(a.code)
-            ? eavBool.get(a.code)
-            : jsonHas(a.code, "boolean")
-            ? (jsonVal(a.code) ? 1 : 0)
-            : null;
-        value = ev == null ? null : localizedBool(!!ev);
-
-      } else if (a.data_type === "int" || a.data_type === "decimal") {
-        const ev =
-          a.value_numeric != null
-            ? a.value_numeric
-            : eavNum.has(a.code)
-            ? eavNum.get(a.code)
-            : jsonHas(a.code, a.data_type)
-            ? Number(jsonVal(a.code))
-            : null;
-        value = ev == null ? null : ev;
-
-      } else if (a.data_type === "enum") {
-        // Prefer localized label if backend provided it; else enum_code
-        value = (a.enum_label && String(a.enum_label).trim()) || (a.enum_code || "");
-
-      } else {
-        // text: prefer i18n JSON > JSON raw > effective text
-        const fromJson = jsonI18n[a.code] ?? (jsonHas(a.code, "text") ? String(jsonVal(a.code)) : null);
-        value = fromJson != null ? fromJson : (a.value_text ?? null);
-      }
-
-      // Compute group metadata + BG title
-      const dg   = a.display_group || a.category || "Other";
-      const info = parseDisplayGroup(dg, a.category);
-      const group_bg = GROUP_BG[info.en] || info.en; // translate EN group -> BG if known
-
-      return {
-        ...a,
-        value,
-        _gseq: info.seq,
-        _group_en: info.en,
-        _group_bg: group_bg,
-        _item_order: Number.isFinite(a.display_order) ? a.display_order : 9999,
-      };
+  // Build map from defs by code (these already have the typed value)
+  const byCode = new Map();
+  for (const a of defs) {
+    if (!a?.code) continue;
+    const info = parseDisplayGroup(a.display_group, a.category);
+    byCode.set(a.code, {
+      ...a,
+      _gseq: info.seq,
+      _group_en: info.en,
+      _group_bg: GROUP_BG[info.en] || info.en,
+      _item_order: Number.isFinite(a.display_order) ? a.display_order : 9999,
     });
+  }
 
-    // Filter out null/empty ONLY; keep 0 and "Не"
-    const filtered = raw.filter((r) => {
-      if (HIDDEN_CODES.has(r.code)) return false;
-      const v = r.value;
-      if (v === null || v === undefined) return false;
-      if (typeof v === "string" && v.trim() === "") return false;
-      return true; // keep numbers (incl. 0) and non-empty strings (incl. "Не", "0")
+  // Add JSON-only attributes that aren't in defs
+  for (const [code, obj] of Object.entries(jsonAttrs)) {
+    if (!code || byCode.has(code)) continue;
+
+    const dt  = obj?.dt || 'text';
+    let val   = obj?.v ?? null;
+    const unit = obj?.u ?? null;
+
+    // i18n override for text
+    if (dt === 'text' && jsonI18n && jsonI18n[code] != null) {
+      val = jsonI18n[code];
+    }
+
+    // coerce types like backend does
+    if (dt === 'boolean') {
+      val = val === true || val === 1 || val === '1';
+    } else if (dt === 'int') {
+      const n = Number(val);
+      val = Number.isFinite(n) ? Math.trunc(n) : null;
+    } else if (dt === 'decimal') {
+      const x = Number(val);
+      val = Number.isFinite(x) ? x : null;
+    } else if (dt === 'enum') {
+      val = (val ?? '').toString().trim() || null;
+    } else if (dt === 'text') {
+      const s = (val ?? '').toString().trim();
+      val = s || null;
+    }
+
+    byCode.set(code, {
+      attribute_id: null,
+      code,
+      name: code,
+      name_bg: code,
+      unit,
+      data_type: dt,
+      category: 'Other',
+      display_group: 'Other',
+      display_order: 9999,
+      value: val,
+      _gseq: 999,
+      _group_en: 'Other',
+      _group_bg: 'Други',
+      _item_order: 9999,
     });
+  }
 
-    // Sort by group seq -> group name -> item order -> label
-    filtered.sort((a, b) => {
-      if (a._gseq !== b._gseq) return a._gseq - b._gseq;
-      if (a._group_bg !== b._group_bg) return String(a._group_bg).localeCompare(String(b._group_bg), "bg");
-      if (a._item_order !== b._item_order) return a._item_order - b._item_order;
-      const la = a.name_bg || a.label || a.code;
-      const lb = b.name_bg || b.label || b.code;
-      return String(la).localeCompare(String(lb), "bg");
-    });
+  // To array, filter empties (keep 0/false), sort
+  const raw = Array.from(byCode.values());
+  const filtered = raw.filter((r) => {
+    if (HIDDEN_CODES.has(r.code)) return false;
+    const v = r.value;
+    if (v === null || v === undefined) return false;
+    if (typeof v === 'string' && v.trim() === '') return false;
+    return true;
+  });
 
-    setRows(filtered);
-  };
+  filtered.sort((a, b) => {
+    if (a._gseq !== b._gseq) return a._gseq - b._gseq;
+    if (a._group_bg !== b._group_bg)
+      return String(a._group_bg).localeCompare(String(b._group_bg), 'bg');
+    if (a._item_order !== b._item_order) return a._item_order - b._item_order;
+    const la = a.name_bg || a.name || a.code;
+    const lb = b.name_bg || b.name || b.code;
+    return String(la).localeCompare(String(lb), 'bg');
+  });
+
+  setRows(filtered);
+};
+
 
   // ---- Effect ----
   useEffect(() => {
