@@ -226,7 +226,9 @@ export default function EditionSpecsPanel({
 
 function formatValue(v, unit) {
   if (v === null || v === undefined || (typeof v === "string" && v.trim() === "")) return "—";
+  if (typeof v === "boolean") return v ? "✅" : "❌";
   if (typeof v === "number" && unit) return `${v} ${unit}`;
   if (typeof v === "string" && unit && !v.endsWith(unit)) return `${v} ${unit}`;
   return String(v);
 }
+
