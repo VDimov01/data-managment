@@ -34,10 +34,10 @@ export default function Login() {
         <header className="auth-header">
           <div className="brand">
             <div className="brand-mark" aria-hidden="true" />
-            <span className="brand-name">Admin</span>
+            <span className="brand-name">Админ</span>
           </div>
-          <h1 className="auth-title">Sign in</h1>
-          <p className="auth-subtitle">Access your dashboard</p>
+          <h1 className="auth-title">Вписване</h1>
+          <p className="auth-subtitle">Достъпи админския панел</p>
         </header>
 
         <form className="auth-form" onSubmit={onSubmit} noValidate>
@@ -92,16 +92,16 @@ export default function Login() {
             {busy ? (
               <span className="btn-inner">
                 <span className="spinner" aria-hidden="true" />
-                Signing in…
+                Вписване…
               </span>
             ) : (
-              'Sign in'
+              'Вписване'
             )}
           </button>
         </form>
 
         <footer className="auth-footer">
-          <span className="muted">Forgot password?</span>
+          <span className="muted">Забравена парола?</span>
           {/* hook this up later if you add a flow */}
         </footer>
       </div>
