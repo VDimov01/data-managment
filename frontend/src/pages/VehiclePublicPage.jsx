@@ -144,6 +144,7 @@ export default function VehiclePublicPage({ apiBase = "http://localhost:5000" })
             {vehicle.mileage != null ? <li>Пробег: {vehicle.mileage.toLocaleString()} km</li> : null}
             {vehicle.exterior_color ? <li>Екстериор: {vehicle.exterior_color}</li> : null}
             {vehicle.interior_color ? <li>Интериор: {vehicle.interior_color}</li> : null}
+            {vehicle.release_date ? <li>Дата на производство: {vehicle.release_date}</li> : null}
           </ul>
           <div style={{ marginTop: 12, fontSize: 12, opacity: 0.7 }}>
             ID: {vehicle.public_uuid}

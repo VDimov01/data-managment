@@ -389,7 +389,7 @@ router.get('/vehicles/:uuid', async (req, res) => {
   // get vehicle
   const [vehRows] = await pool.query(
     `SELECT v.vehicle_id, v.public_uuid, v.vin, v.stock_number, v.mileage,
-            v.status, v.asking_price, v.edition_id, v.shop_id
+            v.status, v.release_date, v.asking_price, v.edition_id, v.shop_id
      FROM vehicle v
      WHERE v.public_uuid = ?`, [uuid]);
 
@@ -409,6 +409,7 @@ router.get('/vehicles/:uuid', async (req, res) => {
     vin_last6: v.vin.slice(-6),         // optional: obfuscate
     mileage: v.mileage,
     status: v.status,
+    release_date: v.release_date,
     asking_price: v.asking_price,
     edition_id: v.edition_id,
     make: parts.maker,
@@ -621,6 +622,103 @@ router.get('/customers/contracts/:uuid/pdf/latest', async (req, res) => {
   } catch (e) {
     console.error('GET /contracts/:uuid/pdf/latest', e);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// --- GET /api/public/editions/:editionId/attributes
+// Returns effective (merged) EAV values for a single edition, with labels & typing.
+router.get('/editions/:editionId/attributes', async (req, res) => {
+  const edId = Number(req.params.editionId);
+  const lang = (req.query.lang === 'en' ? 'en' : 'bg');
+  if (!edId) return res.status(400).json({ error: 'Invalid edition id' });
+
+  try {
+    // Effective values (prefer enum labels, apply i18n where applicable)
+    const [rows] = await pool.query(
+      `
+      SELECT
+        a.attribute_id, a.code, a.name, a.name_bg, a.unit, a.data_type, a.category,
+        COALESCE(a.display_group, a.category) AS display_group,
+        COALESCE(a.display_order, 9999)      AS display_order,
+        v.value_numeric, v.value_text, v.value_boolean, v.value_enum_id,
+        aev.code AS enum_code,
+        CASE WHEN v.value_enum_id IS NULL THEN NULL
+             WHEN ?='en' THEN aev.label_en ELSE aev.label_bg END AS enum_label
+      FROM v_effective_edition_attributes v
+      JOIN attribute a ON a.attribute_id = v.attribute_id
+      LEFT JOIN attribute_enum_value aev ON aev.enum_id = v.value_enum_id
+      WHERE v.edition_id = ?
+      ORDER BY display_group, display_order, a.name
+      `,
+      [lang, edId]
+    );
+
+    // Type & normalize to a simple value field
+    const out = rows.map(r => {
+      let value = null;
+      switch (r.data_type) {
+        case 'enum':
+          value = r.enum_label || r.enum_code || null;
+          break;
+        case 'boolean':
+          value = r.value_boolean == null ? null : !!r.value_boolean;
+          break;
+        case 'int': {
+          const n = Number(r.value_numeric);
+          value = Number.isFinite(n) ? Math.trunc(n) : null;
+          break;
+        }
+        case 'decimal': {
+          const x = Number(r.value_numeric);
+          value = Number.isFinite(x) ? x : null;
+          break;
+        }
+        default: {
+          const s = (r.value_text ?? '').toString().trim();
+          value = s || null;
+        }
+      }
+      return {
+        attribute_id: r.attribute_id,
+        code: r.code,
+        name: r.name,
+        name_bg: r.name_bg,
+        unit: r.unit,
+        data_type: r.data_type,
+        category: r.category,
+        display_group: r.display_group,
+        display_order: r.display_order,
+        value,
+      };
+    }).filter(x => x.value !== null); // drop empty values
+
+    res.json({ edition_id: edId, lang, items: out });
+  } catch (e) {
+    console.error('public edition attributes', e);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// --- GET /api/public/editions/:editionId/specs
+// Returns exactly what's in edition_specs (JSON + i18n), already parsed.
+router.get('/editions/:editionId/specs', async (req, res) => {
+  const edId = Number(req.params.editionId);
+  if (!edId) return res.status(400).json({ error: 'Invalid edition id' });
+
+  try {
+    const [[row]] = await pool.query(
+      `SELECT specs_json, specs_i18n FROM edition_specs WHERE edition_id = ? LIMIT 1`,
+      [edId]
+    );
+
+    res.json({
+      edition_id: edId,
+      specs_json: safeParseJsonMaybe(row?.specs_json) || { attributes: {} },
+      specs_i18n: safeParseJsonMaybe(row?.specs_i18n) || {}
+    });
+  } catch (e) {
+    console.error('public edition specs', e);
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
