@@ -90,12 +90,26 @@ export default function EditionSpecsPanel({
     };
   }, [apiBase, editionId, lang]);
 
+function splitGroup(s) {
+  const str = String(s || '').trim();
+  const m = str.match(/^(\d{1,3})\s+(.*\S)$/);
+  if (m) return { seq: Number(m[1]), en: m[2] };
+  return { seq: 999, en: str };
+}
+
+function normalizeKey(en) {
+  const aliased = GROUP_ALIASES[en] || en;
+  return aliased;
+}
+
   // ---- Grouping (stable hook order) ----
   const groupsMap = useMemo(() => {
   const m = new Map();
   if (!Array.isArray(rows)) return m;
   for (const r of rows) {
-    const en = r.display_group || r.category || 'Other';
+    const { seq, en } = splitGroup(r.display_group);
+    //const key = normalizeKey(en);
+
     const groupTitle = GROUP_BG[en] || en;
     if (!m.has(groupTitle)) m.set(groupTitle, []);
     m.get(groupTitle).push(r);
