@@ -39,6 +39,9 @@ const GROUP_ALIASES = {
 
 const SHOW_GROUP_NUMBERS = false;
 
+const HIDDEN_CODES = new Set(['MSRP_AT_LAUNCH']);
+
+
 function splitGroup(s) {
   const str = String(s || '').trim();
   const m = str.match(/^(\d{1,3})\s+(.*\S)$/);
@@ -78,6 +81,7 @@ export default function CompareTable({ editions, rows, onlyDiff, filter }) {
     if (!Array.isArray(editions) || editions.length === 0) return filtered;
     return filtered.filter(r =>
       editions.some(ed => {
+        if(HIDDEN_CODES.has(r.code)) return false;
         const v = r.values?.[ed.edition_id];
         return v !== null && v !== undefined; // false/0 are kept; only null/undefined are considered empty
       })
