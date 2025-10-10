@@ -389,8 +389,14 @@ router.get('/vehicles/:uuid', async (req, res) => {
   // get vehicle
   const [vehRows] = await pool.query(
     `SELECT v.vehicle_id, v.public_uuid, v.vin, v.stock_number, v.mileage,
-            v.status, v.release_date, v.asking_price, v.edition_id, v.shop_id
+            v.status, v.release_date, v.asking_price, v.edition_id, v.shop_id,
+            cext.color_id AS exterior_color_id,
+            cext.name_bg     AS exterior_color,
+            cint.color_id AS interior_color_id,
+            cint.name_bg     AS interior_color
      FROM vehicle v
+     LEFT JOIN color cext ON cext.color_id = v.exterior_color_id AND cext.type = 'exterior'
+     LEFT JOIN color cint ON cint.color_id = v.interior_color_id AND cint.type = 'interior'
      WHERE v.public_uuid = ?`, [uuid]);
 
   if (vehRows.length === 0) return res.status(404).json({ error: 'Not found' });
@@ -416,6 +422,10 @@ router.get('/vehicles/:uuid', async (req, res) => {
     model: parts.model,
     model: parts.model_year,
     edition_name: parts.edition,
+    exterior_color: v.exterior_color,
+    interior_color: v.interior_color,
+    exterior_color_id: v.exterior_color_id,
+    interior_color_id: v.interior_color_id,
     // attributes: attrs,
   });
 });
