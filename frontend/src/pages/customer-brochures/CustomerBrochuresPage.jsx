@@ -48,6 +48,7 @@ export default function CustomerBrochuresPage({ apiBase = "http://localhost:5000
       try {
         const r = await fetch(`${apiBase}/api/public/customers/${uuid}/brochures`);
         const data = await r.json();
+        
         if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
         if (cancelled) return;
@@ -66,7 +67,6 @@ export default function CustomerBrochuresPage({ apiBase = "http://localhost:5000
             // Use your helper (it builds the slug route internally)
             try {
               const resp = await listEditionImages(
-                apiBase,
                 ed.edition_id,
                 ed.make_name,
                 ed.model_name,
