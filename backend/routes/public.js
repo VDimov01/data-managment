@@ -635,36 +635,62 @@ router.get('/customers/contracts/:uuid/pdf/latest', async (req, res) => {
   }
 });
 
+// helper if you don't already have it in the file
+// function safeParseJsonMaybe(x) {
+//   if (!x) return null;
+//   if (typeof x === 'object') return x;
+//   try { return JSON.parse(x); } catch { return null; }
+// }
+
 // --- GET /api/public/editions/:editionId/attributes
-// Returns effective (merged) EAV values for a single edition, with labels & typing.
+// Returns merged (EAV + JSON) with full metadata from `attribute`, already typed.
 router.get('/editions/:editionId/attributes', async (req, res) => {
   const edId = Number(req.params.editionId);
   const lang = (req.query.lang === 'en' ? 'en' : 'bg');
   if (!edId) return res.status(400).json({ error: 'Invalid edition id' });
 
   try {
-    // Effective values (prefer enum labels, apply i18n where applicable)
-    const [rows] = await pool.query(
-      `
+    // 1) Attribute defs for all codes (for JSON-only codes too)
+    const [defsRows] = await pool.query(`
+      SELECT attribute_id, code, name, name_bg, unit, data_type, category, display_group, display_order
+      FROM attribute
+    `);
+    const defByCode = new Map(defsRows.filter(d => d.code).map(d => [d.code, d]));
+
+    // 2) Effective EAV (+ enum label in requested lang)
+    const [eff] = await pool.query(`
       SELECT
-        a.attribute_id, a.code, a.name, a.name_bg, a.unit, a.data_type, a.category,
-        COALESCE(a.display_group, a.category) AS display_group,
-        COALESCE(a.display_order, 9999)      AS display_order,
+        a.attribute_id, a.code, a.name, a.name_bg, a.unit, a.data_type,
+        a.category, a.display_group, a.display_order,
         v.value_numeric, v.value_text, v.value_boolean, v.value_enum_id,
         aev.code AS enum_code,
         CASE WHEN v.value_enum_id IS NULL THEN NULL
-             WHEN ?='en' THEN aev.label_en ELSE aev.label_bg END AS enum_label
+             WHEN ?='en' THEN aev.label_en ELSE aev.label_bg
+        END AS enum_label
       FROM v_effective_edition_attributes v
       JOIN attribute a ON a.attribute_id = v.attribute_id
       LEFT JOIN attribute_enum_value aev ON aev.enum_id = v.value_enum_id
       WHERE v.edition_id = ?
-      ORDER BY display_group, display_order, a.name
-      `,
-      [lang, edId]
-    );
+    `, [lang, edId]);
 
-    // Type & normalize to a simple value field
-    const out = rows.map(r => {
+    // 3) Sidecar JSON + i18n
+    const [[specsRow]] = await pool.query(
+      `SELECT specs_json, specs_i18n FROM edition_specs WHERE edition_id = ? LIMIT 1`,
+      [edId]
+    );
+    const sj  = safeParseJsonMaybe(specsRow?.specs_json) || { attributes: {} };
+    const sji = safeParseJsonMaybe(specsRow?.specs_i18n) || {};
+    const i18 = (sji[lang] && sji[lang].attributes) ? sji[lang].attributes : {};
+
+    // 4) Merge into code->item with precedence:
+    //    boolean: EAV boolean -> JSON boolean
+    //    int/decimal: EAV numeric -> JSON numeric
+    //    enum: EAV enum label/enum_code -> JSON v (string)
+    //    text: JSON i18n -> JSON v -> EAV text
+    const outByCode = new Map();
+
+    // Seed from EAV
+    for (const r of eff) {
       let value = null;
       switch (r.data_type) {
         case 'enum':
@@ -688,49 +714,109 @@ router.get('/editions/:editionId/attributes', async (req, res) => {
           value = s || null;
         }
       }
-      return {
+      const base = defByCode.get(r.code) || r;
+      outByCode.set(r.code, {
         attribute_id: r.attribute_id,
         code: r.code,
-        name: r.name,
-        name_bg: r.name_bg,
-        unit: r.unit,
-        data_type: r.data_type,
-        category: r.category,
-        display_group: r.display_group,
-        display_order: r.display_order,
-        value,
-      };
-    }).filter(x => x.value !== null); // drop empty values
+        name: base.name,
+        name_bg: base.name_bg || base.name || r.code,
+        unit: base.unit,
+        data_type: base.data_type || r.data_type || 'text',
+        category: base.category || 'Other',
+        display_group: base.display_group || base.category || 'Other',
+        display_order: base.display_order ?? 9999,
+        value
+      });
+    }
 
-    res.json({ edition_id: edId, lang, items: out });
+    // Merge JSON-only and fill missing from defs
+    for (const [code, obj] of Object.entries(sj.attributes || {})) {
+      const def = defByCode.get(code);
+      const dt  = obj?.dt || def?.data_type || 'text';
+      let v = null;
+
+      if (dt === 'text') {
+        // prefer i18n if present
+        const s = (i18[code] != null) ? String(i18[code]) : (obj?.v != null ? String(obj.v) : '');
+        v = s.trim() || null;
+      } else if (dt === 'boolean') {
+        v = (obj?.v === true || obj?.v === 1 || obj?.v === '1');
+      } else if (dt === 'int') {
+        const n = Number(obj?.v);
+        v = Number.isFinite(n) ? Math.trunc(n) : null;
+      } else if (dt === 'decimal') {
+        const x = Number(obj?.v);
+        v = Number.isFinite(x) ? x : null;
+      } else if (dt === 'enum') {
+        v = obj?.v != null ? String(obj.v) : null; // no enum table here; just show label/text
+      } else {
+        v = obj?.v ?? null;
+      }
+
+      const existing = outByCode.get(code);
+      if (existing) {
+        // Fill only if EAV didn’t provide a value
+        if (existing.value == null && v != null) existing.value = v;
+        if (!existing.unit && (obj?.u || def?.unit)) existing.unit = obj?.u || def?.unit;
+        // Also keep richer display_group/name from defs if missing
+        if (!existing.display_group && (def?.display_group || def?.category))
+          existing.display_group = def?.display_group || def?.category;
+        if (!existing.name_bg && (def?.name_bg || def?.name))
+          existing.name_bg = def?.name_bg || def?.name;
+        continue;
+      }
+
+      outByCode.set(code, {
+        attribute_id: def?.attribute_id ?? null,
+        code,
+        name: def?.name || code,
+        name_bg: def?.name_bg || def?.name || code,
+        unit: def?.unit || obj?.u || null,
+        data_type: dt,
+        category: def?.category || 'Other',
+        display_group: def?.display_group || def?.category || 'Other',
+        display_order: def?.display_order ?? 9999,
+        value: v
+      });
+    }
+
+    // 5) finalize: drop empty (keep 0/false), stable order
+    const items = Array.from(outByCode.values())
+      .filter(x => {
+        const v = x.value;
+        if (v === null || v === undefined) return false;
+        if (typeof v === 'string' && v.trim() === '') return false;
+        return true;
+      })
+      .sort((a, b) => {
+        // group order: numeric prefix (“01 …”) if present
+        const seq = (g) => {
+          const m = String(g || '').match(/^\s*(\d{1,3})\b/);
+          return m ? Number(m[1]) : 999;
+        };
+        const ag = seq(a.display_group), bg = seq(b.display_group);
+        if (ag !== bg) return ag - bg;
+
+        const gA = String(a.display_group || '');
+        const gB = String(b.display_group || '');
+        if (gA !== gB) return gA.localeCompare(gB, lang);
+
+        const ao = Number.isFinite(a.display_order) ? a.display_order : 9999;
+        const bo = Number.isFinite(b.display_order) ? b.display_order : 9999;
+        if (ao !== bo) return ao - bo;
+
+        const la = a.name_bg || a.name || a.code;
+        const lb = b.name_bg || b.name || b.code;
+        return String(la).localeCompare(String(lb), lang);
+      });
+
+    res.json({ edition_id: edId, lang, items });
   } catch (e) {
-    console.error('public edition attributes', e);
+    console.error('public edition attributes (merged)', e);
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-// --- GET /api/public/editions/:editionId/specs
-// Returns exactly what's in edition_specs (JSON + i18n), already parsed.
-router.get('/editions/:editionId/specs', async (req, res) => {
-  const edId = Number(req.params.editionId);
-  if (!edId) return res.status(400).json({ error: 'Invalid edition id' });
-
-  try {
-    const [[row]] = await pool.query(
-      `SELECT specs_json, specs_i18n FROM edition_specs WHERE edition_id = ? LIMIT 1`,
-      [edId]
-    );
-
-    res.json({
-      edition_id: edId,
-      specs_json: safeParseJsonMaybe(row?.specs_json) || { attributes: {} },
-      specs_i18n: safeParseJsonMaybe(row?.specs_i18n) || {}
-    });
-  } catch (e) {
-    console.error('public edition specs', e);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
 
 
 module.exports = router;
