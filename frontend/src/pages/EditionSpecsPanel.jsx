@@ -64,6 +64,12 @@ export default function EditionSpecsPanel({
     return { seq: 999, en: (category || "Other") };
   }
 
+  const [openGroups, setOpenGroups] = useState(new Set());
+useEffect(() => {
+  // Open all groups by default whenever the data changes
+  setOpenGroups(new Set([...groupsMap.keys()]));
+}, [groupsMap]);
+
   // ---------- Loader ----------
   const loadEditionAttributes = async (edId) => {
   const payload = await api(`/public/editions/${edId}/attributes?lang=${lang}`);
@@ -123,11 +129,7 @@ function normalizeKey(en) {
   if (!rows.length) return <div style={{ padding: 12, opacity: 0.7 }}>Няма данни.</div>;
 
   // Add these just above your return:
-const [openGroups, setOpenGroups] = useState(new Set());
-useEffect(() => {
-  // Open all groups by default whenever the data changes
-  setOpenGroups(new Set([...groupsMap.keys()]));
-}, [groupsMap]);
+
 
 const toggleGroup = (group) =>
   setOpenGroups((prev) => {
