@@ -69,10 +69,11 @@ export default function EditionSpecsPanel({
     // 1) attribute defs + effective values (edition/year/model)
     const defs = await api(
       `/public/editions/${edId}/attributes?effective=1&lang=${lang}`);
-
+      console.log("Defs:", defs);
     // 2) JSON/EAV sidecar
     const specs = await api(
       `/public/editions/${edId}/specs?lang=${lang}`);
+    console.log("Specs:", specs);
 
     const eavNum  = new Map((specs?.eav?.numeric  || []).map((row) => [row.code, row.val]));
     const eavBool = new Map((specs?.eav?.boolean || []).map((row) => [row.code, row.val ? 1 : 0]));
