@@ -9,7 +9,7 @@ export default function EditionSpecsPanel({
   const [rows, setRows] = useState(null);
   const [err, setErr] = useState(null);
 
-  const HIDDEN_CODES = new Set(['MSRP_AT_LAUNCH']); // extend if needed
+  const HIDDEN_CODES = new Set(['MSRP_AT_LAUNCH', 'MSRP_LAUNCH']); // extend if needed
 
   // ----- Group ordering + BG translations -----
   const FALLBACK_GROUP_ORDER = [
