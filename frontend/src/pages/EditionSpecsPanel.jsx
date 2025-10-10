@@ -122,29 +122,69 @@ function normalizeKey(en) {
   if (!rows) return <div style={{ padding: 12 }}>Loading specs…</div>;
   if (!rows.length) return <div style={{ padding: 12, opacity: 0.7 }}>Няма данни.</div>;
 
-  return (
+  // Add these just above your return:
+const [openGroups, setOpenGroups] = useState(new Set());
+useEffect(() => {
+  // Open all groups by default whenever the data changes
+  setOpenGroups(new Set([...groupsMap.keys()]));
+}, [groupsMap]);
+
+const toggleGroup = (group) =>
+  setOpenGroups((prev) => {
+    const n = new Set(prev);
+    n.has(group) ? n.delete(group) : n.add(group);
+    return n;
+  });
+
+// Optional: quick controls (use if you want)
+const expandAll = () => setOpenGroups(new Set([...groupsMap.keys()]));
+const collapseAll = () => setOpenGroups(new Set());
+
+return (
   <div className="public-specs">
-    {[...groupsMap.entries()].map(([groupTitleBg, items]) => (
-      <div key={groupTitleBg} className="public-specs__group">
-        <div className="public-specs__header">{groupTitleBg}</div>
-        <table className="public-specs__table">
-          <tbody>
-            {items.map((a) => (
-              <tr key={a.code} className="public-specs__row">
-                <td className="public-specs__cell public-specs__cell--label">
-                  {a.name_bg || a.label || a.code}
-                </td>
-                <td className="public-specs__cell public-specs__cell--value">
-                  {formatValue(a.value, a.unit)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    ))}
+    {/* Optional controls */}
+    <div className="public-specs__controls">
+      <button className="public-specs__control-btn" onClick={expandAll}>Разгъни всички</button>
+      <button className="public-specs__control-btn" onClick={collapseAll}>Свий всички</button>
+    </div>
+
+    {[...groupsMap.entries()].map(([groupTitleBg, items]) => {
+      const isOpen = openGroups.has(groupTitleBg);
+      return (
+        <section key={groupTitleBg} className="public-specs__group">
+          <button
+            type="button"
+            className={`public-specs__group-header ${isOpen ? "is-open" : ""}`}
+            onClick={() => toggleGroup(groupTitleBg)}
+            aria-expanded={isOpen}
+          >
+            <span className="public-specs__group-title">{groupTitleBg}</span>
+            <span className="public-specs__chevron" aria-hidden>⌄</span>
+          </button>
+
+          <div className={`public-specs__body ${isOpen ? "is-open" : ""}`}>
+            <ul className="public-specs__list">
+              {items.map((a, idx) => (
+                <li
+                  key={a.code}
+                  className={`public-specs__item ${idx % 2 ? "is-alt" : ""}`}
+                >
+                  <div className="public-specs__label">
+                    {a.name_bg || a.label || a.code}
+                  </div>
+                  <div className="public-specs__value">
+                    {formatValue(a.value, a.unit)}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      );
+    })}
   </div>
 );
+
 
 }
 
