@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { api } from "../services/api";
 
 export default function EditionSpecsPanel({
   apiBase = "http://localhost:5000",
@@ -66,14 +67,12 @@ export default function EditionSpecsPanel({
   // ---------- Loader ----------
   const loadEditionAttributes = async (edId) => {
     // 1) attribute defs + effective values (edition/year/model)
-    const defs = await fetch(
-      `${apiBase}/api/public/editions/${edId}/attributes?effective=1&lang=${lang}`
-    ).then((r) => r.json());
+    const defs = await api(
+      `/public/editions/${edId}/attributes?effective=1&lang=${lang}`);
 
     // 2) JSON/EAV sidecar
-    const specs = await fetch(
-      `${apiBase}/api/public/editions/${edId}/specs?lang=${lang}`
-    ).then((r) => r.json());
+    const specs = await api(
+      `/public/editions/${edId}/specs?lang=${lang}`);
 
     const eavNum  = new Map((specs?.eav?.numeric  || []).map((row) => [row.code, row.val]));
     const eavBool = new Map((specs?.eav?.boolean || []).map((row) => [row.code, row.val ? 1 : 0]));
