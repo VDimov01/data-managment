@@ -36,7 +36,7 @@ export default function CustomerContractsPage({ apiBase = "http://localhost:5000
 
   async function openLatestPdf(contractUuid) {
     try {
-      const url = buildUrl(apiBase, `/api/contracts/${contractUuid}/pdf/latest`);
+      const url = buildUrl(apiBase, `/api/public/customers/contracts/${contractUuid}/pdf/latest`);
       const r = await fetch(url);
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);

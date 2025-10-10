@@ -598,7 +598,30 @@ router.get('/customers/:uuid/contracts', async (req, res) => {
 });
 
 
+// Latest PDF signed URL by contract UUID
+router.get('/customers/contracts/:uuid/pdf/latest', async (req, res) => {
+  try {
+    const { uuid } = req.params;
+    const [[ctr]] = await pool.query(`SELECT contract_id FROM contract WHERE uuid = ?`, [uuid]);
+    if (!ctr) return res.status(404).json({ error: 'Not found' });
 
+    const [[row]] = await pool.query(
+      `SELECT gcs_key, version
+         FROM contract_pdf
+        WHERE contract_id = ?
+        ORDER BY version DESC
+        LIMIT 1`,
+      [ctr.contract_id]
+    );
+    if (!row) return res.status(404).json({ error: 'No PDF yet' });
+
+    const signed = await getSignedReadUrl(row.gcs_key, { minutes: 10 });
+    res.json({ version: row.version, ...signed });
+  } catch (e) {
+    console.error('GET /contracts/:uuid/pdf/latest', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 
 module.exports = router;
