@@ -50,7 +50,7 @@ export default function AttachCustomersPanel({ apiBase, brochureId }) {
       await api(`/brochures/${brochureId}/attachments`, {
         method: "POST",
         headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ customer_id, is_visible: 1 })
+        body: { customer_id, is_visible: 1 }
       });
       await load();
       setSearchQ(""); setCustResults([]);
