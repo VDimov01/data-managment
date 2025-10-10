@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import "./CustomerContractsPage.css"; // <-- import the CSS file above
 
 function buildUrl(base, path, params = {}) {
   const root = (base || "").replace(/\/+$/, "");
