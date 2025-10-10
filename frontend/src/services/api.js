@@ -75,7 +75,7 @@ export async function getPublicVehicle(apiBase, uuid) {
 
 // Public vehicle images (private bucket, proxied by backend)
 export async function getPublicVehicleImages(apiBase, uuid) {
-  return api(`public/vehicles/${uuid}/images`);
+  return api(`/public/vehicles/${uuid}/images`);
 }
 
 // Edition attributes (your existing resolver)
