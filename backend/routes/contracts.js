@@ -490,9 +490,9 @@ router.post('/', async (req, res) => {
   }
 });
 
+
 // Add/replace items on a draft
-// body: { items: [{ vehicle_id, quantity, unit_price? }] }
-// If unit_price not provided, default from vehicle.asking_price (DECIMAL).
+// body: { items: [...], advance_amount?: string|null }
 router.put('/:contract_id/items', async (req, res) => {
   try {
     const contract_id = Number(req.params.contract_id);
@@ -501,16 +501,33 @@ router.put('/:contract_id/items', async (req, res) => {
       return res.status(400).json({ error: 'contract_id and items required' });
     }
 
+    // detect presence vs. value so we don't overwrite unintentionally
+    const hasAdvanceInBody = Object.prototype.hasOwnProperty.call(req.body, 'advance_amount');
+    let advAmount = null;
+    if (hasAdvanceInBody) {
+      const raw = req.body.advance_amount;
+      // reuse your helper if you already have it:
+      advAmount = (raw == null || raw === '') ? null : toDecimalString(raw);
+      if (advAmount != null && Number(advAmount) < 0) {
+        return res.status(400).json({ error: 'advance_amount must be >= 0' });
+      }
+    }
+
     const result = await withTxn(async (conn) => {
       // Load contract
       const [[contract]] = await conn.query(`SELECT * FROM contract WHERE contract_id = ?`, [contract_id]);
       if (!contract) throw new Error('contract not found');
       if (contract.status !== 'draft') throw new Error('only DRAFT contracts can be edited');
 
+      // Optional: enforce business rule – only allow setting advance for ADVANCE contracts
+      if (hasAdvanceInBody && contract.type !== 'ADVANCE') {
+        throw new Error('advance_amount can only be set for ADVANCE contracts');
+      }
+
       const vehicleIds = items.map(i => Number(i.vehicle_id)).filter(Boolean);
       if (!vehicleIds.length) throw new Error('items must include vehicle_id');
 
-      // Load vehicles with names for nice title
+      // Load vehicles...
       const [veh] = await conn.query(
         `
         SELECT
@@ -521,10 +538,10 @@ router.put('/:contract_id/items', async (req, res) => {
           mo.name AS model_name,
           m.name  AS make_name
         FROM vehicle v
-        JOIN edition e    ON e.edition_id    = v.edition_id
+        JOIN edition e     ON e.edition_id     = v.edition_id
         JOIN model_year my ON my.model_year_id = e.model_year_id
-        JOIN model mo     ON mo.model_id     = my.model_id
-        JOIN make  m      ON m.make_id       = mo.make_id
+        JOIN model mo      ON mo.model_id      = my.model_id
+        JOIN make  m       ON m.make_id        = mo.make_id
         WHERE v.vehicle_id IN (${vehicleIds.map(()=>'?').join(',')})
         `,
         vehicleIds
@@ -535,7 +552,7 @@ router.put('/:contract_id/items', async (req, res) => {
         throw new Error(`vehicles not found: ${missing.join(',')}`);
       }
 
-      // Replace all items (your existing approach)
+      // Replace all items
       await conn.query(`DELETE FROM contract_item WHERE contract_id = ?`, [contract_id]);
 
       let pos = 1;
@@ -543,9 +560,8 @@ router.put('/:contract_id/items', async (req, res) => {
 
       for (const raw of items) {
         const v = byId.get(Number(raw.vehicle_id));
-        const qty = Math.max(1, Math.trunc(raw.quantity || 1));
+        const qty = 1; // <— always 1
 
-        // unit price: explicit -> asking_price
         const explicitUnit = toDecimalString(raw.unit_price);
         const fallbackUnit = toDecimalString(v.asking_price);
         const unit_price   = explicitUnit ?? fallbackUnit;
@@ -553,14 +569,12 @@ router.put('/:contract_id/items', async (req, res) => {
           throw new Error(`vehicle ${v.vehicle_id} has no price (send unit_price or set asking_price)`);
         }
 
-        // Optional discount & tax
+        // Optional discount/tax (keep what you already had)
         const discount_type  = (raw.discount_type === 'amount' || raw.discount_type === 'percent') ? raw.discount_type : null;
         const discount_value = discount_type ? toDecimalString(raw.discount_value) : null;
         const tax_rate       = raw.tax_rate != null ? toDecimalString(raw.tax_rate) : null;
 
-        // Compute totals (line_total is required)
-        const { total /* subtotal, discount, tax */ } =
-          computeLineTotals(qty, unit_price, discount_type, discount_value, tax_rate);
+        const { total } = computeLineTotals(qty, unit_price, discount_type, discount_value, tax_rate);
         const line_total = toDecimalString(total);
 
         const title    = buildItemTitle(v);
@@ -601,7 +615,7 @@ router.put('/:contract_id/items', async (req, res) => {
         );
       }
 
-      // Recalc contract totals from items
+      // Recalc totals from items
       const [[tot]] = await conn.query(
         `
         SELECT
@@ -635,21 +649,29 @@ router.put('/:contract_id/items', async (req, res) => {
         [contract_id]
       );
 
-      await conn.execute(
-        `UPDATE contract
+      // Build dynamic UPDATE so we only touch advance_amount if it was provided
+      let sql = `
+        UPDATE contract
            SET subtotal = ?, discount_total = ?, tax_total = ?, total = ?, updated_at = NOW()
-         WHERE contract_id = ?`,
-        [tot.subtotal, tot.discount_total, tot.tax_total, tot.total, contract_id]
-      );
+      `;
+      const params = [tot.subtotal, tot.discount_total, tot.tax_total, tot.total];
 
-      // Return snapshot (reuse your helper if you have one)
-      // const snap = await loadItemsSnapshot(conn, contract_id);
+      if (hasAdvanceInBody) {
+        sql += `, advance_amount = ?`;
+        params.push(advAmount); // can be null to clear
+      }
+
+      sql += ` WHERE contract_id = ?`;
+      params.push(contract_id);
+
+      await conn.execute(sql, params);
+
       const [rows] = await conn.query(
         `SELECT * FROM contract_item WHERE contract_id = ? ORDER BY position ASC`,
         [contract_id]
       );
 
-      return { contract_id, items: rows, totals: tot };
+      return { contract_id, items: rows, totals: tot, advance_amount: hasAdvanceInBody ? advAmount : contract.advance_amount };
     });
 
     res.json(result);
@@ -658,6 +680,7 @@ router.put('/:contract_id/items', async (req, res) => {
     res.status(400).json({ error: e.message || 'Bad request' });
   }
 });
+
 
 // Issue contract (generate version 1+, reserve vehicles)
 // routes/contracts.js  (patch this handler)

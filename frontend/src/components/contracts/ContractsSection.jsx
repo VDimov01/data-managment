@@ -175,9 +175,6 @@ export default function ContractsSection() {
 
   async function handleCreateDraft() {
     if (!customer?.customer_id) return alert("Изберете клиент.");
-    if (type === "ADVANCE" && !advanceAmount) {
-      if (!confirm("Създаване на Авансов договор с 0лв авансово плащане?")) return;
-    }
 
     const buyer_snapshot = buildBuyerSnapshot(customer);
     if (!buyer_snapshot) return alert("Неуспешно генериране на информация за купувача.");
@@ -207,32 +204,51 @@ export default function ContractsSection() {
     }
   }
 
-  async function handleSaveItems() {
-    if (!contract?.contract_id) return;
-    if (items.length === 0) return alert("Добавете поне едно превозно средство.");
-
-    setSavingItems(true);
-    try {
-      const payloadItems = items.map(it => {
-        const obj = {
-          vehicle_id: it.vehicle_id,
-          quantity: Math.max(1, parseInt(it.quantity || 1, 10)),
-        };
-        if (it.unit_price !== "" && it.unit_price != null) obj.unit_price = String(it.unit_price);
-        return obj;
-      });
-      await api(`/contracts/${contract.contract_id}/items`, {
-        method: "PUT",
-        body: { items: payloadItems },
-      });
-      alert("Артикулите са запазени.");
-      setStep(3);
-    } catch (e) {
-      alert(`Неуспешно запазване на артикулите: ${e.message}`);
-    } finally {
-      setSavingItems(false);
+  async function handleSaveItems({ advanceAmount } = {}) {
+  if (!contract?.contract_id) return;
+  if (items.length === 0) return alert("Добавете поне едно превозно средство.");
+  if (type === "ADVANCE" && !advanceAmount) {
+      if (!confirm("Създаване на Авансов договор с 0лв авансово плащане?")) return;
     }
+
+  setSavingItems(true);
+  try {
+    const payloadItems = items.map(it => {
+      const obj = {
+        vehicle_id: it.vehicle_id,
+        quantity: 1, // always 1 now
+      };
+      if (it.unit_price !== "" && it.unit_price != null) obj.unit_price = String(it.unit_price);
+      if (it.discount_type === "amount" || it.discount_type === "percent") {
+        obj.discount_type = it.discount_type;
+        if (it.discount_value !== "" && it.discount_value != null) obj.discount_value = String(it.discount_value);
+      }
+      if (it.tax_rate !== "" && it.tax_rate != null) obj.tax_rate = String(it.tax_rate);
+      return obj;
+    });
+
+    const body = { items: payloadItems };
+
+    if (contract?.type === "ADVANCE") {
+      body.advance_amount = (advanceAmount === "" || advanceAmount == null)
+        ? null
+        : String(advanceAmount);
+    }
+
+    await api(`/contracts/${contract.contract_id}/items`, {
+      method: "PUT",
+      body
+    });
+
+    alert("Артикулите са запазени.");
+    setStep(3);
+  } catch (e) {
+    alert(`Неуспешно запазване на артикулите: ${e.message}`);
+  } finally {
+    setSavingItems(false);
   }
+}
+
 
   async function handleRenderDraftPdf() {
     if (!contract?.contract_id) return;
@@ -400,15 +416,6 @@ async function handleIssueAllHandover() {
                     <input type="date" className="inp" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} />
                   </div>
                 </div>
-
-                {type === "ADVANCE" && (
-                  <div className="row">
-                    <div className="col">
-                      <label className="lbl">Авансова сума</label>
-                      <MoneyInput value={advanceAmount} onChange={setAdvanceAmount} placeholder="0.00" />
-                    </div>
-                  </div>
-                )}
 
                 {/* <div className="row">
                   <div className="col">
@@ -610,7 +617,7 @@ function CustomerPicker({ apiBase, value, onChange }) {
 
   // pagination state
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10); // 5/10/20 – pick your poison
+  const [limit, setLimit] = useState(5); // 5/10/20 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -736,41 +743,108 @@ function CustomerPicker({ apiBase, value, onChange }) {
   );
 }
 
+/** ─────────────────────────────────────────────────────────────────────────────
+ * ItemsStep
+ *  - Per-line: unit price, discount (amount/percent), tax rate
+ *  - Contract type ADVANCE: set advance amount here
+ *  - Quantity removed (always 1)
+ *  - Client total preview (purely UI)
+ * ──────────────────────────────────────────────────────────────────────────── */
+export function ItemsStep({
+  apiBase,
+  contract,
+  customer,
+  items,
+  setItems,
+  currency,
+  onBack,
+  onSave,            // parent’s save handler will call PUT /contracts/:id/items
+  saving,
+}) {
+  const type = contract?.type || "REGULAR";
+  const [advanceAmount, setAdvanceAmount] = useState(
+    contract?.advance_amount != null ? String(contract.advance_amount) : ""
+  );
 
-function ItemsStep({ apiBase, contract, customer, items, setItems, totalClient, currency, onBack, onSave, saving }) {
+  // Client-side preview of total
+  const totalClient = useMemo(() => {
+    return items.reduce((acc, it) => {
+      const p = parseNumber(it.unit_price);
+      const dr = (it.discount_type === "percent") ? parseNumber(it.discount_value) : null;
+      const da = (it.discount_type === "amount")  ? parseNumber(it.discount_value) : null;
+      const tr = parseNumber(it.tax_rate);
+      const { total } = computePreviewLineTotals(1, p, it.discount_type, (dr ?? da), tr);
+      return acc + total;
+    }, 0).toFixed(2);
+  }, [items]);
+
   return (
     <div className="card">
       <div className="card-body">
         <HeaderSummary contract={contract} customer={customer} />
-        <VehiclePicker apiBase={apiBase} onPick={v => {
-          if (items.some(x => x.vehicle_id === v.vehicle_id)) return;
-          setItems(prev => [...prev, {
-            vehicle_id: v.vehicle_id,
-            quantity: 1,
-            unit_price: v.asking_price ?? "",
-            display: v,
-          }]);
-        }} />
 
-        <ItemsTable
-          items={items}
-          onChange={(idx, upd) => setItems(prev => prev.map((it, i) => (i === idx ? { ...it, ...upd } : it)))}
-          onRemove={idx => setItems(prev => prev.filter((_, i) => i !== idx))}
+        <VehiclePicker
+          apiBase={apiBase}
+          onPick={(v) => {
+            if (items.some((x) => x.vehicle_id === v.vehicle_id)) return;
+            setItems((prev) => [
+              ...prev,
+              {
+                vehicle_id: v.vehicle_id,
+                unit_price: v.asking_price ?? "",
+                // new fields for discount/tax (optional)
+                discount_type: "",      // "", "amount", "percent"
+                discount_value: "",     // string input
+                tax_rate: "",           // string input (percent)
+                display: v,
+              },
+            ]);
+          }}
         />
 
-        <div className="row" style={{ justifyContent: "flex-end" }}>
-          <div className="col" style={{ maxWidth: 260 }}>
+        <ItemsTable
+          currency={currency}
+          items={items}
+          onChange={(idx, upd) => setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...upd } : it)))}
+          onRemove={(idx) => setItems((prev) => prev.filter((_, i) => i !== idx))}
+        />
+
+        {type === "ADVANCE" && (
+          <div className="row" style={{ marginTop: 16 }}>
+            <div className="col" style={{ maxWidth: 280 }}>
+              <label className="lbl">Авансова сума</label>
+              <MoneyInput value={advanceAmount} onChange={setAdvanceAmount} placeholder="0.00" />
+              <div className="muted" style={{ marginTop: 4 }}>
+                Тази стойност ще бъде записана към договора като аванс.
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="row" style={{ justifyContent: "flex-end", marginTop: 16 }}>
+          <div className="col" style={{ maxWidth: 320 }}>
             <div className="tot-box">
               <div className="tot-label">Client total (display only):</div>
-              <div className="tot-amt">{currency} {totalClient}</div>
-              <div className="tot-note">* Authoritative total is set by the server when issuing</div>
+              <div className="tot-amt">
+                {currency} {totalClient}
+              </div>
+              <div className="tot-note">* Официалната сума се изчислява от сървъра при запис / издаване.</div>
             </div>
           </div>
         </div>
 
-        <div className="actions">
+        <div className="actions" style={{ marginTop: 16 }}>
           <button className="btn secondary" onClick={onBack}>Back</button>
-          <button className="btn primary" onClick={onSave} disabled={saving}>
+          <button
+            className="btn primary"
+            onClick={async () => {
+              // let parent save items first
+              await onSave({
+                advanceAmount: type === "ADVANCE" ? advanceAmount : null,
+              });
+            }}
+            disabled={saving}
+          >
             {saving ? "Saving..." : "Save items"}
           </button>
         </div>
@@ -779,118 +853,219 @@ function ItemsStep({ apiBase, contract, customer, items, setItems, totalClient, 
   );
 }
 
+/** ─────────────────────────────────────────────────────────────────────────────
+ * VehiclePicker (frontend-only pagination)
+ *  - Fetches once per search, paginates locally (page/pageSize)
+ * ──────────────────────────────────────────────────────────────────────────── */
 function VehiclePicker({ apiBase, onPick }) {
   const [q, setQ] = useState("");
-  const [list, setList] = useState([]);
+  const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const doSearch = async () => {
-  setLoading(true);
-  try {
-    const params = new URLSearchParams({ available: "1" });
-    const qq = q.trim();
-    if (qq) params.set("q", qq);
+  // local pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
-    // GET /api/vehicles?available=1&q=...
-    const res = await api(`/vehicles?${params.toString()}`);
-    const rows = Array.isArray(res) ? res : (res.vehicles || res.items || res.rows || []);
-    setList(rows);
-  } catch (e) {
-    alert(`Vehicle search failed: ${e.message}`);
-  } finally {
-    setLoading(false);
-  }
-};
+  const total = all.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const start = (page - 1) * pageSize;
+  const paged = all.slice(start, start + pageSize);
+
+  const doSearch = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ available: "1" });
+      const qq = q.trim();
+      if (qq) params.set("q", qq);
+
+      // GET /api/vehicles?available=1&q=...
+      const res = await api(`/vehicles?${params.toString()}`);
+      const rows = Array.isArray(res) ? res : (res.vehicles || res.items || res.rows || []);
+      setAll(rows);
+      setPage(1); // reset to first page on new search
+    } catch (e) {
+      alert(`Vehicle search failed: ${e.message}`);
+      setAll([]);
+      setPage(1);
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   return (
     <div className="row">
       <div className="col-12">
         <label className="lbl">Добави автомобил</label>
-        <div className="picker">
+        <div className="picker" style={{ gap: 8, display: "flex", alignItems: "center" }}>
           <input
             className="inp"
             placeholder="Търси автомобили (VIN, модел, издание)…"
             value={q}
-            onChange={e => setQ(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && doSearch()}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && doSearch()}
           />
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+            title="брой на страница"
+          >
+            <option value={5}>5 / стр.</option>
+            <option value={10}>10 / стр.</option>
+            <option value={20}>20 / стр.</option>
+          </select>
           <button className="btn" onClick={doSearch} disabled={loading}>
             {loading ? "…" : "Търси"}
           </button>
         </div>
 
-        {list.length > 0 && (
-          <div className="list">
-            {list.map(v => (
+        {paged.length > 0 && (
+          <div className="list" style={{ marginTop: 8 }}>
+            {paged.map((v) => (
               <button key={v.vehicle_id} className="list-item" onClick={() => onPick(v)}>
                 <div className="line-1">
-                  {/* Tolerate your different field names across endpoints */}
-                  {(v.make_name || v.make) || ""} {(v.model_name || v.model) || ""} {v.year ? `(${v.year})` : (v.model_year ? `(${v.model_year})` : "")} — {(v.edition_name || v.edition || "Edition")}
+                  {(v.make_name || v.make) || ""} {(v.model_name || v.model) || ""}{" "}
+                  {v.year ? `(${v.year})` : (v.model_year ? `(${v.model_year})` : "")} —{" "}
+                  {(v.edition_name || v.edition || "Edition")}
                 </div>
                 <div className="line-2">
-                  VIN: {v.vin || "—"} • Цвят: {(v.exterior_color || v.exterior_color_name || "—")} / {(v.interior_color || v.interior_color_name || "—")}
-                  • Град: {v.shop_city || "—"} • Километри: {(v.mileage_km ?? v.mileage ?? "—")} km
-                  {"  "}• Цена: {v.asking_price != null ? String(v.asking_price) : "—"}
+                  VIN: {v.vin || "—"} • Цвят: {(v.exterior_color || v.exterior_color_name || "—")} /{" "}
+                  {(v.interior_color || v.interior_color_name || "—")} • Град: {v.shop_city || "—"} • Км:{" "}
+                  {(v.mileage_km ?? v.mileage ?? "—")} km • Цена:{" "}
+                  {v.asking_price != null ? String(v.asking_price) : "—"}
                 </div>
               </button>
             ))}
           </div>
+        )}
+
+        {all.length > 0 && (
+          <div className="pager" style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+            <button className="btn" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              ← Предишна
+            </button>
+            <span className="muted">
+              Стр. {page} от {totalPages} • Общо: {total}
+            </span>
+            <button
+              className="btn"
+              disabled={page >= totalPages || loading}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Следваща →
+            </button>
+          </div>
+        )}
+
+        {!loading && all.length === 0 && (
+          <div className="muted" style={{ marginTop: 8 }}>Няма намерени автомобили.</div>
         )}
       </div>
     </div>
   );
 }
 
-function ItemsTable({ items, onChange, onRemove }) {
+/** ─────────────────────────────────────────────────────────────────────────────
+ * ItemsTable
+ *  - No quantity column (always 1)
+ *  - Discount controls (type + value)
+ *  - Tax rate (optional)
+ *  - Line total preview (client-side)
+ * ──────────────────────────────────────────────────────────────────────────── */
+function ItemsTable({ currency, items, onChange, onRemove }) {
   if (items.length === 0) return <div className="muted" style={{ marginTop: 8 }}>No vehicles added yet.</div>;
+
   return (
     <div className="table-wrap">
       <table className="tbl">
         <thead>
           <tr>
-            <th style={{minWidth: 260}}>Автомобил</th>
-            <th style={{width: 100}}>Qty</th>
-            <th style={{width: 160}}>Цена</th>
-            <th style={{width: 140}}>Общо</th>
-            <th style={{width: 60}}></th>
+            <th style={{ minWidth: 260 }}>Автомобил</th>
+            <th style={{ width: 160 }}>Цена</th>
+            <th style={{ width: 200 }}>Отстъпка</th>
+            <th style={{ width: 120 }}>ДДС/Данък %</th>
+            <th style={{ width: 140, textAlign: "right" }}>Общо (1 бр.)</th>
+            <th style={{ width: 60 }}></th>
           </tr>
         </thead>
         <tbody>
           {items.map((it, idx) => {
             const d = it.display || {};
-            const qty = Math.max(1, parseInt(it.quantity || 1, 10));
-            const price = it.unit_price != null && it.unit_price !== "" ? Number(it.unit_price) : 0;
-            const sub = (qty * price).toFixed(2);
+            const unit = parseNumber(it.unit_price);
+            const dr = (it.discount_type === "percent") ? parseNumber(it.discount_value) : null;
+            const da = (it.discount_type === "amount")  ? parseNumber(it.discount_value) : null;
+            const tr = parseNumber(it.tax_rate);
+
+            const { total } = computePreviewLineTotals(1, unit, it.discount_type, (dr ?? da), tr);
+
             return (
               <tr key={`${it.vehicle_id}-${idx}`}>
                 <td>
                   <div className="v-title">
-                    {(d.make_name || d.make) || ""} {(d.model_name || d.model) || ""} {d.year ? `(${d.year})` : (d.model_year ? `(${d.model_year})` : "")} — {(d.edition_name || d.edition || "Edition")}
+                    {(d.make_name || d.make) || ""} {(d.model_name || d.model) || ""}{" "}
+                    {d.year ? `(${d.year})` : (d.model_year ? `(${d.model_year})` : "")} —{" "}
+                    {(d.edition_name || d.edition || "Edition")}
                   </div>
                   <div className="muted">
-                    VIN: {d.vin || "—"} • Цвят: {(d.exterior_color || d.exterior_color_name || "—")} / {(d.interior_color || d.interior_color_name || "—")}
-                    • Град: {d.shop_city || "—"} • Километри: {(d.mileage_km ?? d.mileage ?? "—")} km
+                    VIN: {d.vin || "—"} • Цвят: {(d.exterior_color || d.exterior_color_name || "—")} /{" "}
+                    {(d.interior_color || d.interior_color_name || "—")} • Град: {d.shop_city || "—"} • Км:{" "}
+                    {(d.mileage_km ?? d.mileage ?? "—")} km
                   </div>
                 </td>
-                <td>
-                  <input
-                    type="number"
-                    className="inp"
-                    min={1}
-                    value={it.quantity}
-                    onChange={e => onChange(idx, { quantity: e.target.value })}
-                  />
-                </td>
+
                 <td>
                   <MoneyInput
                     value={it.unit_price ?? ""}
-                    onChange={val => onChange(idx, { unit_price: val })}
-                    placeholder="(use asking price)"
+                    onChange={(val) => onChange(idx, { unit_price: val })}
+                    placeholder="0.00"
                   />
                 </td>
-                <td><strong>{sub}</strong></td>
-                <td><button className="btn danger" onClick={() => onRemove(idx)}>✕</button></td>
+
+                <td>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <select
+                      className="inp"
+                      value={it.discount_type || ""}
+                      onChange={(e) => onChange(idx, { discount_type: e.target.value, discount_value: "" })}
+                    >
+                      <option value="">Без</option>
+                      <option value="amount">Сума</option>
+                      <option value="percent">%</option>
+                    </select>
+                    {it.discount_type === "percent" ? (
+                      <PercentInput
+                        value={it.discount_value ?? ""}
+                        onChange={(v) => onChange(idx, { discount_value: v })}
+                        placeholder="0"
+                      />
+                    ) : (
+                      <MoneyInput
+                        value={it.discount_value ?? ""}
+                        onChange={(v) => onChange(idx, { discount_value: v })}
+                        placeholder="0.00"
+                      />
+                    )}
+                  </div>
+                </td>
+
+                <td>
+                  <PercentInput
+                    value={it.tax_rate ?? ""}
+                    onChange={(v) => onChange(idx, { tax_rate: v })}
+                    placeholder="20"
+                  />
+                </td>
+
+                <td style={{ textAlign: "right" }}>
+                  <strong>{currency} {total.toFixed(2)}</strong>
+                </td>
+
+                <td>
+                  <button className="btn danger" onClick={() => onRemove(idx)}>✕</button>
+                </td>
               </tr>
             );
           })}
@@ -900,6 +1075,9 @@ function ItemsTable({ items, onChange, onRemove }) {
   );
 }
 
+/** ─────────────────────────────────────────────────────────────────────────────
+ * Inputs & helpers
+ * ──────────────────────────────────────────────────────────────────────────── */
 function MoneyInput({ value, onChange, placeholder }) {
   return (
     <input
@@ -917,7 +1095,51 @@ function MoneyInput({ value, onChange, placeholder }) {
   );
 }
 
+function PercentInput({ value, onChange, placeholder }) {
+  return (
+    <input
+      className="inp"
+      inputMode="decimal"
+      placeholder={placeholder || "0"}
+      value={value}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/,/g, ".").replace(/[^\d.]/g, "");
+        const num = raw === "" ? "" : String(Math.min(1000, Math.max(0, Number(raw))));
+        onChange(num);
+      }}
+    />
+  );
+}
 
+function parseNumber(v) {
+  if (v == null || v === "") return 0;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function computePreviewLineTotals(qty, unit, discountType, discountValue, taxRate) {
+  const q = Math.max(1, qty || 1);
+  const u = Math.max(0, unit || 0);
+  const sub = q * u;
+
+  let disc = 0;
+  if (discountType === "amount") {
+    disc = Math.min(sub, Math.max(0, discountValue || 0));
+  } else if (discountType === "percent") {
+    const p = Math.max(0, discountValue || 0) / 100;
+    disc = Math.min(sub, sub * p);
+  }
+
+  const base = Math.max(0, sub - disc);
+
+  let tax = 0;
+  if (taxRate != null && taxRate !== "" && Number.isFinite(Number(taxRate))) {
+    tax = base * (Number(taxRate) / 100);
+  }
+
+  const total = base + tax;
+  return { subtotal: sub, discount: disc, tax, total };
+}
 
 /** Tiny CSS */
 const css = `
