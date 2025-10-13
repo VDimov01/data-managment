@@ -897,6 +897,7 @@ function SelectOrCreate({
       <select
         disabled={disabled}
         value={mode === 'existing' ? (value || '') : NEW}
+        size={9}
         onChange={(e) => {
           if (e.target.value === NEW) {
             setMode('new');
