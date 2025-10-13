@@ -173,14 +173,14 @@ export default function AttachmentsModal({ apiBase, contract, onClose }) {
                             {busy ? "…" : "Отвори"}
                           </button>
                         )}
-                        <button
+                        {/* <button
                           className="btn"
                           onClick={() => regenerateOne(v.edition_id)}
                           disabled={busy}
                           title={hasPdf ? "Регенерирай" : "Генерирай"}
                         >
                           {busy ? "…" : (hasPdf ? "Регенерирай" : "Генерирай")}
-                        </button>
+                        </button> */}
                       </div>
                     </div>
                   );
