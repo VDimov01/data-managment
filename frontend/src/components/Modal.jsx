@@ -25,7 +25,7 @@ export default function Modal({ open, title, onClose, children }) {
 }
 
 const styles = {
-  backdrop: { position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 },
+  backdrop: { position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999 },
   dialog:   { width:'min(1100px,95vw)', maxHeight:'85vh', background:'#fff', borderRadius:12, boxShadow:'0 10px 30px rgba(0,0,0,0.3)', display:'flex', flexDirection:'column', overflow:'hidden' },
   header:   { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid #eee' },
   body:     { padding:12, overflow:'auto' },
