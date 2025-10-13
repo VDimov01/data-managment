@@ -197,18 +197,22 @@ export default function StorageSection() {
       <div style={{ display:'grid', gap:8, gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr 1fr auto', alignItems:'center', marginBottom:10 }}>
         <input placeholder="Марка / модел / версия…" value={qModel} onChange={(e) => setQModel(e.target.value)} />
         <input placeholder="Цвят (ext/int)…" value={qColor} onChange={(e) => setQColor(e.target.value)} />
-        <select value={shopId} onChange={(e) => setShopId(e.target.value)}>
+        <select className="cust-select" value={shopId} onChange={(e) => setShopId(e.target.value)}>
           <option value="">Магазин (всички)</option>
           {shops.map(s => <option key={s.shop_id} value={s.shop_id}>{s.name}</option>)}
         </select>
-        <select value={status} onChange={(e) => setStatus(e.target.value)}>
+        <select className="cust-select" value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">Статус (всички)</option>
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         <input type="number" placeholder="Мин. цена" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
         <input type="number" placeholder="Макс. цена" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
         <div style={{ display:'flex', gap:6 }}>
-          <select title="Редове на страница" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+          <select 
+          className="cust-select"
+          title="Редове на страница" 
+          value={pageSize} 
+          onChange={(e) => setPageSize(Number(e.target.value))}>
             {[10,20,50,100].map(n => <option key={n} value={n}>{n}/стр.</option>)}
           </select>
           <button className="btn" type="button" onClick={() => {
