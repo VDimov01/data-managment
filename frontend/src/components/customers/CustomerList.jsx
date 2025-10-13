@@ -36,7 +36,7 @@ export default function CustomerList({
                   </div>
                 )}
               </td>
-              <td><span className={`badge ${r.customer_type === "Company" ? "badge-company" : "badge-indiv"}`}>{r.customer_type === "Company" ? "Компания" : "Индивидуално лице"}</span></td>
+              <td><span className={`badge ${r.customer_type === "Company" ? "badge-company" : "badge-indiv"}`}>{r.customer_type === "Company" ? "Фирма" : "Индивидуално лице"}</span></td>
               <td>{r.email || "—"}</td>
               <td>
                 {r.phone || r.secondary_phone || "—"}

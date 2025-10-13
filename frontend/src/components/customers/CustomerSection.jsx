@@ -8,7 +8,7 @@ import { api } from "../../services/api";
 export default function CustomerSection() {
   const [q, setQ] = useState("");
   const [search, setSearch] = useState("");
-  const [typeTab, setTypeTab] = useState("All"); // All | Individual | Company
+  const [typeTab, setTypeTab] = useState("Всички"); // All | Individual | Company
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -53,8 +53,9 @@ export default function CustomerSection() {
 
   // Client-side type filter (we're not adding server param right now)
   const filtered = useMemo(() => {
-    if (typeTab === "All") return rows;
-    return rows.filter(r => r.customer_type === typeTab);
+    if (typeTab === "Всички") return rows;
+    let custType = typeTab === "Фирми" ? "Company" : "Individual";
+    return rows.filter(r => r.customer_type === custType);
   }, [rows, typeTab]);
 
   const openCreate = () => { setEditing(null); setOpenForm(true); };
@@ -126,7 +127,7 @@ export default function CustomerSection() {
             onChange={(e) => { setQ(e.target.value); setPage(1); }}
           />
           <div className="cust-tabs">
-            {["All","Individual","Company"].map(t => (
+            {["Всички","Индивидуални лица","Фирми"].map(t => (
               <button
                 key={t}
                 className={`cust-tab ${typeTab === t ? "active" : ""}`}
