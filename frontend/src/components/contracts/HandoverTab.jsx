@@ -277,12 +277,12 @@ export default function HandoverTab({ apiBase, contract }) {
                     </button>
                   </>
                 )}
-                {row.status !== "signed" && (
+                {row.status !== "signed" && row.status === "issued" && (
                   <button className="btn" onClick={() => doSigned(row.handover_record_id)}>
                     Маркирай като подписан
                   </button>
                 )}
-                {row.status !== "void" && (
+                {row.status !== "void" && row.status === "issued" && (
                   <button className="btn danger" onClick={() => doVoid(row.handover_record_id)}>
                     Анулирай
                   </button>
