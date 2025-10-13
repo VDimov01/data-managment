@@ -4,6 +4,14 @@ import ContractsList from "./ContractsList.jsx";
 import { API_BASE } from "../../services/api.js";
 import {api, qs} from '../../services/api.js';
 
+const statusBG = {
+  "DRAFT": "Чернова"
+}
+
+const contrType = {
+  "REGULAR": "Нормален",
+  "ADVANCE": "Авансов"
+}
 
 /** Safe URL builder that works with absolute or relative apiBase */
 export function buildUrl(apiBase, path, params = {}) {
@@ -347,15 +355,15 @@ async function handleIssueAllHandover() {
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
       <div className="tabs">
-        <button className={`tab ${tab === 'browse' ? 'active' : ''}`} onClick={() => setTab('browse')}>Browse</button>
-        <button className={`tab ${tab === 'create' ? 'active' : ''}`} onClick={() => setTab('create')}>New contract</button>
+        <button className={`tab ${tab === 'browse' ? 'active' : ''}`} onClick={() => setTab('browse')}>Всички договори</button>
+        <button className={`tab ${tab === 'create' ? 'active' : ''}`} onClick={() => setTab('create')}>Създай нов договор</button>
       </div>
 
       {tab === "create" && (
         <>
-          <h2 style={{ marginBottom: 8 }}>Contracts</h2>
+          <h2 style={{ marginBottom: 8 }}>Договори</h2>
           <div style={{ color: "#6b7280", marginBottom: 16 }}>
-            Step {step} of 3 &mdash; <em>{["Create draft", "Add vehicles & prices", "Render or Issue"][step - 1]}</em>
+            Стъпка {step} от 3 &mdash; <em>{["Създай чернова", "Добави автомобили и цени", "Преглед и Издаване"][step - 1]}</em>
           </div>
 
           {step === 1 && (
@@ -365,21 +373,21 @@ async function handleIssueAllHandover() {
 
                 <div className="row">
                   <div className="col">
-                    <label className="lbl">Type</label>
+                    <label className="lbl">Вид договор</label>
                     <div className="seg">
                       <label className="seg-item">
                         <input type="radio" checked={type === "REGULAR"} onChange={() => setType("REGULAR")} />
-                        <span>Regular</span>
+                        <span>Нормален</span>
                       </label>
                       <label className="seg-item">
                         <input type="radio" checked={type === "ADVANCE"} onChange={() => setType("ADVANCE")} />
-                        <span>Advance</span>
+                        <span>Авансов</span>
                       </label>
                     </div>
                   </div>
 
                   <div className="col">
-                    <label className="lbl">Currency</label>
+                    <label className="lbl">Валута</label>
                     <select value={currency} onChange={e => setCurrency(e.target.value)} className="inp">
                       <option value="BGN">BGN</option>
                       <option value="EUR">EUR</option>
@@ -388,7 +396,7 @@ async function handleIssueAllHandover() {
                   </div>
 
                   <div className="col">
-                    <label className="lbl">Valid until</label>
+                    <label className="lbl">Валиден до:</label>
                     <input type="date" className="inp" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} />
                   </div>
                 </div>
@@ -396,30 +404,30 @@ async function handleIssueAllHandover() {
                 {type === "ADVANCE" && (
                   <div className="row">
                     <div className="col">
-                      <label className="lbl">Advance amount</label>
+                      <label className="lbl">Авансова сума</label>
                       <MoneyInput value={advanceAmount} onChange={setAdvanceAmount} placeholder="0.00" />
                     </div>
                   </div>
                 )}
 
-                <div className="row">
+                {/* <div className="row">
                   <div className="col">
-                    <label className="lbl">Contract number</label>
+                    <label className="lbl">Номер на договор</label>
                     <input type="text" className="inp" value={contractNumber} onChange={e => setContractNumber(e.target.value)} />
                   </div>
-                </div>
+                </div> */}
 
                 <div className="row">
                   <div className="col-12">
-                    <label className="lbl">Internal note</label>
+                    <label className="lbl">Бележки</label>
                     <textarea className="inp" value={note} onChange={e => setNote(e.target.value)} />
                   </div>
                 </div>
 
                 <div className="actions">
-                  <button className="btn secondary" onClick={resetAll}>Reset</button>
+                  <button className="btn secondary" onClick={resetAll}>Нулиране</button>
                   <button className="btn primary" onClick={handleCreateDraft} disabled={creating}>
-                    {creating ? "Creating..." : "Create draft"}
+                    {creating ? "Създаване..." : "Създай чернова"}
                   </button>
                 </div>
               </div>
@@ -427,18 +435,21 @@ async function handleIssueAllHandover() {
           )}
 
           {step === 2 && contract && (
+            <>
             <ItemsStep
-              apiBase={apiBase}
-              contract={contract}
-              customer={customer}
-              items={items}
-              setItems={setItems}
-              totalClient={totalClient}
-              currency={currency}
-              onBack={() => setStep(1)}
-              onSave={handleSaveItems}
-              saving={savingItems}
+            apiBase={apiBase}
+            contract={contract}
+            customer={customer}
+            items={items}
+            setItems={setItems}
+            totalClient={totalClient}
+            currency={currency}
+            onBack={() => setStep(1)}
+            onSave={handleSaveItems}
+            saving={savingItems}
             />
+           
+            </>
           )}
 
           {step === 3 && contract && (
@@ -576,9 +587,9 @@ function HeaderSummary({ contract, customer }) {
   const status = (contract?.status || "draft").toUpperCase();
   return (
     <div className="sum">
-      <div><strong>Contract:</strong> #{contract.contract_id} — {contract.uuid}</div>
-      <div><strong>Status:</strong> {status} ({contract.type})</div>
-      <div><strong>Customer:</strong> {displayCustomer(customer)}</div>
+      <div><strong>Договор:</strong> #{contract.contract_id} — {contract.uuid}</div>
+      <div><strong>Статус:</strong> {statusBG[status]} ({contrType[contract.type]})</div>
+      <div><strong>Клиент:</strong> {displayCustomer(customer)}</div>
     </div>
   );
 }
@@ -591,50 +602,91 @@ function displayCustomer(c) {
   return parts.join(" ") || "Individual";
 }
 
-/** === Customer search wired safely (no new URL) === */
 function CustomerPicker({ apiBase, value, onChange }) {
-  const [q, setQ] = useState("");
+  const [que, setQue] = useState("");
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  // pagination state
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10); // 5/10/20 – pick your poison
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // reset to page 1 whenever query changes
+  useEffect(() => { setPage(1); }, [que]);
 
   const loadCustomers = async () => {
-  try {
-    setLoading(true);
-    const params = new URLSearchParams({ page: "1", limit: "50" });
-    const qq = q.trim();
-    if (qq) params.set("q", qq);
+    try {
+      setLoading(true);
+      setErr("");
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      });
+      const qq = que.trim();
+      if (qq) params.set("q", qq);
 
-    // GET /api/customers?page=1&limit=50&q=...
-    const data = await api(`/customers?${params.toString()}`);
-    setList(data.customers || data.items || data.rows || []);
-  } catch (e) {
-    alert(`Customer search failed: ${e.message}`);
-  } finally {
-    setLoading(false);
-  }
-};
+      const data = await api(`/customers?${params.toString()}`);
 
+      setList(data.customers || []);
+      setTotal(Number(data.total || 0));
+      setTotalPages(Number(data.totalPages || Math.max(1, Math.ceil((data.total || 0) / limit))));
+    } catch (e) {
+      setErr(e.message || "Customer search failed");
+      setList([]);
+      setTotal(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  useEffect(() => { loadCustomers(); /* auto-search on q */ }, [q]);
+  // load on page/limit/q changes
+  useEffect(() => {
+    // small debounce on q so we don’t spam requests on each keystroke
+    const t = setTimeout(() => { loadCustomers(); }, 200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, limit, que]);
+
+  const canPrev = page > 1 && !loading;
+  const canNext = page < totalPages && !loading;
 
   return (
     <div className="row">
       <div className="col-8">
-        <label className="lbl">Customer</label>
-        <div className="picker">
+        <label className="lbl">Клиенти</label>
+
+        {/* Search + page size */}
+        <div className="picker" style={{ gap: 8, display: "flex", alignItems: "center" }}>
           <input
             className="inp"
-            placeholder="Search customers…"
-            value={q}
-            onChange={e => setQ(e.target.value)}
+            placeholder="Търси клиенти…"
+            value={que}
+            onChange={e => setQue(e.target.value)}
             onKeyDown={e => e.key === "Enter" && loadCustomers()}
+            style={{ flex: 1 }}
           />
+          <select
+            value={limit}
+            onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+            title="Page size"
+          >
+            <option value={5}>5 / page</option>
+            <option value={10}>10 / page</option>
+            <option value={20}>20 / page</option>
+          </select>
           <button className="btn" onClick={loadCustomers} disabled={loading}>
-            {loading ? "…" : "Search"}
+            {loading ? "…" : "Търси"}
           </button>
         </div>
 
-        <div className="list">
+        {/* Results */}
+        <div className="list" style={{ marginTop: 8 }}>
+          {err && <div className="muted" style={{ color: "#b00020" }}>{err}</div>}
+
           {list.map(c => (
             <button
               key={c.customer_id}
@@ -643,16 +695,32 @@ function CustomerPicker({ apiBase, value, onChange }) {
             >
               <div className="line-1">{displayCustomer(c)}</div>
               <div className="line-2">
-                {c.email || c.phone_number || c.public_uuid || c.vat_number || ""}
+                {c.email || c.phone || c.public_uuid || c.vat_number || ""}
               </div>
             </button>
           ))}
-          {list.length === 0 && <div className="muted">No customers.</div>}
+
+          {(!loading && list.length === 0 && !err) && (
+            <div className="muted">Няма намерени клиенти.</div>
+          )}
+        </div>
+
+        {/* Pager */}
+        <div className="pager" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+          <button className="btn" disabled={!canPrev} onClick={() => setPage(p => Math.max(1, p - 1))}>
+            ← Предишна
+          </button>
+          <span className="muted">
+            Стр. {page} от {totalPages} • Общо: {total}
+          </span>
+          <button className="btn" disabled={!canNext} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
+            Следваща →
+          </button>
         </div>
       </div>
 
       <div className="col">
-        <label className="lbl">Selected</label>
+        <label className="lbl">Избрани</label>
         <div className="box">
           {value ? (
             <>
@@ -660,13 +728,14 @@ function CustomerPicker({ apiBase, value, onChange }) {
               <div className="muted">{value.type}</div>
             </>
           ) : (
-            <div className="muted">Pick a customer.</div>
+            <div className="muted">Избери клиент.</div>
           )}
         </div>
       </div>
     </div>
   );
 }
+
 
 function ItemsStep({ apiBase, contract, customer, items, setItems, totalClient, currency, onBack, onSave, saving }) {
   return (
@@ -737,17 +806,17 @@ function VehiclePicker({ apiBase, onPick }) {
   return (
     <div className="row">
       <div className="col-12">
-        <label className="lbl">Add vehicles</label>
+        <label className="lbl">Добави автомобил</label>
         <div className="picker">
           <input
             className="inp"
-            placeholder="Search vehicles (VIN, model, edition)…"
+            placeholder="Търси автомобили (VIN, модел, издание)…"
             value={q}
             onChange={e => setQ(e.target.value)}
             onKeyDown={e => e.key === "Enter" && doSearch()}
           />
           <button className="btn" onClick={doSearch} disabled={loading}>
-            {loading ? "…" : "Search"}
+            {loading ? "…" : "Търси"}
           </button>
         </div>
 
@@ -760,9 +829,9 @@ function VehiclePicker({ apiBase, onPick }) {
                   {(v.make_name || v.make) || ""} {(v.model_name || v.model) || ""} {v.year ? `(${v.year})` : (v.model_year ? `(${v.model_year})` : "")} — {(v.edition_name || v.edition || "Edition")}
                 </div>
                 <div className="line-2">
-                  VIN: {v.vin || "—"} • Color: {(v.exterior_color || v.exterior_color_name || "—")} / {(v.interior_color || v.interior_color_name || "—")}
-                  • City: {v.shop_city || "—"} • Mileage: {(v.mileage_km ?? v.mileage ?? "—")} km
-                  {"  "}• Asking: {v.asking_price != null ? String(v.asking_price) : "—"}
+                  VIN: {v.vin || "—"} • Цвят: {(v.exterior_color || v.exterior_color_name || "—")} / {(v.interior_color || v.interior_color_name || "—")}
+                  • Град: {v.shop_city || "—"} • Километри: {(v.mileage_km ?? v.mileage ?? "—")} km
+                  {"  "}• Цена: {v.asking_price != null ? String(v.asking_price) : "—"}
                 </div>
               </button>
             ))}
@@ -780,10 +849,10 @@ function ItemsTable({ items, onChange, onRemove }) {
       <table className="tbl">
         <thead>
           <tr>
-            <th style={{minWidth: 260}}>Vehicle</th>
+            <th style={{minWidth: 260}}>Автомобил</th>
             <th style={{width: 100}}>Qty</th>
-            <th style={{width: 160}}>Unit price</th>
-            <th style={{width: 140}}>Subtotal</th>
+            <th style={{width: 160}}>Цена</th>
+            <th style={{width: 140}}>Общо</th>
             <th style={{width: 60}}></th>
           </tr>
         </thead>
@@ -800,8 +869,8 @@ function ItemsTable({ items, onChange, onRemove }) {
                     {(d.make_name || d.make) || ""} {(d.model_name || d.model) || ""} {d.year ? `(${d.year})` : (d.model_year ? `(${d.model_year})` : "")} — {(d.edition_name || d.edition || "Edition")}
                   </div>
                   <div className="muted">
-                    VIN: {d.vin || "—"} • Color: {(d.exterior_color || d.exterior_color_name || "—")} / {(d.interior_color || d.interior_color_name || "—")}
-                    • City: {d.shop_city || "—"} • Mileage: {(d.mileage_km ?? d.mileage ?? "—")} km
+                    VIN: {d.vin || "—"} • Цвят: {(d.exterior_color || d.exterior_color_name || "—")} / {(d.interior_color || d.interior_color_name || "—")}
+                    • Град: {d.shop_city || "—"} • Километри: {(d.mileage_km ?? d.mileage ?? "—")} km
                   </div>
                 </td>
                 <td>
