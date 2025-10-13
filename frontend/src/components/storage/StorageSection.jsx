@@ -211,7 +211,7 @@ export default function StorageSection() {
           <select title="Редове на страница" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
             {[10,20,50,100].map(n => <option key={n} value={n}>{n}/стр.</option>)}
           </select>
-          <button type="button" onClick={() => {
+          <button className="btn" type="button" onClick={() => {
             setQModel(""); setQColor(""); setQCity("");
             setStatus(""); setPriceMin(""); setPriceMax("");
             setPage(1);
@@ -272,24 +272,28 @@ export default function StorageSection() {
                     <span>{entry.status === "Reserved" && entry.reserved_until ? `Резервирано до: ${formatDateDMYDateOnly(entry.reserved_until)}` : ""}</span>
                   </td>
                   <td style={{ whiteSpace:'nowrap', display:'flex', gap:6 }}>
-                    <button type="button" onClick={() => { setVehicleForEdit(entry); setOpenEdit(true); }} disabled={isDel}>
+                    <button 
+                    className="btn"
+                    type="button" 
+                    onClick={() => { setVehicleForEdit(entry); setOpenEdit(true); }} disabled={isDel}>
                       Редактирай
                     </button>
                     <button
-                      type="button"
-                      onClick={() => handleDeleteVehicle(entry)}
-                      disabled={isDel}
-                      style={{ color:'#b30000' }}
-                    >
-                      {isDel ? 'Изтриване…' : 'Изтрий'}
-                    </button>
-                    <button
+                      className="btn"
                       onClick={() => { setVehicleForImages(entry); setOpenImages(true); }}
                       style={{ marginLeft: 6 }}
                     >
                       Снимки
                     </button>
 
+                    <button
+                      className="cust-btn danger"
+                      type="button"
+                      onClick={() => handleDeleteVehicle(entry)}
+                      disabled={isDel}
+                    >
+                      {isDel ? 'Изтриване…' : 'Изтрий'}
+                    </button>
                   </td>
                   <td>
                     <VehicleQRCell
@@ -350,28 +354,22 @@ function Pager({ page, totalPages, onPrev, onNext, onJump }) {
 
   return (
     <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-      <button type="button" onClick={onPrev} disabled={page <= 1}>Предишна</button>
+      <button className="btn" type="button" onClick={onPrev} disabled={page <= 1}>Предишна</button>
       {pages.map((p, i) =>
         p === "…" ? (
           <span key={`e${i}`} style={{ padding:'2px 6px', color:'#777' }}>…</span>
         ) : (
           <button
             key={p}
+            className="btn"
             type="button"
             onClick={() => onJump(p)}
-            style={{
-              padding:'4px 8px',
-              border:'1px solid #ddd',
-              borderRadius:6,
-              background: p === page ? '#eef6ff' : '#fff',
-              fontWeight: p === page ? 700 : 400
-            }}
           >
             {p}
           </button>
         )
       )}
-      <button type="button" onClick={onNext} disabled={page >= totalPages}>Следваща</button>
+      <button className="btn" type="button" onClick={onNext} disabled={page >= totalPages}>Следваща</button>
     </div>
   );
 }

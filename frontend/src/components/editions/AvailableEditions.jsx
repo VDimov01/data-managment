@@ -147,7 +147,7 @@ const openLatestSpecs = async (row) => {
         >
           {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n} / страница</option>)}
         </select>
-        <button type="button" onClick={() => { setQ(""); setPage(1); }}>Изчисти</button>
+        <button className="btn" type="button" onClick={() => { setQ(""); setPage(1); }}>Изчисти</button>
       </div>
 
       {!hideDefaultActions && (
@@ -155,7 +155,7 @@ const openLatestSpecs = async (row) => {
           <div style={{ fontSize:12, color:'#666' }}>
             Избрани за сравнение: <b>{selectedIds.size}</b>
           </div>
-          <button type="button" onClick={onClearSelected} disabled={selectedIds.size === 0}>Изчисти избраните</button>
+          <button className="btn" type="button" onClick={onClearSelected} disabled={selectedIds.size === 0}>Изчисти избраните</button>
         </div>
       )}
 
@@ -191,8 +191,9 @@ const openLatestSpecs = async (row) => {
                         <div style={{ display:'flex', gap:8 }}>
                           {!hideDefaultActions && (
                             <>
-                              <button type="button" onClick={() => onEdit?.(row)} disabled={deleting}>Редактиране</button>
+                              <button className="btn" type="button" onClick={() => onEdit?.(row)} disabled={deleting}>Редактиране</button>
                               <button
+                                className="btn"
                                 type="button"
                                 onClick={() => onToggleSelect(row)}
                                 aria-pressed={selected}
@@ -200,15 +201,9 @@ const openLatestSpecs = async (row) => {
                               >
                                 {selected ? 'Премахни от сравнение' : 'Избери за сравнение'}
                               </button>
+
                               <button
-                                type="button"
-                                onClick={() => handleDelete(row)}
-                                disabled={deleting}
-                                style={{ color: '#b30000' }}
-                              >
-                                {deleting ? 'Изтриване' : 'Изтрий'}
-                              </button>
-                              <button
+                                className="btn"
                                 onClick={() => openLatestSpecs(row)}
                                 disabled={specBusy.has(row.edition_id)}
                                 style={{ marginRight: 6 }}
@@ -217,17 +212,28 @@ const openLatestSpecs = async (row) => {
                               </button>
 
                               <button
+                                className="btn"
                                 onClick={() => ensureSpecs(row, { regenerate: true })}
                                 disabled={specBusy.has(row.edition_id)}
                                 style={{ fontWeight: 600 }}
                               >
                                 {specBusy.has(row.edition_id) ? 'Генериране…' : 'Регенерирай PDF'}
                               </button>
+
+                              <button
+                                className="cust-btn danger"
+                                type="button"
+                                onClick={() => handleDelete(row)}
+                                disabled={deleting}
+                              >
+                                {deleting ? 'Изтриване' : 'Изтрий'}
+                              </button>
                             </>
                           )}
 
                           {showAddVehicle && (
                             <button
+                              className="btn"
                               type="button"
                               onClick={() => onAddVehicle?.(row)}
                               disabled={deleting}
@@ -287,7 +293,7 @@ function Pagination({ page, totalPages, onPrev, onNext, onJump }) {
 
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-      <button type="button" onClick={onPrev} disabled={page <= 1}>Предишна</button>
+      <button className="btn" type="button" onClick={onPrev} disabled={page <= 1}>Предишна</button>
       {pages.map((p, idx) =>
         p === "…" ? (
           <span key={`e-${idx}`} style={{ padding: "4px 6px", color: "#777" }}>…</span>
@@ -308,7 +314,7 @@ function Pagination({ page, totalPages, onPrev, onNext, onJump }) {
           </button>
         )
       )}
-      <button type="button" onClick={onNext} disabled={page >= totalPages}>Следваща</button>
+      <button className="btn" type="button" onClick={onNext} disabled={page >= totalPages}>Следваща</button>
     </div>
   );
 }

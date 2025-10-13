@@ -23,17 +23,17 @@ export default function VehicleQRCell({ row, apiBase, onRowUpdate }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
       {row.qr_object_key
-        ? <img src={`${apiBase}/api/qr/vehicles/${row.vehicle_id}/qr.png`} alt="QR" width={64} height={64} style={{ border:'1px solid #ddd' }} />
-        : <span style={{ color:'#999' }}>no QR</span>}
-      <button onClick={handleGen} disabled={busy}>
+        ? <></>
+        : <span style={{ color:'#999' }}>Няма генериран QR</span>}
+      <button className="btn" onClick={handleGen} disabled={busy}>
         {busy ? 'Working…' : row.qr_object_key ? 'Регенерирай QR' : 'Генерирай QR' }
       </button>
       {row.qr_object_key && (
         <>
-          <a href={row.qr_object_key} download={`veh-${row.vehicle_id}-qr.png`}>Изтегли</a>
           <a href={href} target="_blank" rel="noopener noreferrer">
-            <button>Принтирай QR</button>
+            <button className="btn">Принтирай QR</button>
           </a>
+          <a href={row.qr_object_key} className="btn" download={`veh-${row.vehicle_id}-qr.png`}>Изтегли</a>
         </>
       )}
     </div>

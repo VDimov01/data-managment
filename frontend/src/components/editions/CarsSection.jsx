@@ -39,11 +39,12 @@ export default function CarsSection() {
 
       <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
         <button
+          className="btn"
           onClick={() => { setEditEdition(null); setOpen(true); }}
         >
           Добави ново издание
         </button>
-        <button onClick={() => setCompareIds(new Set())} disabled={compareIds.size === 0}>
+        <button className="btn" onClick={() => setCompareIds(new Set())} disabled={compareIds.size === 0}>
           Изчисти избраните за сравнение ({compareIds.size})
         </button>
       </div>

@@ -130,7 +130,7 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
                     <td>
                       <div className="cmp-actions">
                         <button className="btn" onClick={() => onPreview(r)}>Преглед</button>
-                        <button className="btn" onClick={() => onOpenAttach(r)}>Закачи</button>
+                        <button className="btn" onClick={() => onOpenAttach(r)}>Прикрепи</button>
                         <button className="btn" onClick={() => onEdit(r)}>Редактиране</button>
                         <button className="cmp-danger" onClick={() => onDelete(r)}>Изтриване</button>
                       </div>

@@ -3,7 +3,7 @@ export default function PrintLabelsButton({ apiBase = 'http://localhost:5000', s
   const href = `${apiBase}/api/labels/vehicles.pdf?shop_id=${shopId || ''}&status=${encodeURIComponent(status)}`;
   return (
     <a href={href} key={shopId} target="_blank" rel="noopener noreferrer">
-      <button>Print labels ({shopName || 'Всички'})</button>
+      <button className="btn">Print labels ({shopName || 'Всички'})</button>
     </a>
   );
 }

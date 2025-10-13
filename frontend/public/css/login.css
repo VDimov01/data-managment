@@ -1,6 +1,6 @@
 /* Base + variables */
-:root{
-  --bg: #e7ebf4; /* was #f6f7fb */
+/* :root{
+  --bg: #e7ebf4; 
   --card: #ffffff;
   --text: #0f172a;
   --muted: #6b7280;
@@ -8,13 +8,13 @@
 
   --primary: #2563eb;
   --primary-strong: #1d4ed8;
-  --ring: 46 144 250; /* rgb for focus ring */
+  --ring: 46 144 250; 
 
   --radius: 14px;
   --shadow: 0 10px 30px rgba(2,6,23,.08);
-}
+} */
 
-@media (prefers-color-scheme: dark) {
+/* @media (prefers-color-scheme: dark) {
   :root{
     --bg: #0b1220;
     --card: #0f172a;
@@ -34,7 +34,7 @@ body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI
   radial-gradient(1200px 600px at 10% -10%, rgba(59,130,246,.18), transparent 60%),
   radial-gradient(1200px 600px at 110% 110%, rgba(59,130,246,.18), transparent 60%),
   var(--bg);
-}
+} */
 
 /* Layout */
 .auth-wrap{
