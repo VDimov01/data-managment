@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import CarsSection from "../components/editions/CarsSection";
-import OffersSection from "../components/OffersSection";
 import StorageSection from "../components/storage/StorageSection";
 import ContractsSection from "../components/contracts/ContractsSection";
 import BrochuresSection from "../components/brochures/BrochuresSection";
