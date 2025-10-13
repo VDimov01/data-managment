@@ -18,6 +18,87 @@
 @import '../public/css/editionSpecsPanel.css';
 @import '../public/css/customerContractsPage.css';
 
+:root{
+  --sel-bg: #fff;
+  --sel-fg: #0f172a;
+  --sel-muted: #6b7280;
+  --sel-border: #d1d5db;
+  --sel-border-hover: #9ca3af;
+  --sel-ring: rgba(59,130,246,.25);
+  --sel-item-hover: #f3f4f6;
+  --sel-item-active: #e5e7eb;
+  --sel-item-selected: #eef2ff;
+  --sel-action: #0ea5e9;
+  --sel-popover-z: 1200;
+}
+
+.sel-field { width: 100%; }
+.sel-label { display:block; font-size:12px; color:var(--sel-muted); margin:0 0 6px; }
+
+.sel-trigger{
+  width:100%; display:flex; align-items:center; justify-content:space-between;
+  gap:8px; padding:8px 10px; background:var(--sel-bg); color:var(--sel-fg);
+  border:1px solid var(--sel-border); border-radius:8px;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .02s ease;
+}
+.sel-trigger:hover{ border-color: var(--sel-border-hover); }
+.sel-trigger:active{ transform: translateY(0.5px); }
+.sel-trigger:focus-visible{
+  outline:none; border-color:#3b82f6; box-shadow:0 0 0 4px var(--sel-ring);
+}
+.sel-trigger[data-state="open"]{ border-color:#3b82f6; box-shadow:0 0 0 4px var(--sel-ring); }
+.sel-caret{ font-size:12px; opacity:.8; }
+
+.sel-content{
+  z-index: var(--sel-popover-z) !important;
+  background:var(--sel-bg);
+  border:1px solid #e5e7eb; border-radius:10px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.16), 0 2px 6px rgba(0,0,0,.08);
+  max-height: 260px; overflow: hidden;
+  animation: sel-pop .12s ease-out;
+}
+.sel-viewport{ padding:6px; overflow-y:auto; max-height: 260px; scrollbar-width: thin; }
+.sel-viewport::-webkit-scrollbar{ width:10px; }
+.sel-viewport::-webkit-scrollbar-thumb{ background:#d4d4d8; border-radius:8px; border:2px solid #fff; }
+.sel-viewport::-webkit-scrollbar-thumb:hover{ background:#bdbdc2; }
+
+.sel-item{
+  position:relative;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:8px; padding:8px 10px; border-radius:8px; cursor:pointer; user-select:none;
+  line-height:1.2; white-space:nowrap;
+  transition: background .08s ease;
+}
+/* Hover (mouse) and Highlighted (keyboard) share look */
+.sel-item:hover{ background: var(--sel-item-hover); }
+.sel-item[data-highlighted]{ background: var(--sel-item-hover); outline:none; }
+/* Selected/current value */
+.sel-item[data-state="checked"]{
+  background: var(--sel-item-selected);
+  font-weight:600;
+}
+.sel-item:active{ background: var(--sel-item-active); }
+
+.sel-check{ margin-left:12px; font-size:12px; opacity:.9; }
+.sel-sep{ height:1px; background:#eee; margin:6px 0; }
+.sel-action{ color: var(--sel-action); }
+
+.sel-input{
+  width:100%; margin-top:8px; padding:8px 10px; border:1px solid var(--sel-border);
+  border-radius:8px; background:var(--sel-bg); color:var(--sel-fg);
+}
+.sel-input:focus{ outline:none; border-color:#3b82f6; box-shadow:0 0 0 4px var(--sel-ring); }
+
+/* Tiny open/close motion */
+@keyframes sel-pop {
+  from { opacity:0; transform: translateY(-2px) scale(.98); }
+  to   { opacity:1; transform: translateY(0) scale(1); }
+}
+
+/* Make sure Radix's wrapper sits above your modal panel */
+[data-radix-popper-content-wrapper]{ z-index: var(--sel-popover-z) !important; }
+
+
 /* ========= PUBLIC THEME (SCOPED) =========
    Safe to live in index.css because it's all under .public-theme
    Wrap your public pages with <div class="public-theme">…</div>

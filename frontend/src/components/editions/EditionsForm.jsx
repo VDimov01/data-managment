@@ -1,4 +1,6 @@
 // EditionAttributeModal.jsx
+import * as Select from '@radix-ui/react-select';
+
 import { useEffect, useMemo, useState } from "react";
 import EditionImageUploader from "./CarImageUploader";
 
@@ -650,6 +652,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
               setValue={(v)=>setMakeSel(s=>({ ...s, value:v }))}
               newValue={makeSel.newValue}
               setNewValue={(v)=>setMakeSel(s=>({ ...s, newValue:v }))}
+              inputPlaceholder="Нов производител"
             />
 
             {/* Model (disabled if Make is new) */}
@@ -663,6 +666,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
               setValue={(v)=>setModelSel(s=>({ ...s, value:v }))}
               newValue={modelSel.newValue}
               setNewValue={(v)=>setModelSel(s=>({ ...s, newValue:v }))}
+              inputPlaceholder="Нов модел"
             />
 
             {/* Year (disabled if Model is new) */}
@@ -677,7 +681,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
               newValue={yearSel.newValue}
               setNewValue={(v)=>setYearSel(s=>({ ...s, newValue:v }))}
               inputType="number"
-              inputPlaceholder="e.g. 2025"
+              inputPlaceholder="Нова година"
             />
 
             {/* Edition (existing OR create new) – disabled if Year is new */}
@@ -691,6 +695,7 @@ const selectedEditionName = selectedEditionObj?.name || "";
               setValue={(v)=>setEdSel(s=>({ ...s, value:v }))}
               newValue={edSel.newValue}
               setNewValue={(v)=>setEdSel(s=>({ ...s, newValue:v }))}
+              inputPlaceholder="Ново издание"
             />
           </div>
 
@@ -881,53 +886,67 @@ const selectedEditionName = selectedEditionObj?.name || "";
 
 /* Helper: dropdown with a “Create new…” option that reveals an input */
 function SelectOrCreate({
-  label,
-  options,
-  mode, setMode,
+  label, options,
   value, setValue,
+  mode, setMode,
   newValue, setNewValue,
   disabled = false,
   inputType = "text",
-  inputPlaceholder = ""
+  inputPlaceholder = "",
 }) {
-  const NEW = "__new__";
+  const NEW = '__new__';
+  const CLEAR = '__clear__';
+  const current = mode === 'existing' ? (value || undefined) : NEW;
+
   return (
-    <div>
-      <label style={{ display:'block', fontSize:12, color:'#666', marginBottom:4 }}>{label}</label>
-      <select
+    <div className="sel-field">
+      <label className="sel-label">{label}</label>
+
+      <Select.Root
         disabled={disabled}
-        value={mode === 'existing' ? (value || '') : NEW}
-        size={9}
-        onChange={(e) => {
-          if (e.target.value === NEW) {
-            setMode('new');
-            setValue('');
-          } else {
-            setMode('existing');
-            setValue(e.target.value);
-          }
+        value={current}
+        onValueChange={(v) => {
+          if (v === NEW) { setMode('new'); setValue(''); return; }
+          if (v === CLEAR) { setMode('existing'); setValue(''); return; }
+          setMode('existing'); setValue(v);
         }}
-        style={{ width:'100%' }}
       >
-        <option value="">{label}…</option>
-        {options?.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-        <option value={NEW}>➕ Create new…</option>
-      </select>
+        <Select.Trigger className="sel-trigger">
+          <Select.Value placeholder={`${label}…`} />
+          <Select.Icon className="sel-caret">▾</Select.Icon>
+        </Select.Trigger>
+
+        <Select.Portal /* if you mounted a modal root, portal into it */>
+          <Select.Content className="sel-content" position="popper" sideOffset={6}>
+            <Select.Viewport className="sel-viewport">
+              {options?.map(o => (
+                <Select.Item key={o.value} value={String(o.value)} className="sel-item">
+                  <Select.ItemText>{o.label}</Select.ItemText>
+                  <Select.ItemIndicator className="sel-check">✓</Select.ItemIndicator>
+                </Select.Item>
+              ))}
+
+              <Select.Separator className="sel-sep" />
+              <Select.Item value={NEW} className="sel-item sel-action">➕ Create new…</Select.Item>
+              <Select.Item value={CLEAR} className="sel-item sel-action">Clear selection</Select.Item>
+            </Select.Viewport>
+          </Select.Content>
+        </Select.Portal>
+      </Select.Root>
 
       {mode === 'new' && (
         <input
           type={inputType}
-          placeholder={inputPlaceholder || `New ${label}`}
+          placeholder={inputPlaceholder || `Ново ${label}`}
           value={newValue}
           onChange={e => setNewValue(e.target.value)}
-          style={{ width:'100%', marginTop:6 }}
+          className="sel-input"
         />
       )}
     </div>
   );
 }
+
 
 const sourceLabel = (s) =>
   s === "edition" ? "Edition"
