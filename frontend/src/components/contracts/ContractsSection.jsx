@@ -677,6 +677,7 @@ function CustomerPicker({ apiBase, value, onChange }) {
             style={{ flex: 1 }}
           />
           <select
+            className="cust-select"
             value={limit}
             onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
             title="Page size"
@@ -906,6 +907,7 @@ function VehiclePicker({ apiBase, onPick }) {
             onKeyDown={(e) => e.key === "Enter" && doSearch()}
           />
           <select
+            className="cust-select"
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));

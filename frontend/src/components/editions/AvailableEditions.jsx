@@ -141,6 +141,7 @@ const openLatestSpecs = async (row) => {
           onChange={(e) => { setQ(e.target.value); setPage(1); }}
         />
         <select
+          className="cust-select"
           title="Редове на страница"
           value={pageSize}
           onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
