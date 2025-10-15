@@ -77,3 +77,37 @@
   .br-form .br-grid { grid-template-columns: 1fr; }
   .br-attach-grid { grid-template-columns: 1fr; }
 }
+
+/* Actions: rely on global .btn-row, but make sure wrapping is OK on small screens */
+@media (max-width: 620px) {
+  .btn-row { flex-wrap: wrap; gap: 6px; }
+}
+
+/* ---------- Mobile column pruning for main list ---------- */
+/* Columns: 1:#, 2:Заглавие, 3:Марка/Модел, 4:Вид, 5:Само разлики, 6:Език, 7:Snapshot, 8:Създаден, 9:Действия */
+
+@media (max-width: 800px) {
+  /* Hide less critical first: Само разлики, Snapshot */
+  .br-container table tr > *:nth-child(5),
+  .br-container table tr > *:nth-child(7) { display: none; }
+}
+
+@media (max-width: 680px) {
+  /* Hide Език and Създаден */
+  .br-container table tr > *:nth-child(6),
+  .br-container table tr > *:nth-child(8) { display: none; }
+}
+
+/* Tighten table on phones */
+@media (max-width: 760px) {
+  .br-container .table { font-size: 13px; }
+  .br-container .table td,
+  .br-container .table th { padding: 8px 10px; }
+}
+
+/* Toolbar: stack rows on narrow screens (leverages global .toolbar) */
+@media (max-width: 900px) {
+  .br-container .toolbar { display: grid; gap: 10px; grid-template-columns: 1fr; }
+  .br-container .toolbar-row { flex-wrap: wrap; }
+  .br-container .input-search { flex: 1 1 100%; min-width: 0; }
+}

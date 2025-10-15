@@ -148,7 +148,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
       <div className="br-grid">
         <div>
           <label>Заглавие *</label>
-          <input value={title} onChange={(e)=>setTitle(e.target.value)} />
+          <input className="input" value={title} onChange={(e)=>setTitle(e.target.value)} />
         </div>
         <div>
           <label>Език</label>

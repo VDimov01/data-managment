@@ -114,7 +114,7 @@ export default function AttachCustomersPanel({ apiBase, brochureId }) {
                     <div className="br-strong">{displayCustomerName(c)}</div>
                     <div className="br-muted">{c.email || "—"}</div>
                   </div>
-                  <button onClick={() => attach(c.customer_id)}>Прикрепи</button>
+                  <button className="btn btn-strong" onClick={() => attach(c.customer_id)}>Прикрепи</button>
                 </li>
               ))}
               {custResults.length === 0 && <li className="br-muted">Няма намерени клиенти.</li>}
