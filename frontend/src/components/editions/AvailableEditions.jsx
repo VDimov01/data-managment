@@ -133,153 +133,171 @@ const openLatestSpecs = async (row) => {
   };
 
   return (
-    <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 12 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, alignItems: "center", marginBottom: 10 }}>
-        <input
-          placeholder="Търси по производител, модел, година, издание…"
-          value={q}
-          onChange={(e) => { setQ(e.target.value); setPage(1); }}
-        />
-        <select
-          className="cust-select"
-          title="Редове на страница"
-          value={pageSize}
-          onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-        >
-          {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n} / страница</option>)}
-        </select>
-        <button className="btn" type="button" onClick={() => { setQ(""); setPage(1); }}>Изчисти</button>
-      </div>
+  <div className="card editions-panel">
+    {/* Toolbar */}
+    <div className="toolbar">
+      <input
+        className="input input-search"
+        placeholder="Търси по производител, модел, година, издание…"
+        value={q}
+        onChange={(e) => { setQ(e.target.value); setPage(1); }}
+      />
 
-      {!hideDefaultActions && (
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-          <div style={{ fontSize:12, color:'#666' }}>
-            Избрани за сравнение: <b>{selectedIds.size}</b>
-          </div>
-          <button className="btn" type="button" onClick={onClearSelected} disabled={selectedIds.size === 0}>Изчисти избраните</button>
+      <select
+        className="select"
+        title="Редове на страница"
+        value={pageSize}
+        onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+      >
+        {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n} / страница</option>)}
+      </select>
+
+      <button className="btn btn-ghost" type="button" onClick={() => { setQ(""); setPage(1); }}>
+        Изчисти
+      </button>
+    </div>
+
+    {!hideDefaultActions && (
+      <div className="bar bar-muted">
+        <div className="bar-info">
+          Избрани за сравнение: <b>{selectedIds.size}</b>
         </div>
-      )}
+        <button
+          className="btn"
+          type="button"
+          onClick={onClearSelected}
+          disabled={selectedIds.size === 0}
+        >
+          Изчисти избраните
+        </button>
+      </div>
+    )}
 
-      {loading && <p>Зареждане на модификации…</p>}
-      {err && <p style={{ color: "crimson" }}>Грешка: {err}</p>}
+    {loading && <p className="text-muted">Зареждане на модификации…</p>}
+    {err && <p className="text-danger">Грешка: {err}</p>}
 
-      {!loading && !err && (
-        <>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%" }}>
-              <thead>
-                <tr>
-                  <th style={th}>#</th>
-                  <th style={th}>Производител</th>
-                  <th style={th}>Модел</th>
-                  <th style={th}>Година</th>
-                  <th style={th}>Издание</th>
-                  <th style={th}>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageItems.map((row) => {
-                  const selected = isSelected(row.edition_id);
-                  const deleting = deletingIds.has(row.edition_id);
-                  return (
-                    <tr key={row.edition_id} style={{ background: selected && !hideDefaultActions ? '#f5fbff' : undefined }}>
-                      <td style={td}>{row.edition_id}</td>
-                      <td style={td}>{row.make}</td>
-                      <td style={td}>{row.model}</td>
-                      <td style={td}>{row.year}</td>
-                      <td style={td}>{row.edition_name}</td>
-                      <td style={td}>
-                        <div style={{ display:'flex', gap:8 }}>
-                          {!hideDefaultActions && (
-                            <>
-                              <button className="btn" type="button" onClick={() => onEdit?.(row)} disabled={deleting}>Редактиране</button>
-                              <button
-                                className="btn"
-                                type="button"
-                                onClick={() => onToggleSelect(row)}
-                                aria-pressed={selected}
-                                disabled={deleting}
-                              >
-                                {selected ? 'Премахни от сравнение' : 'Избери за сравнение'}
-                              </button>
+    {!loading && !err && (
+      <>
+        <div className="table-wrap">
+          <table className="table table-striped table-hover table-tight">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Производител</th>
+                <th>Модел</th>
+                <th>Година</th>
+                <th>Издание</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
 
-                              <button
-                                className="btn"
-                                onClick={() => openLatestSpecs(row)}
-                                disabled={specBusy.has(row.edition_id)}
-                                style={{ marginRight: 6 }}
-                              >
-                                {specBusy.has(row.edition_id) ? 'Отваряне…' : 'Отвори PDF'}
-                              </button>
+            <tbody>
+              {pageItems.map((row) => {
+                const selected = isSelected(row.edition_id);
+                const deleting = deletingIds.has(row.edition_id);
+                return (
+                  <tr key={row.edition_id} className={selected && !hideDefaultActions ? "is-selected" : undefined}>
+                    <td>{row.edition_id}</td>
+                    <td>{row.make}</td>
+                    <td>{row.model}</td>
+                    <td>{row.year}</td>
+                    <td>{row.edition_name}</td>
+                    <td>
+                      <div className="btn-row">
+                        {!hideDefaultActions && (
+                          <>
+                            <button className="btn" type="button" onClick={() => onEdit?.(row)} disabled={deleting}>
+                              Редактиране
+                            </button>
 
-                              <button
-                                className="btn"
-                                onClick={() => ensureSpecs(row, { regenerate: true })}
-                                disabled={specBusy.has(row.edition_id)}
-                                style={{ fontWeight: 600 }}
-                              >
-                                {specBusy.has(row.edition_id) ? 'Генериране…' : 'Регенерирай PDF'}
-                              </button>
+                            <button
+                              className={"btn" + (selected ? " btn-active" : "")}
+                              type="button"
+                              onClick={() => onToggleSelect(row)}
+                              aria-pressed={selected}
+                              disabled={deleting}
+                            >
+                              {selected ? "Премахни от сравнение" : "Избери за сравнение"}
+                            </button>
 
-                              <button
-                                className="cust-btn danger"
-                                type="button"
-                                onClick={() => handleDelete(row)}
-                                disabled={deleting}
-                              >
-                                {deleting ? 'Изтриване' : 'Изтрий'}
-                              </button>
-                            </>
-                          )}
-
-                          {showAddVehicle && (
                             <button
                               className="btn"
-                              type="button"
-                              onClick={() => onAddVehicle?.(row)}
-                              disabled={deleting}
-                              style={{ fontWeight: 600 }}
+                              onClick={() => openLatestSpecs(row)}
+                              disabled={specBusy.has(row.edition_id)}
                             >
-                              Добави автомобил
+                              {specBusy.has(row.edition_id) ? "Отваряне…" : "Отвори PDF"}
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {pageItems.length === 0 && (
-                  <tr>
-                    <td colSpan={6} style={{ ...td, color: "#777" }}>
-                      Няма намерени издания.
+
+                            <button
+                              className="btn btn-strong"
+                              onClick={() => ensureSpecs(row, { regenerate: true })}
+                              disabled={specBusy.has(row.edition_id)}
+                            >
+                              {specBusy.has(row.edition_id) ? "Генериране…" : "Регенерирай PDF"}
+                            </button>
+
+                            <button
+                              className="btn btn-danger"
+                              type="button"
+                              onClick={() => handleDelete(row)}
+                              disabled={deleting}
+                            >
+                              {deleting ? "Изтриване" : "Изтрий"}
+                            </button>
+                          </>
+                        )}
+
+                        {showAddVehicle && (
+                          <button
+                            className="btn btn-strong"
+                            type="button"
+                            onClick={() => onAddVehicle?.(row)}
+                            disabled={deleting}
+                          >
+                            Добави автомобил
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                );
+              })}
+
+              {pageItems.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-muted center">
+                    Няма намерени издания.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="panel-footer">
+          <div className="results text-muted">
+            Показване на {filtered.length === 0 ? 0 : start + 1}–{Math.min(start + pageSize, filtered.length)} от {filtered.length}
           </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-            <div style={{ fontSize: 12, color: "#666" }}>
-              Показване на {filtered.length === 0 ? 0 : start + 1}–{Math.min(start + pageSize, filtered.length)} от {filtered.length}
-            </div>
-            <Pagination
-              page={page}
-              totalPages={totalPages}
-              onPrev={() => setPage(p => Math.max(1, p - 1))}
-              onNext={() => setPage(p => Math.min(totalPages, p + 1))}
-              onJump={(n) => setPage(n)}
-            />
-          </div>
-        </>
-      )}
-    </div>
-  );
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPrev={() => setPage(p => Math.max(1, p - 1))}
+            onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+            onJump={(n) => setPage(n)}
+          />
+        </div>
+      </>
+    )}
+  </div>
+);
+
 }
 
 function Pagination({ page, totalPages, onPrev, onNext, onJump }) {
   const pages = [];
   const maxBtns = 7;
+
   if (totalPages <= maxBtns) {
     for (let i = 1; i <= totalPages; i++) pages.push(i);
   } else {
@@ -293,29 +311,30 @@ function Pagination({ page, totalPages, onPrev, onNext, onJump }) {
   }
 
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-      <button className="btn" type="button" onClick={onPrev} disabled={page <= 1}>Предишна</button>
+    <div className="pagination">
+      <button className="page-btn" type="button" onClick={onPrev} disabled={page <= 1}>
+        Предишна
+      </button>
+
       {pages.map((p, idx) =>
         p === "…" ? (
-          <span key={`e-${idx}`} style={{ padding: "4px 6px", color: "#777" }}>…</span>
+          <span key={`e-${idx}`} className="ellipsis">…</span>
         ) : (
           <button
             key={p}
             type="button"
+            className={"page-btn" + (p === page ? " is-active" : "")}
             onClick={() => onJump(p)}
-            style={{
-              padding: "4px 8px",
-              borderRadius: 6,
-              border: "1px solid #ddd",
-              background: p === page ? "#eef6ff" : "#fff",
-              fontWeight: p === page ? 700 : 400
-            }}
           >
             {p}
           </button>
         )
       )}
-      <button className="btn" type="button" onClick={onNext} disabled={page >= totalPages}>Следваща</button>
+
+      <button className="page-btn" type="button" onClick={onNext} disabled={page >= totalPages}>
+        Следваща
+      </button>
     </div>
   );
 }
+

@@ -1,0 +1,47 @@
+/* Wrapper tweaks */
+.comp-wrap { max-width: 100%; overflow-x: auto; }
+
+/* Top controls */
+.comp-controls { margin-bottom: 12px; }
+.comp-muted { color: var(--text-muted); }
+
+/* Table specifics (inherits global .table styles) */
+.comp-table thead th { vertical-align: bottom; }
+.comp-ed-h { display: grid; gap: 2px; }
+.comp-ed-line { white-space: nowrap; }
+
+/* Section header row */
+.comp-section__cell {
+  padding: 8px 10px;
+  background: var(--table-head-bg);
+  border-top: 1px solid var(--border);
+  font-weight: 700;
+}
+
+/* Collapsible button */
+.comp-sec-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.comp-caret {
+  display: inline-block;
+  width: 16px;
+  transform: rotate(0deg);
+  transition: transform .15s ease;
+}
+.comp-sec-btn.is-open .comp-caret { transform: rotate(90deg); }
+
+/* Attribute name/meta */
+.comp-attr-name { font-weight: 600; }
+.comp-attr-meta { color: var(--text-muted); font-size: 12px; }
+.comp-code { color: var(--text-muted); }
+
+/* Optional: tighten cell padding just for compare */
+.comp-table td, .comp-table th { padding: 8px 10px; }

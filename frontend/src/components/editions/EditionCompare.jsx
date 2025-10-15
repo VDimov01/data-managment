@@ -124,101 +124,118 @@ export default function EditionCompare({ apiBase = "https://data-managment-produ
     });
   }, [rowsDiffed]);
 
-  return (
-    <div className="cb-table-wrap" style={{maxWidth:'100%', overflowX:'auto'}}>
-      {/* Top controls */}
-      <div style={{display:'flex', gap:8, alignItems:'center', marginBottom:12}}>
-        {!Array.isArray(editionIds) && (
-          <>
-            <input
-              placeholder="Edition IDs, comma-separated (e.g. 101,102)"
-              value={editionIdsText}
-              onChange={e => setEditionIdsText(e.target.value)}
-              style={{flex:1}}
-            />
-            <button onClick={loadCompareManual}>Compare</button>
-          </>
-        )}
-        <input
-          placeholder="Search attributes…"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          style={{flex:1}}
-        />
-        <label style={{display:'flex', alignItems:'center', gap:6}}>
-          <input type="checkbox" checked={onlyDiff} onChange={() => setOnlyDiff(v => !v)} />
-          Only differences
-        </label>
-      </div>
-
-      {!data ? null : (
-        <table className="cb-table" style={{width:'100%', borderCollapse:'collapse'}}>
-          <thead>
-            <tr>
-              <th style={th}>Атрибут</th>
-              {editions.map(ed => (
-                <th key={ed.edition_id} style={th}>
-                  <div className="cb-ed-h">
-                    <div className="cb-ed-line">{ed.make_name} {ed.model_name}</div>
-                    <div className="cb-ed-line">{ed.year} — {ed.edition_name}</div>
-                  </div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {grouped.length === 0 && (
-              <tr><td colSpan={1 + editions.length} style={td} className="cb-muted">Няма редове за показване.</td></tr>
-            )}
-
-            {grouped.map(([groupTitle, items]) => (
-              <SectionRows
-                key={groupTitle}
-                title={localizeGroupTitle(groupTitle)}
-                items={items}
-                editions={editions}
-              />
-            ))}
-          </tbody>
-        </table>
+// inside your component:
+return (
+  <div className="table-wrap comp-wrap">
+    {/* Top controls */}
+    <div className="toolbar-row comp-controls">
+      {!Array.isArray(editionIds) && (
+        <>
+          <input
+            className="input flex-1"
+            placeholder="Edition IDs, comma-separated (e.g. 101,102)"
+            value={editionIdsText}
+            onChange={e => setEditionIdsText(e.target.value)}
+          />
+          <button className="btn" onClick={loadCompareManual}>Compare</button>
+        </>
       )}
+
+      <input
+        className="input flex-1"
+        placeholder="Search attributes…"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+      />
+
+      <label className="row-xs">
+        <input type="checkbox" checked={onlyDiff} onChange={() => setOnlyDiff(v => !v)} />
+        <span>Only differences</span>
+      </label>
     </div>
-  );
+
+    {!data ? null : (
+      <table className="table table-tight table-hover comp-table">
+        <thead>
+          <tr>
+            <th>Атрибут</th>
+            {editions.map(ed => (
+              <th key={ed.edition_id}>
+                <div className="comp-ed-h">
+                  <div className="comp-ed-line">{ed.make_name} {ed.model_name}</div>
+                  <div className="comp-ed-line">{ed.year} — {ed.edition_name}</div>
+                </div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+
+        <tbody>
+          {grouped.length === 0 && (
+            <tr>
+              <td colSpan={1 + editions.length} className="center comp-muted">
+                Няма редове за показване.
+              </td>
+            </tr>
+          )}
+
+          {grouped.map(([groupTitle, items]) => (
+            <SectionRows
+              key={groupTitle}
+              title={localizeGroupTitle(groupTitle)}
+              items={items}
+              editions={editions}
+            />
+          ))}
+        </tbody>
+      </table>
+    )}
+  </div>
+);
+
 }
 
 function SectionRows({ title, items, editions }) {
   const [open, setOpen] = useState(true);
+
   return (
     <>
-      <tr className="cb-section">
-        <td colSpan={1 + editions.length} style={{background:'#f7f7f8', fontWeight:600, padding:'8px 10px', borderTop:'1px solid #e9e9ea'}}>
-          <button className="cb-sec-btn" onClick={() => setOpen(o => !o)} style={{all:'unset', cursor:'pointer'}}>
-            <span className="cb-caret" style={{display:'inline-block', width:16}}>{open ? '▾' : '▸'}</span> {title}
+      <tr className="comp-section">
+        <td colSpan={1 + editions.length} className="comp-section__cell">
+          <button
+            type="button"
+            className={"comp-sec-btn" + (open ? " is-open" : "")}
+            onClick={() => setOpen(o => !o)}
+          >
+            <span className="comp-caret" aria-hidden="true">▸</span>
+            <span>{title}</span>
           </button>
         </td>
       </tr>
+
       {open && items.map(r => (
         <tr key={r.attribute_id || r.code}>
-          <td style={td}>
-            <div className="cb-attr">
-              <div className="cb-attr-name">{r.name_bg || r.name}</div>
-              <div className="cb-attr-meta" style={{color:'#6b7280', fontSize:12}}>
-                {r.name}{r.unit ? ` (${r.unit})` : ""} · <code style={{color:'#6b7280'}}>{r.code}</code>
+          <td>
+            <div className="comp-attr">
+              <div className="comp-attr-name">{r.name_bg || r.name}</div>
+              <div className="comp-attr-meta">
+                {r.name}{r.unit ? ` (${r.unit})` : ""} · <code className="comp-code">{r.code}</code>
               </div>
             </div>
           </td>
           {editions.map(ed => {
             const v = r.values?.[ed.edition_id] ?? null;
-            return <td key={ed.edition_id} style={td}>{formatVal(v, r.data_type, r.unit)}</td>;
+            return (
+              <td key={ed.edition_id}>
+                {formatVal(v, r.data_type, r.unit)}
+              </td>
+            );
           })}
         </tr>
       ))}
     </>
   );
 }
-
-const th = { borderBottom:'1px solid #ddd', textAlign:'left', padding:'8px', position:'sticky', top:0, background:'#fff' };
-const td = { borderBottom:'1px solid #f0f0f0', padding:'8px', verticalAlign:'top' };
 
 function formatVal(v, dt, unit) {
   if (v === null || v === undefined) return '—';

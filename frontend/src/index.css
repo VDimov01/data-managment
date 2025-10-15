@@ -2,13 +2,10 @@
 @import '../public/css/login.css';
 @import '../public/css/dashboard.css';
 @import '../public/css/compareView.css';
-@import '../public/css/carComparison.css';
-@import '../public/css/availableCars.css';
 @import '../public/css/storageSection.css';
 @import '../public/css/clientsSection.css';
 @import '../public/css/contractsSection.css';
 @import '../public/css/brochuresSectionOld.css';
-@import '../public/css/carForm.css';
 @import '../public/css/customers.css';
 @import '../public/css/brochures.css';
 @import '../public/css/customer-brochures.css';
@@ -17,8 +14,41 @@
 @import '../public/css/vehiclePublicPage.css';
 @import '../public/css/editionSpecsPanel.css';
 @import '../public/css/customerContractsPage.css';
+@import '../public/css/modal.css';
+@import '../public/css/editionForm.css';
+@import '../public/css/editionCompare.css';
 
-:root{
+/* Warm, eye-friendly theme */
+
+:root {
+  /* Light (warm) */
+  --bg:            hsl(35 35% 96%);   /* warm off-white (no harsh #fff) */
+  --surface:       hsl(35 35% 99%);   /* cards/sections */
+  --text:          hsl(24 20% 18%);   /* coffee dark */
+  --muted: hsl(24 10% 40%);
+  --text-muted: var(--muted); /* ← alias so your classes work */
+  --border:        hsl(35 20% 86%);
+
+  /* Brand / action */
+  --primary:       hsl(28 70% 45%);   /* amber/burnished orange */
+  --primary-900:   hsl(28 72% 38%);
+  --on-primary:    hsl(40 40% 98%);   /* text on primary */
+
+  --danger:       hsl(6 70% 48%);
+  --danger-900:   hsl(6 72% 42%);
+  --on-danger:    hsl(40 40% 98%);
+
+  --accent:       hsl(210 60% 45%); /* for selected rows/pills */
+  --accent-soft:  hsl(210 60% 96%);
+
+  /* Neutral button/inputs */
+  --control-bg:    hsl(35 25% 97%);
+  --control-text:  var(--text);
+  --control-border:hsl(35 20% 84%);
+
+  --shadow: 0 10px 30px rgba(2,6,23,.08);
+  --ring: 46 144 250;
+
   --sel-bg: #fff;
   --sel-fg: #0f172a;
   --sel-muted: #6b7280;
@@ -30,7 +60,330 @@
   --sel-item-selected: #eef2ff;
   --sel-action: #0ea5e9;
   --sel-popover-z: 1200;
+
+    --table-head-bg: color-mix(in oklab, var(--surface), black 2%);
+  --row-stripe-bg: color-mix(in oklab, var(--surface), black 1.5%);
+  --row-hover-bg:  color-mix(in oklab, var(--surface), black 3%);
+
+  --btn-hover-bg:  color-mix(in oklab, var(--control-bg), black 3%);
+  --page-hover-bg: var(--btn-hover-bg);
+
+  --focus-ring:    color-mix(in oklab, var(--primary), white 70%);
 }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark (still warm) */
+    --bg:            hsl(24 15% 10%);  /* near-black with warm tint */
+    --surface:       hsl(24 15% 13%);
+    --text:          hsl(30 25% 92%);
+    --muted: hsl(30 10% 70%);
+    --text-muted: var(--muted);
+    --border:        hsl(24 10% 22%);
+
+    --primary:       hsl(35 85% 62%);  /* honey/amber pops on dark */
+    --primary-900:   hsl(35 85% 56%);
+    --on-primary:    hsl(24 15% 10%);
+
+    --danger:       hsl(6 80% 62%);
+    --danger-900:   hsl(6 80% 56%);
+    --on-danger:    hsl(24 15% 10%);
+
+    --accent:       hsl(210 70% 62%);
+    --accent-soft:  hsl(210 16% 18%);
+
+    --control-bg:    hsl(24 12% 16%);
+    --control-text:  var(--text);
+    --control-border:hsl(24 10% 24%);
+
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+
+    --sel-bg: #0f131a;
+    --sel-fg: #e5e7eb;
+    --sel-muted: #9aa4b2;
+
+    --sel-border: #2a3240;
+    --sel-border-hover: #3a4252;
+
+    --sel-ring: rgba(59,130,246,.35); /* a bit stronger on dark */
+
+    --sel-item-hover: #18202b;
+    --sel-item-active: #121a24;
+    --sel-item-selected: #0f1b2f;     /* subtle “selected” tint on dark */
+
+    --sel-action: #7cc3ff;            /* action/link color on dark */
+    --sel-popover-z: 1200;            /* keep same z-index */
+
+        /* Dark: lighten a bit on hover/stripes */
+    --table-head-bg: color-mix(in oklab, var(--surface), white 4%);
+    --row-stripe-bg: color-mix(in oklab, var(--surface), white 3%);
+    --row-hover-bg:  color-mix(in oklab, var(--surface), white 6%);
+
+    --btn-hover-bg:  color-mix(in oklab, var(--control-bg), white 6%);
+    --page-hover-bg: var(--btn-hover-bg);
+
+    --focus-ring:    color-mix(in oklab, var(--primary), black 70%);
+  }
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Example components */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
+  color: var(--control-text);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .06s ease, background-color .15s ease, border-color .15s ease;
+}
+/* Buttons & pagination should NOT hardcode light values */
+.btn:hover { background: var(--btn-hover-bg); transform: translateY(-1px); }
+.btn-ghost:hover { background: var(--btn-hover-bg); }
+.btn:active { transform: translateY(0); }
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: color-mix(in oklab, var(--primary), black 18%);
+}
+.btn-primary:hover {
+  background: var(--primary-900);
+  border-color: color-mix(in oklab, var(--primary-900), black 20%);
+}
+
+/* Inputs */
+.input, select, textarea {
+  background: var(--control-bg);
+  color: var(--control-text);
+  border: 1px solid var(--control-border);
+  border-radius: 10px;
+  padding: 9px 12px;
+}
+.input::placeholder { color: var(--text-muted); }
+
+/* Subtle separators */
+.hr {
+  height: 1px;
+  background: var(--border);
+  border: 0;
+}
+
+.flex-1 { flex: 1 1 auto; }
+
+
+/* ====== Layout bits ====== */
+.editions-panel { padding: 12px; }
+
+.toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.bar-muted {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.panel-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.results { font-size: 12px; }
+
+/* ====== Inputs / Selects ====== */
+.input-search { width: 100%; }
+.select {
+  background: var(--control-bg);
+  color: var(--control-text);
+  border: 1px solid var(--control-border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  min-width: 140px;
+}
+/* Focus ring should use the token */
+.select:focus,
+.input:focus,
+textarea:focus { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* ====== Buttons ====== */
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-strong { font-weight: 600; }
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--control-border);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: var(--on-danger);
+  border-color: color-mix(in oklab, var(--danger), black 18%);
+}
+.btn-danger:hover {
+  background: var(--danger-900);
+  border-color: color-mix(in oklab, var(--danger-900), black 22%);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Active-ish neutral state (used on 'selected for compare') */
+.btn-active {
+  background: var(--accent-soft);
+  border-color: color-mix(in oklab, var(--accent), white 75%);
+}
+
+/* ====== Text helpers ====== */
+.text-muted { color: var(--text-muted); }
+.text-danger { color: var(--danger); }
+.center     { text-align: center; }
+
+/* ====== Tables ====== */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+/* Base */
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+}
+
+/* Header */
+.table thead th {
+  text-align: left;
+  font-weight: 700;
+  padding: 10px 12px;
+  background: var(--table-head-bg);;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  position: sticky;  /* nice when long tables scroll */
+  top: 0;
+  z-index: 1;
+}
+
+/* Cells */
+.table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+/* Density variants */
+.table-tight td, .table-tight th { padding-top: 8px; padding-bottom: 8px; }
+
+/* Stripes & hover */
+.table-striped tbody tr:nth-child(even) td { background: var(--row-stripe-bg); }
+.table-hover tbody tr:hover td { background: var(--row-hover-bg); }
+
+/* Selected row (compare selection) */
+.table tbody tr.is-selected td {
+  background: var(--accent-soft);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* Empty state cell */
+.table td[colspan] { padding: 18px 12px; }
+
+/* ====== Pagination ====== */
+.pagination {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Pagination buttons */
+/* Pagination buttons – win the cascade */
+.pagination .page-btn,
+button.page-btn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
+  color: var(--control-text);
+  cursor: pointer;
+  font-weight: 500;
+  transition: transform .06s ease, background-color .15s ease, border-color .15s ease;
+}
+
+.pagination .page-btn:hover,
+button.page-btn:hover {
+  background: var(--page-hover-bg);
+  transform: translateY(-1px);
+}
+
+.pagination .page-btn.is-active,
+button.page-btn.is-active {
+  background: var(--accent-soft);
+  border-color: color-mix(in oklab, var(--accent), black 10%);
+  font-weight: 700;
+}
+
+.pagination .page-btn:disabled,
+button.page-btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ellipsis {
+  padding: 4px 6px;
+  color: var(--text-muted);
+}
+
+/* ====== Responsive niceties ====== */
+@media (max-width: 720px) {
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 .sel-field { width: 100%; }
 .sel-label { display:block; font-size:12px; color:var(--sel-muted); margin:0 0 6px; }
@@ -239,3 +592,61 @@
 .public-stack { display: grid; gap: 10px; }
 .public-row { display: flex; gap: 10px; align-items: center; }
 .public-hr { height: 1px; background: var(--public-border); margin: 10px 0; }
+
+/* Tell the UA about your palettes (scrollbars, form controls) */
+html { color-scheme: light dark; }
+
+/* Manual override: when <html data-theme="dark"> … */
+[data-theme="dark"] {
+  /* Use the same dark values you already defined in your media query */
+/* Dark (still warm) */
+    --bg:            hsl(24 15% 10%);  /* near-black with warm tint */
+    --surface:       hsl(24 15% 13%);
+    --text:          hsl(30 25% 92%);
+    --muted: hsl(30 10% 70%);
+    --text-muted: var(--muted);
+    --border:        hsl(24 10% 22%);
+
+    --primary:       hsl(35 85% 62%);  /* honey/amber pops on dark */
+    --primary-900:   hsl(35 85% 56%);
+    --on-primary:    hsl(24 15% 10%);
+
+    --danger:       hsl(6 80% 62%);
+    --danger-900:   hsl(6 80% 56%);
+    --on-danger:    hsl(24 15% 10%);
+
+    --accent:       hsl(210 70% 62%);
+    --accent-soft:  hsl(210 16% 18%);
+
+    --control-bg:    hsl(24 12% 16%);
+    --control-text:  var(--text);
+    --control-border:hsl(24 10% 24%);
+
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+
+    --sel-bg: #0f131a;
+    --sel-fg: #e5e7eb;
+    --sel-muted: #9aa4b2;
+
+    --sel-border: #2a3240;
+    --sel-border-hover: #3a4252;
+
+    --sel-ring: rgba(59,130,246,.35); /* a bit stronger on dark */
+
+    --sel-item-hover: #18202b;
+    --sel-item-active: #121a24;
+    --sel-item-selected: #0f1b2f;     /* subtle “selected” tint on dark */
+
+    --sel-action: #7cc3ff;            /* action/link color on dark */
+    --sel-popover-z: 1200;            /* keep same z-index */
+
+        /* Dark: lighten a bit on hover/stripes */
+    --table-head-bg: color-mix(in oklab, var(--surface), white 4%);
+    --row-stripe-bg: color-mix(in oklab, var(--surface), white 3%);
+    --row-hover-bg:  color-mix(in oklab, var(--surface), white 6%);
+
+    --btn-hover-bg:  color-mix(in oklab, var(--control-bg), white 6%);
+    --page-hover-bg: var(--btn-hover-bg);
+
+    --focus-ring:    color-mix(in oklab, var(--primary), black 70%);
+}

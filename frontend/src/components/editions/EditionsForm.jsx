@@ -1,8 +1,8 @@
 // EditionAttributeModal.jsx
-import * as Select from '@radix-ui/react-select';
 
 import { useEffect, useMemo, useState } from "react";
 import EditionImageUploader from "./CarImageUploader";
+import SelectOrCreate from './SelectOrCreate.jsx';
 
 const FALLBACK_GROUP_ORDER = [
   'Basic information','Car body','Electric motor','ICE','Battery & Charging',
@@ -625,324 +625,278 @@ const selectedEditionName = selectedEditionObj?.name || "";
   return (
     <div>
       {/* Mode switch */}
-      <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-        <button type="button" onClick={() => setMode('create')} disabled={mode==='create'}>Създай нов</button>
-        <button type="button" onClick={() => setMode('select')} disabled={mode==='select'}>Избери съществуващ</button>
-      </div>
-      <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-  <button type="button" onClick={() => setView('attributes')} disabled={view==='attributes'}>
-    Атрибути
-  </button>
-  <button type="button" onClick={() => setView('images')} disabled={view==='images'}>
-    Снимки
-  </button>
-</div>
+        <div className="segmented mb-12">
+          <button
+            type="button"
+            className={"segmented__btn" + (mode === 'create' ? " is-active" : "")}
+            onClick={() => setMode('create')}
+            disabled={mode === 'create'}
+          >
+            Създай нов
+          </button>
+          <button
+            type="button"
+            className={"segmented__btn" + (mode === 'select' ? " is-active" : "")}
+            onClick={() => setMode('select')}
+            disabled={mode === 'select'}
+          >
+            Избери съществуващ
+          </button>
+        </div>
 
-      {isCreating ? (
-        <div style={{ border:'1px solid #eee', borderRadius:8, padding:12, marginBottom:12 }}>
-          <h4 style={{ marginTop:0 }}>Създай ново издание</h4>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }}>
-            {/* Make */}
+      {/* View tabs */}
+        <div className="tabs mb-12">
+          <button
+            type="button"
+            className={"tab" + (view === 'attributes' ? " is-active" : "")}
+            onClick={() => setView('attributes')}
+          >
+            Атрибути
+          </button>
+          <button
+            type="button"
+            className={"tab" + (view === 'images' ? " is-active" : "")}
+            onClick={() => setView('images')}
+          >
+            Снимки
+          </button>
+        </div>
+
+            {isCreating ? (
+        <div className="card card--padded mb-12">
+          <h4 className="section-subtitle">Създай ново издание</h4>
+
+          <div className="grid-4 gap-10">
             <SelectOrCreate
               label="Производител"
               options={makes.map(m => ({ value:String(m.make_id), label:m.name }))}
-              mode={makeSel.mode}
-              setMode={(m)=>setMakeSel(s=>({ ...s, mode:m }))}
-              value={makeSel.value}
-              setValue={(v)=>setMakeSel(s=>({ ...s, value:v }))}
-              newValue={makeSel.newValue}
-              setNewValue={(v)=>setMakeSel(s=>({ ...s, newValue:v }))}
+              mode={makeSel.mode} setMode={(m)=>setMakeSel(s=>({ ...s, mode:m }))}
+              value={makeSel.value} setValue={(v)=>setMakeSel(s=>({ ...s, value:v }))}
+              newValue={makeSel.newValue} setNewValue={(v)=>setMakeSel(s=>({ ...s, newValue:v }))}
               inputPlaceholder="Нов производител"
             />
 
-            {/* Model (disabled if Make is new) */}
             <SelectOrCreate
               label="Модел"
-              // disabled={makeSel.mode === 'new'}
               options={cModels.map(m => ({ value:String(m.model_id), label:m.name }))}
-              mode={modelSel.mode}
-              setMode={(m)=>setModelSel(s=>({ ...s, mode:m }))}
-              value={modelSel.value}
-              setValue={(v)=>setModelSel(s=>({ ...s, value:v }))}
-              newValue={modelSel.newValue}
-              setNewValue={(v)=>setModelSel(s=>({ ...s, newValue:v }))}
+              mode={modelSel.mode} setMode={(m)=>setModelSel(s=>({ ...s, mode:m }))}
+              value={modelSel.value} setValue={(v)=>setModelSel(s=>({ ...s, value:v }))}
+              newValue={modelSel.newValue} setNewValue={(v)=>setModelSel(s=>({ ...s, newValue:v }))}
               inputPlaceholder="Нов модел"
             />
 
-            {/* Year (disabled if Model is new) */}
             <SelectOrCreate
               label="Година"
-              // disabled={modelSel.mode === 'new'}
               options={cYears.map(y => ({ value:String(y.model_year_id), label:String(y.year) }))}
-              mode={yearSel.mode}
-              setMode={(m)=>setYearSel(s=>({ ...s, mode:m }))}
-              value={yearSel.value}
-              setValue={(v)=>setYearSel(s=>({ ...s, value:v }))}
-              newValue={yearSel.newValue}
-              setNewValue={(v)=>setYearSel(s=>({ ...s, newValue:v }))}
+              mode={yearSel.mode} setMode={(m)=>setYearSel(s=>({ ...s, mode:m }))}
+              value={yearSel.value} setValue={(v)=>setYearSel(s=>({ ...s, value:v }))}
+              newValue={yearSel.newValue} setNewValue={(v)=>setYearSel(s=>({ ...s, newValue:v }))}
               inputType="number"
               inputPlaceholder="Нова година"
             />
 
-            {/* Edition (existing OR create new) – disabled if Year is new */}
             <SelectOrCreate
               label="Издание"
-              // disabled={yearSel.mode === 'new'}
               options={cEds.map(e => ({ value:String(e.edition_id), label:e.name }))}
-              mode={edSel.mode}
-              setMode={(m)=>setEdSel(s=>({ ...s, mode:m }))}
-              value={edSel.value}
-              setValue={(v)=>setEdSel(s=>({ ...s, value:v }))}
-              newValue={edSel.newValue}
-              setNewValue={(v)=>setEdSel(s=>({ ...s, newValue:v }))}
+              mode={edSel.mode} setMode={(m)=>setEdSel(s=>({ ...s, mode:m }))}
+              value={edSel.value} setValue={(v)=>setEdSel(s=>({ ...s, value:v }))}
+              newValue={edSel.newValue} setNewValue={(v)=>setEdSel(s=>({ ...s, newValue:v }))}
               inputPlaceholder="Ново издание"
             />
           </div>
 
-          <div style={{ marginTop:12 }}>
-            <button type="button" onClick={onCreateAndSelect}>Създай и избери</button>
+          <div className="mt-12">
+            <button type="button" className="btn btn-primary" onClick={onCreateAndSelect}>
+              Създай и избери
+            </button>
           </div>
         </div>
       ) : (
-        // Select existing cascade
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
-          <select value={makeId} onChange={e => setMakeId(e.target.value)}>
-            <option value="">Производител…</option>
-            {makes.map(m => <option key={m.make_id} value={m.make_id}>{m.name}</option>)}
-          </select>
+        /* Select existing cascade */
+        <div className="grid-4 gap-10 mb-12">
+          <SelectOrCreate
+              showCreate={false}
+              label="Производител"
+              options={makes.map(m => ({ value:String(m.make_id), label:m.name }))}
+              value={makeId} setValue={(v)=>setMakeId(v)}
+            />
 
-          <select value={modelId} onChange={e => setModelId(e.target.value)} disabled={!makeId}>
-            <option value="">Модел…</option>
-            {models.map(mo => <option key={mo.model_id} value={mo.model_id}>{mo.name}</option>)}
-          </select>
+          <SelectOrCreate
+              showCreate={false}
+              label="Модел"
+              options={models.map(m => ({ value:String(m.model_id), label:m.name }))}
+              value={modelId} setValue={(v)=>setModelId(v)}
+            />
 
-          <select value={modelYearId} onChange={e => setModelYearId(e.target.value)} disabled={!modelId}>
-            <option value="">Година…</option>
-            {years.map(y => <option key={y.model_year_id} value={y.model_year_id}>{y.year}</option>)}
-          </select>
+          <SelectOrCreate
+              showCreate={false}
+              label="Година"
+              options={years.map(y => ({ value:String(y.model_year_id), label:y.year }))}
+              value={modelYearId} setValue={(v)=>setModelYearId(v)}
+            />
 
-          <select value={editionId} onChange={e => setEditionId(e.target.value)} disabled={!modelYearId}>
-            <option value="">Издание…</option>
-            {editions.map(ed => <option key={ed.edition_id} value={ed.edition_id}>{ed.name}</option>)}
-          </select>
+          <SelectOrCreate
+              showCreate={false}
+              label="Издание"
+              options={editions.map(e => ({ value:String(e.edition_id), label:e.name }))}
+              value={editionId} setValue={(v)=>setEditionId(v)}
+            />
         </div>
       )}
 
+
       {/* Toolbar */}
-      {showToolbar && (
-      <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:10 }}>
-        <input placeholder="Filter (name/code/category)…" value={filter} onChange={e => setFilter(e.target.value)} style={{ flex:1 }} />
-        <label style={{ display:'flex', gap:6, alignItems:'center' }}>
-          <input type="checkbox" checked={langBg} onChange={() => setLangBg(v=>!v)} /> BG labels
-        </label>
-        {/* 👇 NEW: Source filter */}
-  <select
-    value={srcFilter}
-    onChange={e => setSrcFilter(e.target.value)}
-    title="Filter by value source"
-  >
-    <option value="ALL">All sources</option>
-    <option value="OVERRIDDEN">Overridden (edition)</option>
-    <option value="INHERITED">Inherited (model / year)</option>
-    <option value="UNSET">Unset (no value)</option>
-  </select>
-  
-        <button type="button" onClick={() => setRows(prev => prev.map(r => ({ ...r, removed:false })))}>
-          Възстанови премахнатите
-        </button>
-      </div>
-      )}
+        {showToolbar && (
+          <div className="toolbar-row mb-10">
+            <input
+              className="input flex-1"
+              placeholder="Filter (name/code/category)…"
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+            />
+            <label className="row-xs">
+              <input type="checkbox" checked={langBg} onChange={() => setLangBg(v=>!v)} />
+              <span>BG labels</span>
+            </label>
+
+            <select
+              className="select"
+              value={srcFilter}
+              onChange={e => setSrcFilter(e.target.value)}
+              title="Filter by value source"
+            >
+              <option value="ALL">All sources</option>
+              <option value="OVERRIDDEN">Overridden (edition)</option>
+              <option value="INHERITED">Inherited (model / year)</option>
+              <option value="UNSET">Unset (no value)</option>
+            </select>
+
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setRows(prev => prev.map(r => ({ ...r, removed:false })))}
+            >
+              Възстанови премахнатите
+            </button>
+          </div>
+        )}
+
 
       {!isCreating && notices.length > 0 && (
-  <div style={{
-    margin:'8px 0 12px', padding:'8px 10px',
-    background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:8,
-    fontSize:13, color:'#166534'
-  }}>
-    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-      <strong>Обобщение на запазването</strong>
-      <button
-        type="button"
-        onClick={() => setNotices([])}
-        style={{ border:'none', background:'transparent', cursor:'pointer', color:'#166534' }}
-      >
-        ×
-      </button>
-    </div>
-    <ul style={{ margin:'6px 0 0 16px' }}>
-      {notices.map((n, i) => <li key={i}>{n}</li>)}
-    </ul>
-  </div>
-)}
+        <div className="notice notice--success">
+          <div className="notice__header">
+            <strong>Обобщение на запазването</strong>
+            <button type="button" className="notice__close" onClick={() => setNotices([])}>×</button>
+          </div>
+          <ul className="notice__list">
+            {notices.map((n, i) => <li key={i}>{n}</li>)}
+          </ul>
+        </div>
+      )}
 
 
 
-{view === 'images' ? (
-  // IMAGES TAB
-  isCreating ? (
-    <p>Създай или избери модификация, за да управляваш изображенията.</p>
-  ) : !hasEdition ? (
-    <p>Избери модификация, за да управляваш изображенията.</p>
-  ) : (
-    <>
-      <EditionImageUploader
-        apiBase={apiBase}
-        editionId={Number(editionId)}
-        makeName={selectedMakeName}
-        modelName={selectedModelName}
-        modelYear={selectedYear}
-        editionName={selectedEditionName}
-      />
-    </>
-  )
-) : (
-  // ATTRIBUTES TAB
-  isCreating ? (
-    <p>Създай и избери модификация, за да редактираш атрибутите.</p>
-  ) : !hasEdition ? (
-    <p>Избери модификация, за да редактираш атрибутите.</p>
-  ) : (
-    <form onSubmit={submitSpecs}>
-      {grouped.map(([category, items]) => {
-        const vis = items.filter(r => !r.removed && matchesFilter(r) && passSourceFilter(r));
-        const rem = items.filter(r =>  r.removed && matchesFilter(r) && passSourceFilter(r));
-        if (vis.length === 0 && rem.length === 0) return null;
+        {view === 'images' ? (
+          isCreating ? (
+            <p>Създай или избери модификация, за да управляваш изображенията.</p>
+          ) : !hasEdition ? (
+            <p>Избери модификация, за да управляваш изображенията.</p>
+          ) : (
+            <EditionImageUploader
+              apiBase={apiBase}
+              editionId={Number(editionId)}
+              makeName={selectedMakeName}
+              modelName={selectedModelName}
+              modelYear={selectedYear}
+              editionName={selectedEditionName}
+            />
+          )
+        ) : (
+          isCreating ? (
+            <p>Създай и избери модификация, за да редактираш атрибутите.</p>
+          ) : !hasEdition ? (
+            <p>Избери модификация, за да редактираш атрибутите.</p>
+          ) : (
+            <form onSubmit={submitSpecs}>
+              {grouped.map(([category, items]) => {
+                const vis = items.filter(r => !r.removed && matchesFilter(r) && passSourceFilter(r));
+                const rem = items.filter(r =>  r.removed && matchesFilter(r) && passSourceFilter(r));
+                if (vis.length === 0 && rem.length === 0) return null;
 
-        return (
-          <fieldset key={category} style={{ border:'1px solid #eee', borderRadius:8, marginBottom:12 }}>
-            <legend style={{ padding:'0 8px' }}>{category}</legend>
-            <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr auto', gap:8, padding:12 }}>
-              <div style={{ fontWeight:600 }}></div>
-              <div style={{ fontWeight:600 }}>Стойност</div>
-              <div style={{ fontWeight:600 }}>Мерна единица</div>
-              <div style={{ fontWeight:600 }}>Действия</div>
+                return (
+                  <fieldset key={category} className="fieldset">
+                    <legend className="legend">{category}</legend>
 
-              {vis.map(r => (
-                <Row
-                  key={r.attribute_id || r.code}
-                  r={r}
-                  langBg={langBg}
-                  enumOptions={ENUM_OPTIONS}
-                  onChangeValue={(val) =>
-                    setRows(prev =>
-                      prev.map(x =>
-                        (x.attribute_id || x.code) === (r.attribute_id || r.code)
-                          ? { ...x, value: val }
-                          : x
-                      )
-                    )
-                  }
-                  onRemove={() =>
-                    setRows(prev =>
-                      prev.map(x =>
-                        (x.attribute_id || x.code) === (r.attribute_id || r.code)
-                          ? { ...x, removed: true }
-                          : x
-                      )
-                    )
-                  }
-                />
-              ))}
+                    <div className="grid-attr">
+                      <div className="th"></div>
+                      <div className="th">Стойност</div>
+                      <div className="th">Мерна единица</div>
+                      <div className="th">Действия</div>
 
-              {rem.length > 0 && (
-                <div style={{ gridColumn:'1 / -1', marginTop:6 }}>
-                  <small>Removed here: </small>
-                  {rem.map(r => (
-                    <button
-                      key={`rm-${r.attribute_id || r.code}`}
-                      type="button"
-                      onClick={() =>
-                        setRows(prev =>
-                          prev.map(x =>
-                            (x.attribute_id || x.code) === (r.attribute_id || r.code)
-                              ? { ...x, removed:false }
-                              : x
-                          )
-                        )
-                      }
-                      style={{ marginRight:6 }}
-                    >
-                      ↩ {langBg ? (r.name_bg || r.name) : r.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </fieldset>
-        );
-      })}
+                      {vis.map(r => (
+                        <Row
+                          key={r.attribute_id || r.code}
+                          r={r}
+                          langBg={langBg}
+                          enumOptions={ENUM_OPTIONS}
+                          onChangeValue={(val) =>
+                            setRows(prev =>
+                              prev.map(x =>
+                                (x.attribute_id || x.code) === (r.attribute_id || r.code)
+                                  ? { ...x, value: val }
+                                  : x
+                              )
+                            )
+                          }
+                          onRemove={() =>
+                            setRows(prev =>
+                              prev.map(x =>
+                                (x.attribute_id || x.code) === (r.attribute_id || r.code)
+                                  ? { ...x, removed: true }
+                                  : x
+                              )
+                            )
+                          }
+                        />
+                      ))}
 
-      <div style={{ marginTop:12 }}>
-        <button type="submit">Запази атрибутите</button>
-      </div>
-    </form>
-  )
-)}
+                      {rem.length > 0 && (
+                        <div className="removed">
+                          <small>Removed here:</small>
+                          {rem.map(r => (
+                            <button
+                              key={`rm-${r.attribute_id || r.code}`}
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() =>
+                                setRows(prev =>
+                                  prev.map(x =>
+                                    (x.attribute_id || x.code) === (r.attribute_id || r.code)
+                                      ? { ...x, removed:false }
+                                      : x
+                                  )
+                                )
+                              }
+                            >
+                              ↩ {langBg ? (r.name_bg || r.name) : r.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </fieldset>
+                );
+              })}
+
+              <div className="mt-12">
+                <button type="submit" className="btn btn-primary">Запази атрибутите</button>
+              </div>
+            </form>
+          )
+        )}
+
 
       
-    </div>
-  );
-}
-
-/* Helper: dropdown with a “Create new…” option that reveals an input */
-function SelectOrCreate({
-  label, options,
-  value, setValue,
-  mode, setMode,
-  newValue, setNewValue,
-  disabled = false,
-  inputType = "text",
-  inputPlaceholder = "",
-}) {
-  const NEW = '__new__';
-  const CLEAR = '__clear__';
-  const current = mode === 'existing' ? (value || undefined) : NEW;
-
-  return (
-    <div className="sel-field">
-      <label className="sel-label">{label}</label>
-
-      <Select.Root
-        disabled={disabled}
-        value={current}
-        onValueChange={(v) => {
-          if (v === NEW) { setMode('new'); setValue(''); return; }
-          if (v === CLEAR) { setMode('existing'); setValue(''); return; }
-          setMode('existing'); setValue(v);
-        }}
-      >
-        <Select.Trigger className="sel-trigger">
-          <Select.Value placeholder={`${label}…`} />
-          <Select.Icon className="sel-caret">▾</Select.Icon>
-        </Select.Trigger>
-
-        <Select.Portal /* if you mounted a modal root, portal into it */>
-          <Select.Content className="sel-content" position="popper" sideOffset={6}>
-            <Select.Viewport className="sel-viewport">
-              {options?.map(o => (
-                <Select.Item key={o.value} value={String(o.value)} className="sel-item">
-                  <Select.ItemText>{o.label}</Select.ItemText>
-                  <Select.ItemIndicator className="sel-check">✓</Select.ItemIndicator>
-                </Select.Item>
-              ))}
-
-              <Select.Separator className="sel-sep" />
-              <Select.Item value={NEW} className="sel-item sel-action">➕ Create new…</Select.Item>
-              <Select.Item value={CLEAR} className="sel-item sel-action">Clear selection</Select.Item>
-            </Select.Viewport>
-          </Select.Content>
-        </Select.Portal>
-      </Select.Root>
-
-      {mode === 'new' && (
-        <input
-          type={inputType}
-          placeholder={inputPlaceholder || `Ново ${label}`}
-          value={newValue}
-          onChange={e => setNewValue(e.target.value)}
-          className="sel-input"
-        />
-      )}
     </div>
   );
 }
@@ -1043,6 +997,7 @@ function Row({ r, langBg, enumOptions = {}, onChangeValue, onRemove }) {
   </select>
 ) : (
   <input
+    className='input'
     type={r.data_type === 'text' ? 'text' : 'number'}
     step={r.data_type === 'decimal' ? '0.01' : undefined}
     placeholder={r.data_type === 'int' ? 'integer' : r.data_type === 'decimal' ? 'decimal' : 'text'}
@@ -1053,7 +1008,7 @@ function Row({ r, langBg, enumOptions = {}, onChangeValue, onRemove }) {
 
       {/* Unit + actions */}
       <input disabled value={r.unit || ''} placeholder="unit" />
-      <button type="button" onClick={onRemove}>Remove</button>
+      <button className="btn btn-strong" type="button" onClick={onRemove}>Премахни</button>
     </>
   );
 }
