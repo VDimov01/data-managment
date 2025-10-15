@@ -113,7 +113,33 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
   }, [isEdit, initial?.compare_id]);
 
   const addEdition = (e) => {
-    const id = Number(e.target.value);
+    const val = e.target.value;
+    if (!val) return;
+
+    if (val === "__ALL__") {
+      // Add all editions from the loaded list, deduped
+      const existing = new Set(selected.map(s => s.edition_id));
+      const toAdd = (listEditions || [])
+        .filter(ed => !existing.has(ed.edition_id))
+        .map(ed => ({
+          edition_id: ed.edition_id,
+          edition_name: ed.name,
+          year: ed.year,
+          model_name: ed.model_name || "",
+          make_name: ed.make_name || ""
+        }));
+
+      if (toAdd.length > 0) {
+        setSelected(prev => [...prev, ...toAdd]);
+      }
+
+      // reset pickers like your original flow
+      setMakeId(""); setModelId(""); setYearId(""); setListEditions([]);
+      return;
+    }
+
+    // Single edition add (original behavior)
+    const id = Number(val);
     if (!id) return;
     const exists = selected.some(x => x.edition_id === id);
     if (exists) return;
@@ -165,106 +191,109 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
     }
   };
 
-      return (
-        <div className="cmp-form">
-          <div className="cmp-grid">
-            <div className="cmp-field cmp-col-2">
-              <label>Заглавие *</label>
-              <input className="input" value={title} onChange={(e)=>setTitle(e.target.value)} />
-            </div>
+  return (
+    <div className="cmp-form">
+      <div className="cmp-grid">
+        <div className="cmp-field cmp-col-2">
+          <label>Заглавие *</label>
+          <input className="input" value={title} onChange={(e)=>setTitle(e.target.value)} />
+        </div>
 
-            <div className="cmp-field">
-              <label>Език</label>
-              <select className="select" value={language} onChange={e=>setLanguage(e.target.value)}>
-                <option value="bg">BG</option>
-                <option value="en">EN</option>
-              </select>
-            </div>
+        <div className="cmp-field">
+          <label>Език</label>
+          <select className="select" value={language} onChange={e=>setLanguage(e.target.value)}>
+            <option value="bg">BG</option>
+            <option value="en">EN</option>
+          </select>
+        </div>
 
-            <div className="cmp-field">
-              <label>Покажи само разликите</label>
-              <label className="cmp-check">
-                <input type="checkbox" checked={onlyDiff} onChange={()=>setOnlyDiff(v=>!v)} />
-                <span>Покажи само различаващите се атрибути</span>
-              </label>
-            </div>
+        <div className="cmp-field">
+          <label>Покажи само разликите</label>
+          <label className="cmp-check">
+            <input type="checkbox" checked={onlyDiff} onChange={()=>setOnlyDiff(v=>!v)} />
+            <span>Покажи само различаващите се атрикули</span>
+          </label>
+        </div>
 
-            <div className="cmp-field cmp-col-2">
-              <label>Описание</label>
-              <textarea className="input" rows={2} value={description} onChange={e=>setDescription(e.target.value)} />
-            </div>
+        <div className="cmp-field cmp-col-2">
+          <label>Описание</label>
+          <textarea className="input" rows={2} value={description} onChange={e=>setDescription(e.target.value)} />
+        </div>
 
-            <div className="cmp-field">
-              <label>Snapshot</label>
-              <label className="cmp-check">
-                <input type="checkbox" checked={snapshot} onChange={()=>setSnapshot(v=>!v)} />
-                <span>Замрази данните в сравнението</span>
-              </label>
-            </div>
+        <div className="cmp-field">
+          <label>Snapshot</label>
+          <label className="cmp-check">
+            <input type="checkbox" checked={snapshot} onChange={()=>setSnapshot(v=>!v)} />
+            <span>Замрази данните в сравнението</span>
+          </label>
+        </div>
+      </div>
+
+      <fieldset className="cmp-fieldset">
+        <legend>Добави издания</legend>
+
+        <div className="cmp-grid">
+          <div className="cmp-field">
+            <label>Марка</label>
+            <select className="select" value={makeId} onChange={(e)=>setMakeId(e.target.value)}>
+              <option value="">Изберете марка…</option>
+              {makes.map(m => <option key={m.make_id} value={m.make_id}>{m.name}</option>)}
+            </select>
           </div>
 
-          <fieldset className="cmp-fieldset">
-            <legend>Добави издания</legend>
+          <div className="cmp-field">
+            <label>Модел</label>
+            <select className="select" value={modelId} onChange={(e)=>setModelId(e.target.value)} disabled={!makeId}>
+              <option value="">Изберете модел…</option>
+              {models.map(m => <option key={m.model_id} value={m.model_id}>{m.name}</option>)}
+            </select>
+          </div>
 
-            <div className="cmp-grid">
-              <div className="cmp-field">
-                <label>Марка</label>
-                <select className="select" value={makeId} onChange={(e)=>setMakeId(e.target.value)}>
-                  <option value="">Изберете марка…</option>
-                  {makes.map(m => <option key={m.make_id} value={m.make_id}>{m.name}</option>)}
-                </select>
-              </div>
+          <div className="cmp-field">
+            <label>Година</label>
+            <select className="select" value={yearId} onChange={(e)=>setYearId(e.target.value)} disabled={!modelId}>
+              <option value="">Изберете година…</option>
+              {years.map(y => <option key={y.model_year_id} value={y.model_year_id}>{y.year}</option>)}
+            </select>
+          </div>
 
-              <div className="cmp-field">
-                <label>Модел</label>
-                <select className="select" value={modelId} onChange={(e)=>setModelId(e.target.value)} disabled={!makeId}>
-                  <option value="">Изберете модел…</option>
-                  {models.map(m => <option key={m.model_id} value={m.model_id}>{m.name}</option>)}
-                </select>
-              </div>
-
-              <div className="cmp-field">
-                <label>Година</label>
-                <select className="select" value={yearId} onChange={(e)=>setYearId(e.target.value)} disabled={!modelId}>
-                  <option value="">Изберете година…</option>
-                  {years.map(y => <option key={y.model_year_id} value={y.model_year_id}>{y.year}</option>)}
-                </select>
-              </div>
-
-              <div className="cmp-field">
-                <label>Издание</label>
-                <select className="select" onChange={addEdition} disabled={!yearId}>
-                  <option value="">Добави издание…</option>
-                  {listEditions.map(ed => (
-                    <option key={ed.edition_id} value={ed.edition_id}>
-                      {ed.name} ({ed.year})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="cmp-basket">
-              {selected.length === 0 && <div className="text-muted">Все още няма избрани издания.</div>}
-              {selected.map(e => (
-                <div key={e.edition_id} className="cmp-chip">
-                  <span>
-                    {e.make_name ? `${e.make_name} ` : ""}
-                    {e.model_name ? `${e.model_name} ` : ""}
-                    {e.year} — {e.edition_name}
-                  </span>
-                  <button type="button" className="cmp-chip-x" onClick={() => removeEdition(e.edition_id)} title="Премахни">×</button>
-                </div>
+          <div className="cmp-field">
+            <label>Издание</label>
+            <select className="select" onChange={addEdition} disabled={!yearId}>
+              <option value="">Добави издание…</option>
+              {/* “All” option appears when we have editions for the chosen year */}
+              {listEditions.length > 0 && (
+                <option value="__ALL__">Всички</option>
+              )}
+              {listEditions.map(ed => (
+                <option key={ed.edition_id} value={ed.edition_id}>
+                  {ed.name} ({ed.year})
+                </option>
               ))}
-            </div>
-          </fieldset>
-
-          <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
-            <button className="btn btn-primary" type="button" onClick={save}>
-              {isEdit ? "Запази промените" : "Създай сравнение"}
-            </button>
+            </select>
           </div>
         </div>
-      );
 
+        <div className="cmp-basket">
+          {selected.length === 0 && <div className="text-muted">Все още няма избрани издания.</div>}
+          {selected.map(e => (
+            <div key={e.edition_id} className="cmp-chip">
+              <span>
+                {e.make_name ? `${e.make_name} ` : ""}
+                {e.model_name ? `${e.model_name} ` : ""}
+                {e.year} — {e.edition_name}
+              </span>
+              <button type="button" className="cmp-chip-x" onClick={() => removeEdition(e.edition_id)} title="Премахни">×</button>
+            </div>
+          ))}
+        </div>
+      </fieldset>
+
+      <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
+        <button className="btn btn-primary" type="button" onClick={save}>
+          {isEdit ? "Запази промените" : "Създай сравнение"}
+        </button>
+      </div>
+    </div>
+  );
 }
