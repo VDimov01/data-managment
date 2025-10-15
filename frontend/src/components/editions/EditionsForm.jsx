@@ -577,8 +577,8 @@ const submitSpecs = async (e) => {
     return alert(data.error || "Неуспешно запазване на PDF");
   }
 
-  setNotices([`Saved JSON+EAV successfully (${eavNumeric.length} numeric, ${eavBoolean.length} boolean, ${Object.keys(json.attributes).length} JSON).`]);
-  alert("Saved.");
+  setNotices([`Запазени JSON+EAV успешно (${eavNumeric.length} numeric, ${eavBoolean.length} boolean, ${Object.keys(json.attributes).length} JSON).`]);
+  alert("Запазени.");
   if (typeof onSaved === "function") onSaved({ editionId });
 
   // Suppose `edition_id` is known after save
