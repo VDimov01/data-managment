@@ -1,31 +1,57 @@
-.dashboard-container {
-  padding: 20px;
-}
+.dashboard-container { padding: 20px; }
 
-.tab-buttons {
-  margin-bottom: 20px;
+/* Shared tab bar */
+.tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  padding-bottom: 8px;
+  margin: 8px 0 16px;             /* <- Adds breathing room from content below */
+  overflow-x: auto;               /* mobile: scroll if overflow */
+  -webkit-overflow-scrolling: touch;
 }
-
-.tab-button {
-  margin-right: 10px;
-  padding: 8px 16px;
+.tabs::-webkit-scrollbar { height: 6px; }
+.tabs::-webkit-scrollbar-thumb {
+  background: var(--control-border, #d1d5db);
   border-radius: 6px;
-  border: none;
+}
+
+/* Individual tab button */
+.tab {
+  appearance: none;
+  border: 1px solid var(--control-border, #d1d5db);
+  background: var(--surface, #fff);
+  color: var(--text, #111827);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font: inherit;
   cursor: pointer;
-  background-color: #f0f0f0;
-  color: #000;
-  transition: 0.2s;
+  white-space: nowrap;
+  transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+.tab:hover { background: var(--surface-2, #f9fafb); }
+.tab.btn-active {
+  background: color-mix(in oklab, var(--primary, #2563eb), var(--surface, #fff) 88%);
+  border-color: var(--primary, #2563eb);
+  color: var(--primary-contrast, #0f172a);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #2563eb), transparent 85%);
 }
 
-.tab-button.active {
-  background-color: #2196f3;
-  color: #fff;
+/* Optional: Dark theme tweaks */
+[data-theme="dark"] .tabs { border-color: var(--border, #374151); }
+[data-theme="dark"] .tab {
+  background: var(--surface, #111827);
+  color: var(--text, #e5e7eb);
+  border-color: var(--control-border, #374151);
+}
+[data-theme="dark"] .tab:hover { background: var(--surface-2, #1f2937); }
+[data-theme="dark"] .tab.btn-active {
+  background: color-mix(in oklab, var(--primary, #3b82f6), var(--surface, #111827) 65%);
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary-contrast, #ffffff);
 }
 
-.tab-button:hover:not(.active) {
-  background-color: #ddd;
-}
-
+/* Keep your logout button */
 .logout-button {
   margin-top: 20px;
   padding: 8px 16px;

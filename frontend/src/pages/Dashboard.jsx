@@ -29,18 +29,23 @@ export default function Dashboard() {
       <h1>Добре дошъл, {user.name}!</h1>
 
 
-      {/* Tab Buttons */}
-      <div className="tab-buttons">
-        {["Издания", "Склад", "Клиенти", "Договори", "Брошури", "Сравнения"].map((tab) => (
-          <button
-            key={tab}
-            className={`tab-button ${activeTab === tab ? "active" : ""}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
+
+    {/* Tab Buttons */}
+    <div className="tabs" role="tablist" aria-label="Dashboard sections">
+      {["Издания", "Склад", "Клиенти", "Договори", "Брошури", "Сравнения"].map((tab) => (
+        <button
+          key={tab}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === tab}
+          className={"tab" + (activeTab === tab ? " btn-active" : "")}
+          onClick={() => setActiveTab(tab)}
+        >
+          {tab}
+        </button>
+      ))}
+    </div>
+
 
       {/* Sections */}
       {activeTab === "Издания" && <CarsSection />}
