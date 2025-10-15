@@ -958,7 +958,7 @@ function Row({ r, langBg, enumOptions = {}, onChangeValue, onRemove }) {
           </button>
           */}
         </div>
-        <div style={{ fontSize:12, color:'#666' }}>{r.code}</div>
+        <div style={{ fontSize:12}} className="text-muted">{r.code}</div>
 
         {/* optional annotation from backend */}
         {r.annotation ? (
@@ -982,8 +982,8 @@ function Row({ r, langBg, enumOptions = {}, onChangeValue, onRemove }) {
 {r.data_type === 'boolean' ? (
   <select value={String(r.value ?? '')} onChange={e => onChangeValue(e.target.value)}>
     <option value="">(null)</option>
-    <option value="true">true</option>
-    <option value="false">false</option>
+    <option value="true">да</option>
+    <option value="false">Не</option>
   </select>
 ) : r.data_type === 'enum' && Array.isArray(enumOptions[r.code]) ? (
   <select
