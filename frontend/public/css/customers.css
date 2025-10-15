@@ -1,214 +1,191 @@
-/* Container */
-.cust-wrap {
-  display: flex;
-  flex-direction: column;
+/* --- Keep the tabs on one line next to the search --- */
+.cust-wrap .toolbar-row {
+  display: flex;            /* ensure row layout inside your toolbar cell */
+  align-items: center;
   gap: 12px;
-  padding: 12px;
 }
 
-/* Toolbar */
-.cust-toolbar {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  align-items: center;
-}
-.cust-toolbar-left {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.cust-toolbar-right {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.cust-input {
-  flex: 1;
+/* search grows, tabs don't */
+.cust-wrap .toolbar-row .input-search {
+  flex: 1 1 auto;
   min-width: 220px;
-  padding: 8px 10px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
 }
 
-.cust-tabs {
-  display: inline-flex;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  overflow: hidden;
-}
-.cust-tab {
-  padding: 8px 12px;
-  background: #fff;
-  border: none;
-  border-right: 1px solid #e5e7eb;
-  cursor: pointer;
-}
-.cust-tab:last-child { border-right: none; }
-.cust-tab.active {
-  background: #eef6ff;
-  font-weight: 700;
-}
-
-/* Select & Buttons */
-.cust-select {
-  padding: 8px 10px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-}
-.cust-btn {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  background: #fff;
-  cursor: pointer;
-}
-.cust-btn.primary {
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
-}
-.cust-btn.danger {
-  background: #ef4444;
-  color: #fff;
-  border-color: #ef4444;
-}
-.cust-icon-btn {
-  border: none;
-  background: transparent;
-  font-size: 20px;
-  cursor: pointer;
-}
-
-/* Messages */
-.cust-msg { padding: 10px; color: #444; }
-.cust-msg.error { color: #b91c1c; }
-
-/* Table */
-.cust-table-wrap {
-  overflow-x: auto;
-  border: 1px solid #eee;
-  border-radius: 10px;
-}
-.cust-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-.cust-table th, .cust-table td {
-  border-bottom: 1px solid #f2f2f2;
-  padding: 10px;
-  text-align: left;
-  vertical-align: top;
-  white-space: nowrap;
-}
-.cust-table th { background: #fafafa; }
-.cust-empty {
-  text-align: center; color: #777;
-}
-.cust-name { font-weight: 600; }
-.cust-sub { color: #666; font-size: 12px; }
-.cust-uuid { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12px; }
-
-/* Badges */
-.badge {
-  display: inline-block;
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-}
-.badge-company { background: #fff7ed; border-color: #fed7aa; }
-.badge-indiv { background: #eff6ff; border-color: #bfdbfe; }
-
-/* Actions */
-.cust-actions {
+/* the tab button group stays on one line; scroll if too many */
+.cust-wrap .toolbar-row .btn-row {
+  flex: 0 0 auto;
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-/* Footer / Pager */
-.cust-foot { font-size: 12px; color: #666; padding: 8px; }
-.cust-pager {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-}
-.cust-pager-text { color: #444; }
-
-/* Modal */
-.cust-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(3, 7, 18, 0.45);
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  z-index: 1000;
-}
-.cust-modal {
-  width: 100%;
-  max-width: 880px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-  overflow: hidden;
-}
-.cust-modal.small { max-width: 480px; }
-
-.cust-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border-bottom: 1px solid #eee;
-}
-
-.cust-form {
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.cust-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.cust-field input, .cust-field select, .cust-field textarea {
-  padding: 8px 10px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-}
-.cust-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-.cust-check {
-  display: inline-flex;
-  align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;        /* <- no wrapping */
+  overflow-x: auto;         /* <- if not enough space, allow horizontal scroll */
+  -webkit-overflow-scrolling: touch;
 }
+.cust-wrap .toolbar-row .btn-row .btn { white-space: nowrap; }
+
+/* optional tiny scrollbar so it doesn't look ugly */
+.cust-wrap .toolbar-row .btn-row::-webkit-scrollbar { height: 8px; }
+.cust-wrap .toolbar-row .btn-row::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+}
+
+/* --- Badges: fix contrast in light & dark --- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid var(--control-border);
+}
+
+/* Light theme baseline (backgrounds are gentle tints over surface) */
+.badge-company {
+  background: color-mix(in oklab, var(--accent), var(--surface) 85%);
+  border-color: color-mix(in oklab, var(--accent), var(--surface) 65%);
+  color: var(--text);
+}
+.badge-indiv {
+  background: color-mix(in oklab, var(--primary), var(--surface) 85%);
+  border-color: color-mix(in oklab, var(--primary), var(--surface) 65%);
+  color: var(--text);
+}
+
+/* Dark theme: deepen the tint so light text remains readable */
+@media (prefers-color-scheme: dark) {
+  .badge-company {
+    background: color-mix(in oklab, var(--accent), var(--surface) 25%);
+    border-color: color-mix(in oklab, var(--accent), var(--surface) 40%);
+    color: var(--text);
+  }
+  .badge-indiv {
+    background: color-mix(in oklab, var(--primary), var(--surface) 25%);
+    border-color: color-mix(in oklab, var(--primary), var(--surface) 40%);
+    color: var(--text);
+  }
+}
+
+/* Manual override if you use data-theme */
+[data-theme="dark"] .badge-company {
+  background: color-mix(in oklab, var(--accent), var(--surface) 25%);
+  border-color: color-mix(in oklab, var(--accent), var(--surface) 40%);
+  color: var(--text);
+}
+[data-theme="dark"] .badge-indiv {
+  background: color-mix(in oklab, var(--primary), var(--surface) 25%);
+  border-color: color-mix(in oklab, var(--primary), var(--surface) 40%);
+  color: var(--text);
+}
+
+/* Customer form layout (scoped) */
+.cust-form { display: grid; gap: 10px; }
 
 .cust-grid {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+}
+.cust-field { display: grid; gap: 6px; }
+.cust-row { display: flex; align-items: center; gap: 10px; }
+
+.cust-check { display: inline-flex; align-items: center; gap: 8px; }
+
+/* Responsive: collapse the 3-col grids progressively */
+@media (max-width: 960px) {
+  .cust-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .cust-grid { grid-template-columns: 1fr; }
 }
 
-/* Errors */
-.cust-err { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; padding: 8px 10px; border-radius: 8px; }
 
-/* Responsive */
+/* ================== Mobile/Responsive Tweaks (append) ================== */
+
+/* Table container: enable momentum scroll on small screens */
+.cust-wrap .table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.cust-uuid { word-break: break-word; }
+
+/* Toolbar: stack nicely under ~900px */
 @media (max-width: 900px) {
-  .cust-toolbar { grid-template-columns: 1fr; }
-  .cust-grid { grid-template-columns: 1fr; }
-  .cust-table th, .cust-table td { white-space: normal; }
+  .cust-wrap .toolbar {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1fr; /* stack left/right blocks */
+  }
+  .cust-wrap .toolbar-row {
+    flex-wrap: wrap;           /* allow wrapping inside the row */
+  }
+  .cust-wrap .toolbar .input-search {
+    min-width: 0;
+    flex: 1 1 100%;            /* search takes full line when needed */
+  }
+}
+
+/* Tighten table typography/padding and stack pager */
+@media (max-width: 760px) {
+  .cust-wrap .table { font-size: 13px; }
+  .cust-wrap .table td,
+  .cust-wrap .table th { padding: 8px 10px; }
+
+  .cust-wrap .panel-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .cust-wrap .results { text-align: center; }
+}
+
+/* <= 720px: hide lower-value columns first (6=Град, 7=Активен) */
+@media (max-width: 720px) {
+  .cust-wrap table tr > *:nth-child(6),
+  .cust-wrap table tr > *:nth-child(7) { display: none; }
+}
+
+/* <= 580px: also hide Email (4) and UUID (8); keep Name/Type/Phone/Actions */
+@media (max-width: 580px) {
+  .cust-wrap table tr > *:nth-child(4),
+  .cust-wrap table tr > *:nth-child(8) { display: none; }
+
+  /* action buttons can wrap without exploding the row */
+  .cust-wrap .btn-row { flex-wrap: wrap; gap: 6px; }
+}
+
+/* Optional: switch to labeled “card” rows on tiny phones.
+   Requires you to add data-th="Колона" on each <td>. */
+@media (max-width: 560px) {
+  .cust-wrap thead { display: none; }
+  .cust-wrap tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* two columns of labeled fields */
+    gap: 6px 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cust-wrap tbody td {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    align-items: baseline;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+  }
+  .cust-wrap tbody td::before {
+    content: attr(data-th);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  /* Actions row spans full width at bottom */
+  .cust-wrap tbody td:last-child { grid-column: 1 / -1; }
+}
+
+/* Extra-small phones: slightly smaller badges */
+@media (max-width: 420px) {
+  .badge { padding: 2px 6px; font-weight: 600; }
 }

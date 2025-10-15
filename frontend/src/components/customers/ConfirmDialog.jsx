@@ -1,19 +1,31 @@
-export default function ConfirmDialog({ title = "Are you sure?", message, onCancel, onConfirm }) {
+import { useId } from "react";
+import Modal from "../Modal"; // adjust the path
+
+export default function ConfirmDialog({
+  open = false,
+  title = "Потвърждение",
+  message = "",
+  onCancel,
+  onConfirm,
+}) {
+  const descId = useId();
+
   return (
-    <div className="cust-modal-overlay" onMouseDown={(e) => { if (e.target.classList.contains("cust-modal-overlay")) onCancel?.(); }}>
-      <div className="cust-modal small" role="dialog" aria-modal="true">
-        <div className="cust-modal-header">
-          <h3>{title}</h3>
-          <button className="cust-icon-btn" onClick={onCancel} aria-label="Close">×</button>
-        </div>
-        <div className="cust-confirm-body">
-          <p>{message}</p>
-        </div>
-        <div className="cust-actions">
-          <button className="cust-btn" onClick={onCancel}>Cancel</button>
-          <button className="cust-btn danger" onClick={onConfirm}>Delete</button>
-        </div>
+    <Modal open={open} title={title} onClose={onCancel} maxWidth="min(480px, 95vw)">
+      <div aria-describedby={descId}>
+        <p id={descId} className="text-muted" style={{ margin: "0 0 12px" }}>
+          {message}
+        </p>
       </div>
-    </div>
+
+      <div className="btn-row" style={{ justifyContent: "flex-end", marginTop: 8 }}>
+        <button type="button" className="btn" onClick={onCancel}>
+          Отказ
+        </button>
+        <button type="button" className="btn btn-danger" onClick={onConfirm}>
+          Изтрий
+        </button>
+      </div>
+    </Modal>
   );
 }

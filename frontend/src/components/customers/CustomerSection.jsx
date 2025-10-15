@@ -3,6 +3,7 @@ import { listCustomers, createCustomer, updateCustomer, deleteCustomer } from ".
 import CustomerList from "./CustomerList";
 import CustomerForm from "./CustomerForm";
 import ConfirmDialog from "./ConfirmDialog";
+import Modal from '../Modal';
 import { api } from "../../services/api";
 
 export default function CustomerSection() {
@@ -86,7 +87,7 @@ export default function CustomerSection() {
     setConfirm({
       open: true,
       title: "Изтриване на клиент?",
-      message: `Това ще изтрие постоянно "${row.display_name || (row.company_name || `${row.first_name || ""} ${row.last_name || ""}`)}".`,
+      message: `Това ще изтрие постоянно за "${row.display_name || (row.company_name || `${row.first_name || ""} ${row.last_name || ""}`)}".`,
       onConfirm: async () => {
         try {
           await deleteCustomer(row.customer_id);
@@ -117,90 +118,115 @@ export default function CustomerSection() {
   };
 
   return (
-    <div className="cust-wrap">
-      <div className="cust-toolbar">
-        <div className="cust-toolbar-left">
-          <input
-            className="cust-input"
-            placeholder="Търсене по име, имейл, телефон, град, UUID…"
-            value={q}
-            onChange={(e) => { setQ(e.target.value); setPage(1); }}
-          />
-          <div className="cust-tabs">
-            {["Всички","Индивидуални лица","Фирми"].map(t => (
-              <button
-                key={t}
-                className={`cust-tab ${typeTab === t ? "active" : ""}`}
-                onClick={() => setTypeTab(t)}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="cust-toolbar-right">
-          <select
-            className="cust-select"
-            value={limit}
-            onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-            title="Rows per page"
-          >
-            {[10,20,50,100].map(n => <option key={n} value={n}>{n} / страница</option>)}
-          </select>
-          <button className="cust-btn primary" onClick={openCreate}>Добави клиент</button>
+  <div className="cust-wrap">
+    {/* Toolbar */}
+    <div className="toolbar">
+      <div className="toolbar-row">
+        <input
+          className="input input-search"
+          placeholder="Търсене по име, имейл, телефон, град, UUID…"
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setPage(1); }}
+        />
+        <div className="btn-row">
+          {["Всички","Индивидуални лица","Фирми"].map(t => (
+            <button
+              key={t}
+              type="button"
+              className={"btn btn-ghost" + (typeTab === t ? " btn-active" : "")}
+              onClick={() => setTypeTab(t)}
+            >
+              {t}
+            </button>
+          ))}
         </div>
       </div>
 
-      {loading && <div className="cust-msg">Зареждане на клиенти…</div>}
-      {err && <div className="cust-msg error">{err}</div>}
+      <div className="toolbar-row">
+        <select
+          className="select"
+          value={limit}
+          onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+          title="Rows per page"
+        >
+          {[10,20,50,100].map(n => <option key={n} value={n}>{n} / страница</option>)}
+        </select>
 
-      {!loading && !err && (
-        <>
-          <CustomerList
-            rows={filtered}
-            page={page}
-            limit={limit}
-            total={total}
-            totalPages={totalPages}
-            onEdit={openEdit}
-            onDelete={onDelete}
-            onCopyLink={copyPublicLink}
-          />
+        <button className="btn btn-primary" type="button" onClick={openCreate}>
+          Добави клиент
+        </button>
+      </div>
+    </div>
 
-          <div className="cust-pager">
-            <button
-              className="cust-btn"
-              disabled={page <= 1}
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-            >Предишна</button>
-            <span className="cust-pager-text">Страница {page} от {totalPages}</span>
-            <button
-              className="cust-btn"
-              disabled={page >= totalPages}
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            >Следваща</button>
-          </div>
-        </>
-      )}
+    {/* Messages */}
+    {loading && <div className="text-muted">Зареждане на клиенти…</div>}
+    {err && <div className="text-danger">{err}</div>}
 
-      {/* Modal: Create/Edit */}
-      {openForm && (
+    {/* List + Pager */}
+    {!loading && !err && (
+      <>
+        <CustomerList
+          rows={filtered}
+          page={page}
+          limit={limit}
+          total={total}
+          totalPages={totalPages}
+          onEdit={openEdit}
+          onDelete={onDelete}
+          onCopyLink={copyPublicLink}
+        />
+
+        <div className="panel-footer">
+          <button
+            className="page-btn"
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+          >
+            Предишна
+          </button>
+
+          <span className="results">Страница {page} от {totalPages}</span>
+
+          <button
+            className="page-btn"
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+          >
+            Следваща
+          </button>
+        </div>
+      </>
+    )}
+
+    {/* Modal: Create/Edit */}
+    {openForm && (
+      <Modal
+        open={openForm}
+        title={editing ? "Редактирай информация за клиент" : "Добави клиент"}
+        onClose={() => { setOpenForm(false); setEditing(null); }}
+      >
         <CustomerForm
           onClose={() => { setOpenForm(false); setEditing(null); }}
           onSave={onSave}
           editCustomer={editing}
-        />
-      )}
+          />
+      </Modal>
+    )}
 
-      {/* Confirm dialog */}
-      {confirm.open && (
-        <ConfirmDialog
-          title={confirm.title}
-          message={confirm.message}
-          onCancel={() => setConfirm({ open:false, onConfirm:null, title:"", message:"" })}
-          onConfirm={confirm.onConfirm}
-        />
-      )}
-    </div>
-  );
+    {/* Confirm dialog */}
+    {confirm.open && (
+      <ConfirmDialog
+        open={confirm.open}
+        title={confirm.title}
+        message={confirm.message}
+        onCancel={() => setConfirm({ open:false, onConfirm:null, title:"", message:"" })}
+        onConfirm={confirm.onConfirm}
+      />
+    )}
+
+  </div>
+);
+
 }
