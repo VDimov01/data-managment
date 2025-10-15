@@ -93,7 +93,7 @@ async function regenerateSpecsForEdition(apiBase, edition_id) {
     credentials: 'include'
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error || 'Spec pack generation failed');
+  if (!res.ok) throw new Error(data?.error || 'Неуспешно генериране на PDF');
   return data;
 }
 
@@ -272,7 +272,6 @@ const loadEditionAttributes = async (edId) => {
   const jsonAttrs = specs?.json?.attributes || {};
   const jsonBG    = specs?.json_i18n?.bg?.attributes || {};
   const enums     = specs?.enums || {};
-  console.log('Loaded specs', { eavNum, eavBool, jsonAttrs, jsonBG, enums });
 
   // enum (Drive)
   if (typeof setDriveType === 'function') setDriveType(enums.DRIVE_TYPE || '');
@@ -575,7 +574,7 @@ const submitSpecs = async (e) => {
 
   if (!r.ok) {
     console.error(data);
-    return alert(data.error || "Failed to save specs");
+    return alert(data.error || "Неуспешно запазване на PDF");
   }
 
   setNotices([`Saved JSON+EAV successfully (${eavNumeric.length} numeric, ${eavBoolean.length} boolean, ${Object.keys(json.attributes).length} JSON).`]);
@@ -583,11 +582,11 @@ const submitSpecs = async (e) => {
   if (typeof onSaved === "function") onSaved({ editionId });
 
   // Suppose `edition_id` is known after save
-if (window.confirm('Да регенерирам ли Spec Pack за това издание с обновените параметри?')) {
+if (window.confirm('Да регенерирам ли PDF за спецификациите на това издание с обновените параметри?')) {
   try {
     const data = await regenerateSpecsForEdition(apiBase, editionId);
     const url = data?.pdf?.signedUrl || data?.signedUrl;
-    if (url && window.confirm('Spec Pack е готов. Да го отворя ли?')) {
+    if (url && window.confirm('PDF за спецификациите е готов. Да го отворя ли?')) {
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   } catch (e) {
