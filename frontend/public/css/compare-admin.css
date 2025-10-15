@@ -1,109 +1,49 @@
-/* Container & toolbar */
-.cmp-container { padding: 12px; }
-.cmp-toolbar { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.cmp-toolbar input { flex:1; padding:8px; border:1px solid #ddd; border-radius:6px; }
-.cmp-toolbar-right { display:flex; gap:8px; align-items:center; }
-.cmp-toolbar-right select, .cmp-toolbar-right button { padding:8px 10px; border:1px solid #ddd; border-radius:6px; }
-.cmp-primary { background:#1e66f5; border-color:#1e66f5; color:#fff; }
-.cmp-danger { background:#e03131; border-color:#e03131; color:#fff; }
+/* Container spacing */
+.cmp-container { display: grid; gap: 12px; }
 
-.cmp-muted { color:#666; }
-.cmp-error { color:crimson; }
+/* Preview table inside modal */
+.cmp-preview { display: grid; gap: 10px; }
+.cmp-preview-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-/* Table */
-.cmp-table-wrap { overflow-x:auto; }
-.cmp-table { border-collapse:collapse; width:100%; }
-.cmp-table th, .cmp-table td { border-bottom:1px solid #eee; padding:8px; text-align:left; }
-.cmp-actions { display:flex; gap:8px; }
+.cmp-attr-name { font-weight: 700; }
+.cmp-attr-meta { color: var(--muted); font-size: 12px; }
 
-/* Pagination */
-.cmp-pages { display:flex; gap:6px; align-items:center; justify-content:center; padding:8px 0; }
-.cmp-pages button { padding:4px 8px; border:1px solid #ddd; border-radius:6px; }
-.cmp-pages button.on { background:#eef6ff; font-weight:700; }
-.cmp-ellipsis { color:#777; }
+/* ----- Compare Form layout ----- */
+.cmp-form { display: grid; gap: 12px; }
 
-/* Form css */
-
-/* Container */
-.cmp-form {
-  display: block;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-/* Generic grid */
 .cmp-grid {
-  display: grid;
-  gap: 12px;
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+}
+.cmp-field { display: grid; gap: 6px; }
+.cmp-col-2 { grid-column: span 2; }
+
+@media (max-width: 960px) {
+  .cmp-grid { grid-template-columns: repeat(2, 1fr); }
+  .cmp-col-2 { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .cmp-grid { grid-template-columns: 1fr; }
 }
 
-/* 2 columns for the top section (title/lang/diffs/desc/snapshot) */
-.cmp-form > .cmp-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-/* 4 columns inside the "Add editions" fieldset (make/model/year/edition) */
-.cmp-fieldset .cmp-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-/* Responsive breakpoints */
-@media (max-width: 900px) {
-  .cmp-form > .cmp-grid { grid-template-columns: 1fr; }
-  .cmp-fieldset .cmp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 600px) {
-  .cmp-fieldset .cmp-grid { grid-template-columns: 1fr; }
-}
-
-/* Field wrapper */
-.cmp-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* Labels & inputs */
-.cmp-field > label {
-  font-size: 0.9rem;
-  color: #444;
-}
-.cmp-field input,
-.cmp-field select,
-.cmp-field textarea {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #dcdcdc;
-  border-radius: 8px;
-  background: #fff;
-  font: inherit;
-}
-.cmp-field input:focus,
-.cmp-field select:focus,
-.cmp-field textarea:focus {
-  outline: none;
-  border-color: #7da7ff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-
-/* Fieldset */
+/* Fieldset uses theme tokens */
 .cmp-fieldset {
-  border: 1px solid #eee;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 12px;
-  margin-top: 14px;
+  padding: 10px;
+  background: var(--surface);
 }
 .cmp-fieldset > legend {
-  padding: 0 8px;
-  color: #333;
-  font-weight: 600;
+  font-weight: 700;
+  padding: 0 6px;
 }
 
-/* Checkbox rows */
+/* Checkbox row */
 .cmp-check {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  user-select: none;
 }
 
 /* Basket of selected editions */
@@ -111,66 +51,65 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
+
+/* Chip */
 .cmp-chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #ddd;
-  border-radius: 999px;
   padding: 6px 10px;
-  background: #fafafa;
-  line-height: 1.1;
-}
-.cmp-chip button {
-  width: 22px;
-  height: 22px;
-  border: 1px solid #ccc;
   border-radius: 999px;
-  background: #fff;
-  cursor: pointer;
-  line-height: 20px;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in oklab, var(--accent), var(--surface) 60%);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  max-width: 100%;
 }
+.cmp-chip > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Actions */
-.cmp-actions-end {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 14px;
-}
-.cmp-primary {
-  background: #2563eb;
-  color: #fff;
+/* Chip close button */
+.cmp-chip-x {
+  appearance: none;
   border: 0;
-  border-radius: 8px;
-  padding: 8px 14px;
+  background: transparent;
   cursor: pointer;
+  line-height: 1;
+  font-weight: 700;
+  padding: 0 2px;
+  color: var(--text);
 }
-.cmp-primary:hover { background: #1e4fd8; }
+.cmp-chip-x:hover {
+  filter: brightness(1.1);
+}
 
-/* Minor helpers */
-.cmp-col-2 { grid-column: span 2; }
-.cmp-muted { color: #777; }
 
-/* Form css ends */
+/* ---------- Mobile column pruning for main list ---------- */
+/* Columns: 1:#, 2:Заглавие, 3:Само разлики, 4:Език, 5:Snapshot, 6:Създаден, 7:Действия */
 
-/* Preview */
-/* .cmp-preview { } */
-.cmp-preview-scroll { overflow-x:auto; }
-.cmp-attr-name { font-weight:600; }
-.cmp-attr-meta { font-size:12px; color:#666; }
+@media (max-width: 800px) {
+  /* Hide less critical first: Само разлики, Snapshot */
+  .cmp-container table tr > *:nth-child(3),
+  .cmp-container table tr > *:nth-child(5) { display: none; }
+}
 
-/* Attach list */
-.cmp-list { display:flex; flex-direction:column; gap:6px; }
-.cmp-row { display:flex; justify-content:space-between; align-items:center; border:1px solid #eee; border-radius:8px; padding:8px; }
-.cmp-row-title { font-weight:600; }
-.cmp-row-sub { font-size:12px; color:#666; }
+@media (max-width: 680px) {
+  /* Hide Език and Създаден */
+  .cmp-container table tr > *:nth-child(4),
+  .cmp-container table tr > *:nth-child(6) { display: none; }
+}
 
-/* Responsive */
-@media (max-width: 720px) {
-  .cmp-grid { grid-template-columns: 1fr; }
-  .cmp-col-2 { grid-column: span 1; }
-  .cmp-toolbar { flex-direction:column; align-items:stretch; }
-  .cmp-toolbar-right { justify-content:space-between; }
+/* Tighten on phones */
+@media (max-width: 760px) {
+  .cmp-container .table { font-size: 13px; }
+  .cmp-container .table td,
+  .cmp-container .table th { padding: 8px 10px; }
+}
+
+/* Toolbar responsive (leverages global .toolbar rules) */
+@media (max-width: 900px) {
+  .cmp-container .toolbar { display: grid; gap: 10px; grid-template-columns: 1fr; }
+  .cmp-container .toolbar-row { flex-wrap: wrap; }
+  .cmp-container .input-search { flex: 1 1 100%; min-width: 0; }
 }

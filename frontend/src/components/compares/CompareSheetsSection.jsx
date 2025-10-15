@@ -80,117 +80,128 @@ export default function CompareSheetsSection({ apiBase = "http://localhost:5000"
   };
 
   return (
-    <div className="cmp-container">
-      <div className="cmp-toolbar">
+  <div className="cmp-container">
+    {/* Toolbar */}
+    <div className="toolbar">
+      <div className="toolbar-row">
         <input
+          className="input input-search"
           placeholder="Търси по заглавие..."
           value={q}
           onChange={(e) => { setQ(e.target.value); setPage(1); }}
         />
-        <div className="cmp-toolbar-right">
-          <select value={limit} onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}>
-            {[10,20,50,100].map(n => <option key={n} value={n}>{n}/страница</option>)}
-          </select>
-          <button className="cmp-primary" onClick={onCreate}>+ Ново сравнение</button>
-        </div>
       </div>
-
-      {loading && <p className="cmp-muted">Зареждане...</p>}
-      {err && <p className="cmp-error">Грешка: {err}</p>}
-
-      {!loading && !err && (
-        <>
-          <div className="cmp-table-wrap">
-            <table className="cmp-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Заглавие</th>
-                  <th>Само разлики</th>
-                  <th>Език</th>
-                  <th>Snapshot</th>
-                  <th>Създаден</th>
-                  <th style={{width:220}}>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="cmp-muted">Няма сравнения.</td>
-                  </tr>
-                )}
-                {rows.map(r => (
-                  <tr key={r.compare_id}>
-                    <td>{r.compare_id}</td>
-                    <td>{r.title}</td>
-                    <td>{r.only_differences ? "Yes" : "No"}</td>
-                    <td>{r.language?.toUpperCase()}</td>
-                    <td>{r.is_snapshot ? "Snapshot" : "Live"}</td>
-                    <td>{r.created_at?.slice(0,19).replace('T',' ') || ""}</td>
-                    <td>
-                      <div className="cmp-actions">
-                        <button className="btn" onClick={() => onPreview(r)}>Преглед</button>
-                        <button className="btn" onClick={() => onOpenAttach(r)}>Прикрепи</button>
-                        <button className="btn" onClick={() => onEdit(r)}>Редактиране</button>
-                        <button className="cmp-danger" onClick={() => onDelete(r)}>Изтриване</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            onPrev={() => setPage(p => Math.max(1, p-1))}
-            onNext={() => setPage(p => Math.min(totalPages, p+1))}
-            onJump={(n) => setPage(n)}
-          />
-        </>
-      )}
-
-      {/* Create/Edit */}
-      <Modal
-        open={openForm}
-        title={editing ? `Редактирай сравнение #${editing.compare_id}` : "Създай сравнение между издания"}
-        onClose={() => setOpenForm(false)}
-        maxWidth={980}
-      >
-        <CompareForm
-          apiBase={apiBase}
-          initial={editing}
-          onSaved={() => { setOpenForm(false); load(); }}
-        />
-      </Modal>
-
-      {/* Preview */}
-      <Modal
-        open={openPreview}
-        title={previewData?.title || "Preview"}
-        onClose={() => { setOpenPreview(false); setPreviewData(null); }}
-        maxWidth={1100}
-      >
-        {previewData ? <ComparePreview data={previewData} /> : <p>Зареждане…</p>}
-      </Modal>
-
-      {/* Attach to customers */}
-      <Modal
-        open={openAttach}
-        title={attachFor ? `Закачи към клиенти — ${attachFor.title}` : "Закачи"}
-        onClose={() => { setOpenAttach(false); setAttachFor(null); }}
-        maxWidth={900}
-      >
-        {attachFor && (
-          <AttachCustomersPanelCompare
-            apiBase={apiBase}
-            compareId={attachFor.compare_id}
-          />
-        )}
-      </Modal>
+      <div className="toolbar-row">
+        <select
+          className="select"
+          value={limit}
+          onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+          title="Rows per page"
+        >
+          {[10,20,50,100].map(n => <option key={n} value={n}>{n}/страница</option>)}
+        </select>
+        <button className="btn btn-primary" onClick={onCreate}>+ Ново сравнение</button>
+      </div>
     </div>
-  );
+
+    {/* Messages */}
+    {loading && <p className="text-muted">Зареждане...</p>}
+    {err && <p className="text-danger">Грешка: {err}</p>}
+
+    {!loading && !err && (
+      <>
+        <div className="table-wrap">
+          <table className="table table-hover table-tight">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Заглавие</th>
+                <th>Само разлики</th>
+                <th>Език</th>
+                <th>Snapshot</th>
+                <th>Създаден</th>
+                <th style={{ width: 220 }}>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="center text-muted">Няма сравнения.</td>
+                </tr>
+              )}
+              {rows.map(r => (
+                <tr key={r.compare_id}>
+                  <td>{r.compare_id}</td>
+                  <td>{r.title}</td>
+                  <td>{r.only_differences ? "Да" : "Не"}</td>
+                  <td>{r.language?.toUpperCase()}</td>
+                  <td>{r.is_snapshot ? "Snapshot" : "Live"}</td>
+                  <td>{r.created_at?.slice(0,19).replace('T',' ') || ""}</td>
+                  <td>
+                    <div className="btn-row">
+                      <button className="btn" onClick={() => onPreview(r)}>Преглед</button>
+                      <button className="btn" onClick={() => onOpenAttach(r)}>Прикрепи</button>
+                      <button className="btn" onClick={() => onEdit(r)}>Редактиране</button>
+                      <button className="btn btn-danger" onClick={() => onDelete(r)}>Изтриване</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPrev={() => setPage(p => Math.max(1, p-1))}
+          onNext={() => setPage(p => Math.min(totalPages, p+1))}
+          onJump={(n) => setPage(n)}
+        />
+      </>
+    )}
+
+    {/* Create/Edit */}
+    <Modal
+      open={openForm}
+      title={editing ? `Редактирай сравнение #${editing.compare_id}` : "Създай сравнение между издания"}
+      onClose={() => setOpenForm(false)}
+      maxWidth={980}
+    >
+      <CompareForm
+        apiBase={apiBase}
+        initial={editing}
+        onSaved={() => { setOpenForm(false); load(); }}
+      />
+    </Modal>
+
+    {/* Preview */}
+    <Modal
+      open={openPreview}
+      title={previewData?.title || "Preview"}
+      onClose={() => { setOpenPreview(false); setPreviewData(null); }}
+      maxWidth={1100}
+    >
+      {previewData ? <ComparePreview data={previewData} /> : <p className="text-muted">Зареждане…</p>}
+    </Modal>
+
+    {/* Attach to customers */}
+    <Modal
+      open={openAttach}
+      title={attachFor ? `Закачи към клиенти — ${attachFor.title}` : "Закачи"}
+      onClose={() => { setOpenAttach(false); setAttachFor(null); }}
+      maxWidth={900}
+    >
+      {attachFor && (
+        <AttachCustomersPanelCompare
+          apiBase={apiBase}
+          compareId={attachFor.compare_id}
+        />
+      )}
+    </Modal>
+  </div>
+);
+
 }
 
 function ComparePreview({ data }) {
@@ -199,10 +210,10 @@ function ComparePreview({ data }) {
   return (
     <div className="cmp-preview">
       <div className="cmp-preview-scroll">
-        <table className="cmp-table">
+        <table className="table table-tight">
           <thead>
             <tr>
-              <th>Attribute</th>
+              <th>Характеристика</th>
               {editions.map(ed => (
                 <th key={ed.edition_id}>
                   {ed.make_name} {ed.model_name} {ed.year} — {ed.edition_name}
@@ -221,17 +232,13 @@ function ComparePreview({ data }) {
                 </td>
                 {editions.map(ed => {
                   const v = r.values?.[ed.edition_id] ?? null;
-                  return (
-                    <td key={ed.edition_id}>
-                      {formatVal(v, r.data_type, r.unit)}
-                    </td>
-                  );
+                  return <td key={ed.edition_id}>{formatVal(v, r.data_type, r.unit)}</td>;
                 })}
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={1 + editions.length} className="cmp-muted">Няма налични данни</td>
+                <td colSpan={1 + editions.length} className="center text-muted">Няма налични данни</td>
               </tr>
             )}
           </tbody>
@@ -240,6 +247,7 @@ function ComparePreview({ data }) {
     </div>
   );
 }
+
 
 function formatVal(v, dt, unit) {
   if (v == null) return "—";
@@ -264,20 +272,22 @@ function Pagination({ page, totalPages, onPrev, onNext, onJump }) {
   }
 
   return (
-    <div className="cmp-pages">
-      <button onClick={onPrev} disabled={page<=1}>Предишна</button>
-      {pages.map((p, i) => p === "…" ? (
-        <span key={`e-${i}`} className="cmp-ellipsis">…</span>
-      ) : (
-        <button
-          key={p}
-          onClick={() => onJump(p)}
-          className={p===page ? "on" : ""}
-        >
-          {p}
-        </button>
-      ))}
-      <button onClick={onNext} disabled={page>=totalPages}>Следваща</button>
+    <div className="pagination">
+      <button className="page-btn" onClick={onPrev} disabled={page<=1}>Предишна</button>
+      {pages.map((p, i) =>
+        p === "…" ? (
+          <span key={`e-${i}`} className="ellipsis">…</span>
+        ) : (
+          <button
+            key={p}
+            className={"page-btn" + (p===page ? " is-active" : "")}
+            onClick={() => onJump(p)}
+          >
+            {p}
+          </button>
+        )
+      )}
+      <button className="page-btn" onClick={onNext} disabled={page>=totalPages}>Следваща</button>
     </div>
   );
 }
