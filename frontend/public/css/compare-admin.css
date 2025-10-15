@@ -84,6 +84,27 @@
   filter: brightness(1.1);
 }
 
+/* Make action buttons sit side-by-side and wrap only if needed */
+.cmp-container .actions-col { width: 1%; } /* shrink-to-fit header */
+.cmp-container td.actions-cell { white-space: normal; }
+
+.cmp-container .btn-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* or flex-end if you prefer right-aligned */
+  gap: 8px;
+  flex-wrap: wrap;             /* stay on one line if space allows; wrap on small screens */
+}
+
+.cmp-container .btn-row .btn {
+  white-space: nowrap;         /* keep each button text on one line */
+}
+
+/* Optional: give a minimum width so they rarely wrap on tablets/desktops */
+@media (min-width: 900px) {
+  .cmp-container .actions-col { min-width: 360px; }
+}
+
 
 /* ---------- Mobile column pruning for main list ---------- */
 /* Columns: 1:#, 2:Заглавие, 3:Само разлики, 4:Език, 5:Snapshot, 6:Създаден, 7:Действия */
