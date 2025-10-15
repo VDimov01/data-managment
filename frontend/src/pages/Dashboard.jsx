@@ -53,7 +53,7 @@ export default function Dashboard() {
       {activeTab === "Склад" && <StorageSection />}
       {activeTab === "Клиенти" && <CustomerSection />}
       {activeTab === "Договори" && <ContractsSection />}
-      {activeTab === "Брошури" && <BrochuresSection />}
+      {activeTab === "Брошури" && <BrochuresSection apiBase={apiBase}/>}
       {activeTab === "Сравнения" && <CompareSheetsSection apiBase={apiBase} />}
 
       {/* Logout Button */}
