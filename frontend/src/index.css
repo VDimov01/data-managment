@@ -138,6 +138,56 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Layout */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.theme-toggle .switch-label {
+  font-size: 13px;
+  color: var(--text-muted, #6b7280);
+}
+
+/* Radix Switch */
+.switch-root {
+  width: 42px;
+  height: 24px;
+  background: var(--control-bg, var(--surface, #fff));
+  border: 1px solid var(--control-border, var(--border, #e5e7eb));
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color .2s, border-color .2s, opacity .2s;
+}
+.switch-root[data-state="checked"] {
+  background: color-mix(in oklab, var(--primary, #2563eb), var(--surface, #fff) 10%);
+  border-color: var(--primary, #2563eb);
+}
+.switch-root[data-disabled="true"] {
+  opacity: .7;
+  cursor: not-allowed;
+}
+
+.switch-thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  background: var(--surface, #fff);
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0,0,0,.1);
+  transition: transform .2s ease;
+  transform: translateX(3px);
+  will-change: transform;
+}
+.switch-root[data-state="checked"] .switch-thumb {
+  transform: translateX(21px);
+}
+
+/* Optional: smaller ghost button to match your style */
+.btn.small { padding: 6px 10px; font-size: 13px; }
+
+
 /* Example components */
 .card {
   background: var(--surface);
