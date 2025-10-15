@@ -1,6 +1,7 @@
 // frontend/src/components/contracts/HandoverTab.jsx
 import React from "react";
 import { api } from "../../services/api";
+import Modal from '../Modal';
 
 function fmtDateDisplay(isoish) {
   if (!isoish) return "—";
@@ -138,160 +139,158 @@ export default function HandoverTab({ apiBase, contract }) {
     }
   };
 
-  return (
-    <div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
-        <button className="btn" onClick={load} disabled={loading}>
-          {loading ? "…" : "Презареди"}
-        </button>
-        <button className="btn primary" onClick={createDrafts} disabled={creating || loading}>
-          {creating ? "Създаване…" : "Създай чернови (всички автомобили)"}
-        </button>
-      </div>
+      return (
+      <div>
+        <div className="toolbar-row" style={{ gap: 8, marginBottom: 10 }}>
+          <button className="btn" onClick={load} disabled={loading}>
+            {loading ? "…" : "Презареди"}
+          </button>
+          <button className="btn btn-primary" onClick={createDrafts} disabled={creating || loading}>
+            {creating ? "Създаване…" : "Създай чернови (всички автомобили)"}
+          </button>
+        </div>
 
-      {rows.length === 0 && <div className="muted">Няма създадени приемо-предавателни протоколи.</div>}
+        {rows.length === 0 && <div className="text-muted">Няма създадени приемо-предавателни протоколи.</div>}
 
-      {rows.map((row) => {
-        const isDraft = row.status === "draft";
-        return (
-          <div key={row.handover_record_id} className="card" style={{ marginBottom: 10 }}>
-            <div className="card-body">
-              <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                <div>
-                  <div style={{ fontWeight: 600 }}>
-                    {row.make_name} {row.model_name} {row.year ? `(${row.year})` : ""} — {row.edition_name}
+        {rows.map((row) => {
+          const isDraft = row.status === "draft";
+          return (
+            <div key={row.handover_record_id} className="card" style={{ marginBottom: 10 }}>
+              <div className="card-body">
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>
+                      {row.make_name} {row.model_name} {row.year ? `(${row.year})` : ""} — {row.edition_name}
+                    </div>
+                    <div className="text-muted">VIN: {row.vin || "—"}</div>
                   </div>
-                  <div className="muted">VIN: {row.vin || "—"}</div>
+                  <div>
+                    <span className="text-muted">Статус: </span>
+                    <span style={{ fontWeight: 700, textTransform: "uppercase" }}>
+                      {statusBG[row.status] || row.status}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="muted">Статус: </span>
-                  <span style={{ fontWeight: 700, textTransform: "uppercase" }}>
-                    {statusBG[row.status] || row.status}
-                  </span>
-                </div>
-              </div>
 
               {isDraft ? (
-                <>
-                  <div className="row">
-                    <div className="col">
-                      <label className="lbl">Дата на предаване</label>
-                      <input
-                        type="date"
-                        className="inp"
-                        value={toDateInputValue(row.handover_date)}
-                        onChange={(e) =>
-                          patchRowLocal(row.handover_record_id, { handover_date: e.target.value || null })
-                        }
-                        onBlur={(e) => doUpdate(row.handover_record_id, { handover_date: e.target.value || null })}
-                      />
-                    </div>
-                    <div className="col">
-                      <label className="lbl">Местоположение</label>
-                      <input
-                        type="text"
-                        className="inp"
-                        value={row.location || ""}
-                        onChange={(e) => patchRowLocal(row.handover_record_id, { location: e.target.value })}
-                        onBlur={(e) => doUpdate(row.handover_record_id, { location: e.target.value || null })}
-                      />
-                    </div>
-                    <div className="col">
-                      <label className="lbl">Пробег (км)</label>
-                      <input
-                        type="number"
-                        className="inp"
-                        min={0}
-                        value={row.odometer_km ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value || 0, 10));
-                          patchRowLocal(row.handover_record_id, { odometer_km: v === "" ? null : v });
-                        }}
-                        onBlur={(e) => {
-                          const v = e.target.value === "" ? null : Math.max(0, parseInt(e.target.value || 0, 10));
-                          doUpdate(row.handover_record_id, { odometer_km: v });
-                        }}
-                      />
-                    </div>
+              <>
+                {/* 3-up grid */}
+                <div className="handover-grid">
+                  <div>
+                    <label className="lbl">Дата на предаване</label>
+                    <input
+                      type="date"
+                      className="input"
+                      value={toDateInputValue(row.handover_date)}
+                      onChange={(e) =>
+                        patchRowLocal(row.handover_record_id, { handover_date: e.target.value || null })
+                      }
+                      onBlur={(e) => doUpdate(row.handover_record_id, { handover_date: e.target.value || null })}
+                    />
                   </div>
 
-                  <div className="row">
-                    <div className="col-12">
-                      <label className="lbl">Бележки</label>
-                      <input
-                        type="text"
-                        className="inp"
-                        value={row.notes || ""}
-                        onChange={(e) => patchRowLocal(row.handover_record_id, { notes: e.target.value })}
-                        onBlur={(e) => doUpdate(row.handover_record_id, { notes: e.target.value || null })}
-                      />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="row">
-                    <div className="col">
-                      <label className="lbl">Дата на предаване</label>
-                      <div style={{ padding: 8, border: "1px solid #e5e7eb", borderRadius: 8 }}>
-                        {fmtDateDisplay(row.handover_date)}
-                      </div>
-                    </div>
-                    <div className="col">
-                      <label className="lbl">Местоположение</label>
-                      <div style={{ padding: 8, border: "1px solid #e5e7eb", borderRadius: 8 }}>
-                        {row.location || "—"}
-                      </div>
-                    </div>
-                    <div className="col">
-                      <label className="lbl">Пробег (км)</label>
-                      <div style={{ padding: 8, border: "1px solid #e5e7eb", borderRadius: 8 }}>
-                        {row.odometer_km ?? "—"}
-                      </div>
-                    </div>
+                  <div>
+                    <label className="lbl">Местоположение</label>
+                    <input
+                      type="text"
+                      className="input"
+                      value={row.location || ""}
+                      onChange={(e) => patchRowLocal(row.handover_record_id, { location: e.target.value })}
+                      onBlur={(e) => doUpdate(row.handover_record_id, { location: e.target.value || null })}
+                    />
                   </div>
 
-                  <div className="row">
-                    <div className="col-12">
-                      <label className="lbl">Бележки</label>
-                      <div style={{ padding: 8, border: "1px solid #e5e7eb", borderRadius: 8, minHeight: 38 }}>
-                        {row.notes || "—"}
-                      </div>
-                    </div>
+                  <div>
+                    <label className="lbl">Пробег (км)</label>
+                    <input
+                      type="number"
+                      className="input"
+                      min={0}
+                      value={row.odometer_km ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value || 0, 10));
+                        patchRowLocal(row.handover_record_id, { odometer_km: v === "" ? null : v });
+                      }}
+                      onBlur={(e) => {
+                        const v = e.target.value === "" ? null : Math.max(0, parseInt(e.target.value || 0, 10));
+                        doUpdate(row.handover_record_id, { odometer_km: v });
+                      }}
+                    />
                   </div>
-                </>
-              )}
+                </div>
 
-              <div className="actions" style={{ justifyContent: "flex-start" }}>
-                {isDraft ? (
-                  <button className="btn success" onClick={() => doIssue(row.handover_record_id)}>
-                    Генерирай PDF
-                  </button>
-                ) : (
-                  <>
-                    <button className="btn" onClick={() => openPdf(row.handover_record_id)}>
-                      Отвори
+                {/* Notes — full width, taller */}
+                <div className="handover-grid one">
+                  <div>
+                    <label className="lbl">Бележки</label>
+                    <textarea
+                      className="input handover-notes"
+                      rows={4}
+                      value={row.notes || ""}
+                      onChange={(e) => patchRowLocal(row.handover_record_id, { notes: e.target.value })}
+                      onBlur={(e) => doUpdate(row.handover_record_id, { notes: e.target.value || null })}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="handover-grid">
+                  <div>
+                    <label className="lbl">Дата на предаване</label>
+                    <div className="box">{fmtDateDisplay(row.handover_date)}</div>
+                  </div>
+                  <div>
+                    <label className="lbl">Местоположение</label>
+                    <div className="box">{row.location || "—"}</div>
+                  </div>
+                  <div>
+                    <label className="lbl">Пробег (км)</label>
+                    <div className="box">{row.odometer_km ?? "—"}</div>
+                  </div>
+                </div>
+
+                <div className="handover-grid one">
+                  <div>
+                    <label className="lbl">Бележки</label>
+                    <div className="box handover-notes-display">{row.notes || "—"}</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+
+                <div className="actions" style={{ justifyContent: "flex-start" }}>
+                  {isDraft ? (
+                    <button className="btn btn-success" onClick={() => doIssue(row.handover_record_id)}>
+                      Генерирай PDF
                     </button>
-                    <button className="btn" onClick={() => doRegen(row.handover_record_id)}>
-                      Регенерирай
+                  ) : (
+                    <>
+                      <button className="btn" onClick={() => openPdf(row.handover_record_id)}>
+                        Отвори
+                      </button>
+                      <button className="btn" onClick={() => doRegen(row.handover_record_id)}>
+                        Регенерирай
+                      </button>
+                    </>
+                  )}
+                  {row.status !== "signed" && row.status === "issued" && (
+                    <button className="btn" onClick={() => doSigned(row.handover_record_id)}>
+                      Маркирай като подписан
                     </button>
-                  </>
-                )}
-                {row.status !== "signed" && row.status === "issued" && (
-                  <button className="btn" onClick={() => doSigned(row.handover_record_id)}>
-                    Маркирай като подписан
-                  </button>
-                )}
-                {row.status !== "void" && row.status === "issued" && (
-                  <button className="btn danger" onClick={() => doVoid(row.handover_record_id)}>
-                    Анулирай
-                  </button>
-                )}
+                  )}
+                  {row.status !== "void" && row.status === "issued" && (
+                    <button className="btn btn-danger" onClick={() => doVoid(row.handover_record_id)}>
+                      Анулирай
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+          );
+        })}
+      </div>
+    );
+
 }

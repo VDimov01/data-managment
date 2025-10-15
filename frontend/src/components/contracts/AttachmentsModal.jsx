@@ -85,117 +85,117 @@ export default function AttachmentsModal({ apiBase, contract, onClose }) {
     }
   };
 
-  return (
-    <Modal
-      open
-      title={`Приложения към договора — ${contract.contract_number} / ${contract.customer_display_name || contract.customer_id}`}
-      onClose={onClose}
-    >
-      <div className="am-root">
-        {/* Tabs */}
-        <div className="am-tabs">
-          <button
-            className={`am-tab ${tab === 'specs' ? 'is-active' : ''}`}
-            onClick={() => setTab('specs')}
-          >
-            Спецификации
-          </button>
-          <button
-            className={`am-tab ${tab === 'handover' ? 'is-active' : ''}`}
-            onClick={() => setTab('handover')}
-          >
-            ППП (Приемо-предавателни протоколи)
-          </button>
-        </div>
+      return (
+      <Modal
+        open
+        title={`Приложения към договора — ${contract.contract_number} / ${contract.customer_display_name || contract.customer_id}`}
+        onClose={onClose}
+      >
+        <div>
+          {/* Tabs */}
+          <div className="tabs-bar">
+            <button
+              className={`tab ${tab === 'specs' ? 'btn-active' : ''}`}
+              onClick={() => setTab('specs')}
+            >
+              Спецификации
+            </button>
+            <button
+              className={`tab ${tab === 'handover' ? 'btn-active' : ''}`}
+              onClick={() => setTab('handover')}
+            >
+              ППП (Приемо-предавателни протоколи)
+            </button>
+          </div>
 
-        {tab === 'specs' && (
-          <section className="am-section">
-            <div className="am-toolbar">
-              <button
-                className="btn primary"
-                onClick={generateAll}
-                disabled={generating || loading}
-              >
-                {generating ? "Генерира…" : "Генерирай за всички"}
-              </button>
-            </div>
+          {tab === 'specs' && (
+            <section>
+              {/* Toolbar */}
+              <div className="toolbar-row" style={{ justifyContent: 'flex-start' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={generateAll}
+                  disabled={generating || loading}
+                >
+                  {generating ? "Генерира…" : "Генерирай за всички"}
+                </button>
+              </div>
 
-            {loading && <div className="am-empty">Зареждане…</div>}
-            {!loading && rows.length === 0 && (
-              <div className="am-empty">Няма записи.</div>
-            )}
+              {/* States */}
+              {loading && <div className="text-muted">Зареждане…</div>}
+              {!loading && rows.length === 0 && (
+                <div className="text-muted">Няма записи.</div>
+              )}
 
-            {!loading && rows.length > 0 && (
-              <div className="am-list">
-                {rows.map(v => {
-                  const title = `${v.make || v.make_name || ''} ${v.model || v.model_name || ''} ${
-                    (v.model_year || v.year) ? `(${v.model_year || v.year})` : ""
-                  } — ${v.edition || v.edition_name || ''}`.trim();
+              {/* List */}
+              {!loading && rows.length > 0 && (
+                <div className="list" style={{ marginTop: 8 }}>
+                  {rows.map(v => {
+                    const title = `${v.make || v.make_name || ''} ${v.model || v.model_name || ''} ${
+                      (v.model_year || v.year) ? `(${v.model_year || v.year})` : ""
+                    } — ${v.edition || v.edition_name || ''}`.trim();
 
-                  const hasPdf = !!(v.version && (v.byte_size || v.size || v.sha256));
-                  const busy = !!perBusy[v.edition_id];
+                    const hasPdf = !!(v.version && (v.byte_size || v.size || v.sha256));
+                    const busy = !!perBusy[v.edition_id];
 
-                  return (
-                    <div key={`${v.edition_id}-${v.vehicle_id || ''}`} className="am-item">
-                      <div className="am-item__main">
-                        <div className="am-title">{title}</div>
-                        <div className="am-meta">
-                          <span className="am-chip">VIN: {v.vin || "—"}</span>
-                          <span className="am-dot">•</span>
-                          {hasPdf ? (
-                            <>
-                              <span className="am-chip">
-                                Версия {v.version}
-                              </span>
-                              <span className="am-dot">•</span>
-                              <span className="am-chip">
-                                {niceBytes(v.byte_size || v.size || 0)}
-                              </span>
-                              <span className="am-dot">•</span>
-                              <span className="am-chip">
-                                {formatDateDMYLocal(v.created_at) || ""}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="am-chip muted">Няма PDF</span>
-                          )}
+                    return (
+                      <div
+                        key={`${v.edition_id}-${v.vehicle_id || ''}`}
+                        className="list-item"
+                        style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}
+                      >
+                        <div>
+                          <div className="line-1" style={{ fontWeight: 600 }}>{title}</div>
+                          <div className="line-2" style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                            <span className="badge">VIN: {v.vin || "—"}</span>
+                            {hasPdf ? (
+                              <>
+                                <span className="badge">Версия {v.version}</span>
+                                <span className="badge">{niceBytes(v.byte_size || v.size || 0)}</span>
+                                <span className="badge">{formatDateDMYLocal(v.created_at) || ""}</span>
+                              </>
+                            ) : (
+                              <span className="badge text-muted">Няма PDF</span>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="am-actions">
-                        {hasPdf && (
+                        <div className="btn-row">
+                          {hasPdf && (
+                            <button
+                              className="btn"
+                              onClick={() => openSpec(v.edition_id)}
+                              disabled={busy}
+                              title="Отвори PDF"
+                            >
+                              {busy ? "…" : "Отвори"}
+                            </button>
+                          )}
+                          {/* Uncomment if/when you restore per-item regenerate
                           <button
                             className="btn"
-                            onClick={() => openSpec(v.edition_id)}
+                            onClick={() => regenerateOne(v.edition_id)}
                             disabled={busy}
-                            title="Отвори PDF"
+                            title={hasPdf ? "Регенерирай" : "Генерирай"}
                           >
-                            {busy ? "…" : "Отвори"}
-                          </button>
-                        )}
-                        {/* <button
-                          className="btn"
-                          onClick={() => regenerateOne(v.edition_id)}
-                          disabled={busy}
-                          title={hasPdf ? "Регенерирай" : "Генерирай"}
-                        >
-                          {busy ? "…" : (hasPdf ? "Регенерирай" : "Генерирай")}
-                        </button> */}
+                            {busy ? "…" : (hasPdf ? "Регенерирай" : "Генерирай")}
+                          </button> */}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        )}
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
 
-        {tab === 'handover' && (
-          <section className="am-section">
-            <HandoverTab apiBase={apiBase} contract={contract} />
-          </section>
-        )}
-      </div>
-    </Modal>
-  );
+          {tab === 'handover' && (
+            <section>
+              <HandoverTab apiBase={apiBase} contract={contract} />
+            </section>
+          )}
+        </div>
+      </Modal>
+    );
+
 }

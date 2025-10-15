@@ -1,67 +1,175 @@
-.contract-section {
-  max-width: 800px;
+/* Container */
+.contracts-wrap {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 16px;
 }
 
-.form-group {
-  margin-bottom: 15px;
+/* Tabs bar uses atoms; just add bottom border */
+.tabs-bar {
+  padding: 0 0 8px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
 }
 
-.form-group label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 5px;
+/* Form grid */
+.ctr-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 12px;
+}
+.ctr-grid.ctr-grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+@media (max-width: 960px) {
+  .ctr-grid.ctr-grid-3 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .ctr-grid,
+  .ctr-grid.ctr-grid-3 { grid-template-columns: 1fr; }
 }
 
-.form-group select {
-  width: 100%;
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-}
+.field { display: grid; gap: 6px; }
+.label { font-size: 12px; color: var(--muted); }
 
-.selected-cars-list {
-  margin-top: 20px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-}
+/* Segmented control reusing buttons */
+.seg .btn { border-radius: 999px; }
 
-.selected-car-row {
+/* Cards */
+.card-body { padding: 12px; }
+
+/* Lists (Step 3 attachments) */
+.list { display: grid; gap: 10px; }
+.list-item {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.line-1 { font-weight: 600; color: var(--text) }
+.line-2 { font-size: 12px; color: var(--muted); }
+
+/* Utility */
+.mt-1 { margin-top: 6px; }
+.mt-2 { margin-top: 10px; }
+
+/* Footer actions */
+.actions-end { justify-content: flex-end; }
+.actions-justify {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-top: 12px;
 }
 
-.selected-car-row input {
-  width: 60px;
-  margin-left: 10px;
-  padding: 4px;
+/* Make long lines wrap sanely on mobile */
+.h2 { margin: 0 0 8px 0; }
+
+/* Split layout: results (2) / selection (1) */
+.ctr-split {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .ctr-split { grid-template-columns: 1fr; }
 }
 
-.selected-car-row button {
-  margin-left: 10px;
-  padding: 5px 10px;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+.ctr-split-left  { min-width: 0; }  /* allow internal overflow to manage */
+.ctr-split-right { min-width: 0; }
+
+/* Search row inside picker */
+.picker-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.picker-bar .input { flex: 1 1 auto; }
+
+/* Active list item highlight */
+.list-item.is-active {
+  border-color: color-mix(in oklab, var(--accent), var(--surface) 45%);
+  background: var(--accent-soft);
 }
 
-.submit-button {
-  padding: 10px 20px;
-  background-color: #4caf50;
-  border: none;
-  color: white;
-  font-weight: bold;
-  border-radius: 6px;
-  cursor: pointer;
+/* Totals box on the right of footer */
+.tot-box {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 260px;
+}
+.tot-label { font-size: 12px; color: var(--muted); }
+.tot-amt   { font-weight: 800; font-size: 18px; }
+.tot-note  { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* Spacing helpers already used elsewhere */
+.mt-1 { margin-top: 6px; }
+.mt-2 { margin-top: 10px; }
+
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+
+.text-muted { color: var(--muted); }
+.box { padding: 8px; border: 1px solid var(--control-border); border-radius: 8px; background: var(--surface); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* === Handover form grid (layout) === */
+.handover-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  align-items: start;            /* don’t anchor contents to the bottom */
+  margin-top: 10px;
 }
 
-.contract-preview {
-  margin-top: 20px;
+/* Single-column variant (the notes row) */
+.handover-grid.one { grid-template-columns: 1fr; margin-bottom: 16px;}
+
+/* Ensure each field stacks label above control */
+.handover-grid > div {
+  display: flex;
+  flex-direction: column;
 }
+
+/* Labels: spacing & make sure no absolute positioning leaks in */
+.handover-grid .lbl {
+  position: static;              /* guard against any global absolute rules */
+  display: block;
+  margin: 0 0 6px;
+  line-height: 1.2;
+}
+
+/* Inputs/boxes fill the grid cell width */
+.handover-grid .input,
+.handover-grid .box {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Textarea should NOT inherit a fixed height from .input */
+textarea.input {
+  height: auto !important;       /* break any fixed height */
+  line-height: 1.4;
+  resize: vertical;
+}
+
+/* Notes size – comfortable but not gigantic */
+textarea.input.handover-notes { 
+  min-height: 90px;              /* was too big before */
+}
+
+/* Display-mode notes (box) */
+.handover-notes-display { 
+  min-height: 90px;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 8px;
+}
+
+/* Responsive: stack fields on smaller screens */
+@media (max-width: 900px) {
+  .handover-grid { grid-template-columns: 1fr; }
+}
+

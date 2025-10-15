@@ -64,74 +64,82 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
 
   const pages = Math.max(1, Math.ceil((total || 0) / limit));
 
-  return (
-    <div className="card">
-      <div className="card-body">
-        <div className="row" style={{ alignItems: "flex-end" }}>
-          <div className="col">
-            <label className="lbl">Търси</label>
-            <input
-              className="inp"
-              placeholder="Номер, клиент, UUID…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
+      return (
+      <div className="card">
+        <div className="card-body">
+
+          {/* Top bar */}
+          <div className="row" style={{ alignItems: "flex-end" }}>
+            <div className="col">
+              <label className="lbl">Търси</label>
+              <input
+                className="input"
+                placeholder="Номер, клиент, UUID…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+            <div className="col" style={{ maxWidth: 220 }}>
+              <button className="btn" onClick={load} disabled={loading}>
+                {loading ? "…" : "Презареди"}
+              </button>
+            </div>
           </div>
-          <div className="col" style={{ maxWidth: 220 }}>
-            <button className="btn" onClick={load} disabled={loading}>
-              {loading ? "…" : "Презареди"}
-            </button>
-          </div>
-        </div>
 
-        <div className="table-wrap">
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>UUID</th>
-                <th>Статус</th>
-                <th>Вид</th>
-                <th>Клиент</th>
-                <th>Общо</th>
-                <th>Артикули</th>
-                <th>Създаден</th>
-                <th style={{ width: 340 }}>Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 && (
-                <tr><td colSpan={9} className="muted">Няма договори.</td></tr>
-              )}
-              {rows.map((r) => (
-                <tr key={r.contract_id}>
-                  <td>{r.contract_number || r.contract_id}</td>
-                  <td className="muted mono">{r.uuid}</td>
-                  <td>{(statusBG[r.status] || r.status).toUpperCase()}</td>
-                  <td>{r.type === "ADVANCE" ? "Авансов" : "Редовен"}</td>
-                  <td>{r.customer_display_name || r.customer_name || r.customer || "—"}</td>
-                  <td>{(r.currency_code || r.currency || "BGN")} {r.total ?? r.subtotal ?? "0.00"}</td>
-                  <td>{r.items_count ?? r.item_count ?? "—"}</td>
-                  <td className="muted">{(r.created_at || "").replace("T", " ").slice(0, 19)}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button className="btn" onClick={() => onOpenLatest(r.uuid)}>Отвори</button>
-                      <button className="btn" onClick={() => setAttachmentsFor(r)}>Приложения към договора</button>
+          {/* Table */}
+          <div className="table-wrap" style={{ marginTop: 8 }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>UUID</th>
+                  <th>Статус</th>
+                  <th>Вид</th>
+                  <th>Клиент</th>
+                  <th>Общо</th>
+                  <th>Артикули</th>
+                  <th>Създаден</th>
+                  <th style={{ width: 340 }}>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="text-muted center">Няма договори.</td>
+                  </tr>
+                )}
 
-                      {String(r.status).toLowerCase() === "issued" && (
-                        <button className="btn" onClick={() => handleMarkSigned(r.contract_id)}>
-                          Маркирай като подписан
-                        </button>
-                      )}
+                {rows.map((r) => (
+                  <tr key={r.contract_id}>
+                    <td>{r.contract_number || r.contract_id}</td>
+                    <td><code className="text-muted mono">{r.uuid}</code></td>
+                    <td>{(statusBG[r.status] || r.status).toUpperCase()}</td>
+                    <td>{r.type === "ADVANCE" ? "Авансов" : "Редовен"}</td>
+                    <td>{r.customer_display_name || r.customer_name || r.customer || "—"}</td>
+                    <td>{(r.currency_code || r.currency || "BGN")} {r.total ?? r.subtotal ?? "0.00"}</td>
+                    <td>{r.items_count ?? r.item_count ?? "—"}</td>
+                    <td className="text-muted">{(r.created_at || "").replace("T", " ").slice(0, 19)}</td>
+                    <td>
+                      <div className="btn-row">
+                        <button className="btn" onClick={() => onOpenLatest(r.uuid)}>Отвори</button>
+                        <button className="btn" onClick={() => setAttachmentsFor(r)}>Приложения към договора</button>
 
-                      {String(r.status).toLowerCase() !== "issued" &&
+                        {String(r.status).toLowerCase() === "issued" && (
+                          <button className="btn" onClick={() => handleMarkSigned(r.contract_id)}>
+                            Маркирай като подписан
+                          </button>
+                        )}
+
+                        {String(r.status).toLowerCase() !== "issued" &&
                         String(r.status).toLowerCase() !== "withdrawn" &&
                         String(r.status).toLowerCase() !== "cancelled" &&
                         String(r.status).toLowerCase() !== "signed" && (
                           <>
-                            <button className="btn" onClick={() => onRegenerate(r.contract_id)}>Регенерирай</button>
+                            <button className="btn" onClick={() => onRegenerate(r.contract_id)}>
+                              Регенерирай
+                            </button>
                             <button
-                              className="btn success"
+                              className="btn btn-primary"
                               onClick={async () => {
                                 await onIssue(r.contract_id);
                                 await load();
@@ -142,10 +150,11 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
                           </>
                         )}
 
-                      {String(r.status).toLowerCase() !== "withdrawn" && String(r.status).toLowerCase() !== "signed" &&
+                        {String(r.status).toLowerCase() !== "withdrawn" &&
+                        String(r.status).toLowerCase() !== "signed" &&
                         String(r.status).toLowerCase() !== "draft" && (
                           <button
-                            className="btn danger"
+                            className="btn btn-danger"
                             onClick={() => cancelAndRelease(r)}
                             disabled={r.status === "withdrawn" || r.status === "draft"}
                             title={r.status === "withdrawn" ? "Вече отменен" : "Отмени и освободи превозните средства"}
@@ -153,34 +162,49 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
                             Откажи и освободи
                           </button>
                         )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {pages > 1 && (
-          <div className="pager">
-            <button className="btn" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-              Предишна
-            </button>
-            <span>Страница {page} / {pages}</span>
-            <button className="btn" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>
-              Следваща
-            </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
 
-        {attachmentsFor && (
-          <AttachmentsModal
-            apiBase={apiBase}
-            contract={attachmentsFor}
-            onClose={() => setAttachmentsFor(null)}
-          />
-        )}
+          {/* Pager */}
+          {pages > 1 && (
+            <div className="panel-footer">
+              <button
+                className="page-btn"
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Предишна
+              </button>
+
+              <span className="results">Страница {page} / {pages}</span>
+
+              <button
+                className="page-btn"
+                type="button"
+                disabled={page >= pages}
+                onClick={() => setPage((p) => Math.min(pages, p + 1))}
+              >
+                Следваща
+              </button>
+            </div>
+          )}
+
+          {/* Attachments modal */}
+          {attachmentsFor && (
+            <AttachmentsModal
+              apiBase={apiBase}
+              contract={attachmentsFor}
+              onClose={() => setAttachmentsFor(null)}
+            />
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+
 }

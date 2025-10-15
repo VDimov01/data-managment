@@ -368,224 +368,214 @@ async function handleIssueAllHandover() {
 
 
 
-  return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
-      <div className="tabs">
-        <button className={`tab ${tab === 'browse' ? 'active' : ''}`} onClick={() => setTab('browse')}>Всички договори</button>
-        <button className={`tab ${tab === 'create' ? 'active' : ''}`} onClick={() => setTab('create')}>Създай нов договор</button>
-      </div>
-
-      {tab === "create" && (
-        <>
-          <h2 style={{ marginBottom: 8 }}>Договори</h2>
-          <div style={{ color: "#6b7280", marginBottom: 16 }}>
-            Стъпка {step} от 3 &mdash; <em>{["Създай чернова", "Добави автомобили и цени", "Преглед и Издаване"][step - 1]}</em>
+      return (
+      <div className="contracts-wrap">
+        {/* Tabs */}
+        <div className="toolbar tabs-bar">
+          <div className="btn-row">
+            <button
+              type="button"
+              className={"btn btn-ghost" + (tab === "browse" ? " btn-active" : "")}
+              onClick={() => setTab("browse")}
+            >
+              Всички договори
+            </button>
+            <button
+              type="button"
+              className={"btn btn-ghost" + (tab === "create" ? " btn-active" : "")}
+              onClick={() => setTab("create")}
+            >
+              Създай нов договор
+            </button>
           </div>
+        </div>
 
-          {step === 1 && (
-            <div className="card">
-              <div className="card-body">
-                <CustomerPicker apiBase={apiBase} value={customer} onChange={setCustomer} />
+        {tab === "create" && (
+          <>
+            <h2 className="h2">Договори</h2>
+            <div className="text-muted" style={{ marginBottom: 8 }}>
+              Стъпка {step} от 3 — <em>{["Създай чернова", "Добави автомобили и цени", "Преглед и Издаване"][step - 1]}</em>
+            </div>
 
-                <div className="row">
-                  <div className="col">
-                    <label className="lbl">Вид договор</label>
-                    <div className="seg">
-                      <label className="seg-item">
-                        <input type="radio" checked={type === "REGULAR"} onChange={() => setType("REGULAR")} />
-                        <span>Нормален</span>
-                      </label>
-                      <label className="seg-item">
-                        <input type="radio" checked={type === "ADVANCE"} onChange={() => setType("ADVANCE")} />
-                        <span>Авансов</span>
-                      </label>
+            {/* STEP 1 */}
+            {step === 1 && (
+              <div className="card">
+                <div className="card-body">
+                  <CustomerPicker apiBase={apiBase} value={customer} onChange={setCustomer} />
+
+                  <div className="ctr-grid ctr-grid-3">
+                    <div className="field">
+                      <label className="label">Вид договор</label>
+                      <div className="btn-row seg">
+                        <button
+                          type="button"
+                          className={"btn btn-ghost" + (type === "REGULAR" ? " btn-active" : "")}
+                          onClick={() => setType("REGULAR")}
+                        >
+                          Нормален
+                        </button>
+                        <button
+                          type="button"
+                          className={"btn btn-ghost" + (type === "ADVANCE" ? " btn-active" : "")}
+                          onClick={() => setType("ADVANCE")}
+                        >
+                          Авансов
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="field">
+                      <label className="label">Валута</label>
+                      <select className="select" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                        <option value="BGN">BGN</option>
+                        <option value="EUR">EUR</option>
+                        <option value="USD">USD</option>
+                      </select>
+                    </div>
+
+                    <div className="field">
+                      <label className="label">Валиден до:</label>
+                      <input type="date" className="input" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
                     </div>
                   </div>
 
-                  <div className="col">
-                    <label className="lbl">Валута</label>
-                    <select value={currency} onChange={e => setCurrency(e.target.value)} className="inp">
-                      <option value="BGN">BGN</option>
-                      <option value="EUR">EUR</option>
-                      <option value="USD">USD</option>
-                    </select>
+                  <div className="ctr-grid">
+                    <div className="field field-col-1">
+                      <label className="label">Бележки</label>
+                      <textarea className="input" value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
+                    </div>
                   </div>
 
-                  <div className="col">
-                    <label className="lbl">Валиден до:</label>
-                    <input type="date" className="inp" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} />
+                  <div className="btn-row actions-end">
+                    <button className="btn" type="button" onClick={resetAll}>Нулиране</button>
+                    <button className="btn btn-primary" type="button" onClick={handleCreateDraft} disabled={creating}>
+                      {creating ? "Създаване..." : "Създай чернова"}
+                    </button>
                   </div>
-                </div>
-
-                {/* <div className="row">
-                  <div className="col">
-                    <label className="lbl">Номер на договор</label>
-                    <input type="text" className="inp" value={contractNumber} onChange={e => setContractNumber(e.target.value)} />
-                  </div>
-                </div> */}
-
-                <div className="row">
-                  <div className="col-12">
-                    <label className="lbl">Бележки</label>
-                    <textarea className="inp" value={note} onChange={e => setNote(e.target.value)} />
-                  </div>
-                </div>
-
-                <div className="actions">
-                  <button className="btn secondary" onClick={resetAll}>Нулиране</button>
-                  <button className="btn primary" onClick={handleCreateDraft} disabled={creating}>
-                    {creating ? "Създаване..." : "Създай чернова"}
-                  </button>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {step === 2 && contract && (
-            <>
-            <ItemsStep
-            apiBase={apiBase}
-            contract={contract}
-            customer={customer}
-            items={items}
-            setItems={setItems}
-            totalClient={totalClient}
-            currency={currency}
-            onBack={() => setStep(1)}
-            onSave={handleSaveItems}
-            saving={savingItems}
-            />
-           
-            </>
-          )}
+            {/* STEP 2 */}
+            {step === 2 && contract && (
+              <ItemsStep
+                apiBase={apiBase}
+                contract={contract}
+                customer={customer}
+                items={items}
+                setItems={setItems}
+                totalClient={totalClient}
+                currency={currency}
+                onBack={() => setStep(1)}
+                onSave={handleSaveItems}
+                saving={savingItems}
+              />
+            )}
 
-          {step === 3 && contract && (
-  <div className="card">
-    <div className="card-body">
-      <HeaderSummary contract={contract} customer={customer} />
+            {/* STEP 3 */}
+            {step === 3 && contract && (
+              <div className="card">
+                <div className="card-body">
+                  <HeaderSummary contract={contract} customer={customer} />
 
-      <p className="muted">
-        You can <strong>Render a draft PDF</strong> (keeps status = draft), or <strong>Issue</strong> which
-        generates a new PDF version and reserves the vehicles.
-      </p>
+                  <p className="text-muted">
+                    Можете да <strong>генерирате чернова на PDF</strong> (запазва статус = „чернова“) или да 
+                    <strong> издадете</strong>, което създава нова PDF версия и резервира автомобилите.
+                  </p>
 
-      {/* --- Spec PDFs (internal, per-edition) --- */}
-      <div className="row">
-        <div className="col">
-          <label className="lbl">Spec PDF (internal)</label>
-          <div className="actions" style={{ justifyContent: 'flex-start' }}>
-            <button className="btn" onClick={handleGenerateSpecs} disabled={genLoading}>
-              {genLoading ? 'Generating…' : 'Generate spec pack (BG)'}
-            </button>
-          </div>
 
-          {specs.length === 0 ? (
-            <div className="muted" style={{ marginTop: 8 }}>No spec attachments yet.</div>
-          ) : (
-            <div className="list" style={{ marginTop: 8 }}>
-              {specs.map(a => (
-                <div key={a.edition_specs_pdf_id} className="list-item">
-                  <div className="line-1">
-                    <strong>{a.filename}</strong> — v{a.version}
+                  <div className="ctr-grid">
+                    <div className="field">
+                      <label className="label">Спецификации (PDF)</label>
+                      <div className="btn-row">
+                        <button className="btn" type="button" onClick={handleGenerateSpecs} disabled={genLoading}>
+                          {genLoading ? "Генериране..." : "Генерирай спецификации на автомобила PDF"}
+                        </button>
+                      </div>
+
+                      {specs.length === 0 ? (
+                        <div className="text-muted mt-2">Няма генерирани спецификации.</div>
+                      ) : (
+                        <div className="list mt-2">
+                          {specs.map((a) => (
+                            <div key={a.edition_specs_pdf_id} className="list-item">
+                              <div className="line-1"><strong>{a.filename}</strong> — v{a.version}</div>
+                              <div className="line-2">SHA256: {a.sha256?.slice(0, 12)}… • {Math.round((a.byte_size || 0) / 1024)} KB</div>
+                              <div className="btn-row mt-1">
+                                <a className="btn" href={a.signedUrl} target="_blank" rel="noreferrer">Отвори</a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="btn-row mt-2">
+                        <button className="btn" type="button" onClick={handleCreateHandoverDrafts} disabled={creatingHandover}>
+                          {creatingHandover ? "Създаване…" : "Чернови протоколи (всички)"}
+                        </button>
+                        <button className="btn" type="button" onClick={handleIssueAllHandover} disabled={issuingAllHandover}>
+                          {issuingAllHandover ? "Генериране…" : "Генерирай всички протоколи"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="line-2">
-                    SHA256: {a.sha256?.slice(0, 12)}… • {Math.round((a.byte_size || 0) / 1024)} KB
-                  </div>
-                  <div style={{ marginTop: 6 }}>
-                    <a className="btn" href={a.signedUrl} target="_blank" rel="noreferrer">Open (signed)</a>
+
+                  <div className="panel-footer actions-justify">
+                    <button
+                      className="btn btn-danger"
+                      type="button"
+                      onClick={handleCancel}
+                      disabled={cancelling || contract.status === "withdrawn" || contract.status === "draft"}
+                    >
+                      {cancelling ? "Отказване..." : "Отказ и освобождаване на автомобилите"}
+                    </button>
+
+                    <div className="btn-row">
+                      <button className="btn" type="button" onClick={() => setStep(2)}>Back</button>
+                      <button className="btn" type="button" onClick={handleRenderDraftPdf} disabled={renderingDraft}>
+                        {renderingDraft ? "Генериране..." : "Генерирай чернова(PDF)"}
+                      </button>
+                      <button className="btn btn-primary" type="button" onClick={handleIssue} disabled={issuing}>
+                        {issuing ? "Издаване..." : "Издай и генерирай PDF"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            )}
+          </>
+        )}
 
-          <button className="btn" onClick={handleCreateHandoverDrafts} disabled={creatingHandover}>
-            {creatingHandover ? 'Създаване…' : 'Чернови протоколи (всички)'}
-          </button>
-          <button className="btn" onClick={handleIssueAllHandover} disabled={issuingAllHandover}>
-            {issuingAllHandover ? 'Генериране…' : 'Генерирай всички протоколи'}
-          </button>
-        </div>
+        {tab === "browse" && (
+          <ContractsList
+            apiBase={apiBase}
+            onOpenLatest={async (uuid) => {
+              try {
+                const data = await api(`/contracts/${uuid}/pdf/latest`);
+                const url = data?.signedUrl || data?.pdf?.signedUrl;
+                if (url) window.open(url, "_blank", "noopener,noreferrer");
+                else alert("Няма наличен PDF за този договор.");
+              } catch (e) { alert(`Неуспешно отваряне: ${e.message}`); }
+            }}
+            onRegenerate={async (id) => {
+              try {
+                const data = await api(`/contracts/${id}/pdf`, { method: "POST" });
+                const url = data?.pdf?.signedUrl || data?.signedUrl;
+                if (url && confirm("Отвори регенерирания PDF?")) window.open(url, "_blank", "noopener,noreferrer");
+              } catch (e) { alert(`Неуспешно регенериране: ${e.message}`); }
+            }}
+            onIssue={async (id) => {
+              try {
+                const data = await api(`/contracts/${id}/issue`, { method: "POST", body: { override_reserved: false } });
+                const url = data?.pdf?.signedUrl || data?.signedUrl;
+                if (url && confirm("Отвори PDF сега?")) window.open(url, "_blank", "noopener,noreferrer");
+              } catch (e) { alert(`IНеуспешно издаване: ${e.message}`); }
+            }}
+          />
+        )}
       </div>
+    );
 
-      {/* --- Actions --- */}
-      <div className="actions">
-        <div>
-          {/* Danger zone: cancel & release */}
-          <button
-            className="btn danger"
-            onClick={handleCancel}
-            disabled={cancelling || contract.status === 'withdrawn' || contract.status === 'draft'}
-          >
-            {cancelling ? 'Cancelling…' : 'Cancel & release vehicles'}
-          </button>
-        </div>
-
-        <button className="btn secondary" onClick={() => setStep(2)}>Back</button>
-
-        <button className="btn" onClick={handleRenderDraftPdf} disabled={renderingDraft}>
-          {renderingDraft ? 'Rendering…' : 'Render draft PDF'}
-        </button>
-
-        <button className="btn success" onClick={handleIssue} disabled={issuing}>
-          {issuing ? 'Issuing...' : 'Issue & generate PDF'}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-        </>
-      )}
-
-            {tab === "browse" && (
-        <ContractsList
-          apiBase={apiBase}
-          onOpenLatest={async (uuid) => {
-            try {
-              const data = await api(`/contracts/${uuid}/pdf/latest`);
-              const url = data?.signedUrl || data?.pdf?.signedUrl;
-              if (url) {
-                window.open(url, "_blank", "noopener,noreferrer");
-              } else {
-                alert("Няма наличен PDF за този договор.");
-              }
-            } catch (e) {
-              alert(`Open latest failed: ${e.message}`);
-            }
-          }}
-          onRegenerate={async (id) => {
-            try {
-              const data = await api(`/contracts/${id}/pdf`, { method: "POST" });
-              const url = data?.pdf?.signedUrl || data?.signedUrl;
-              if (url && confirm("Open regenerated PDF?")) {
-                window.open(url, "_blank", "noopener,noreferrer");
-              }
-            } catch (e) {
-              alert(`Regenerate failed: ${e.message}`);
-            }
-          }}
-          onIssue={async (id) => {
-            try {
-              const data = await api(`/contracts/${id}/issue`, {
-                method: "POST",
-                body: { override_reserved: false },
-              });
-              const url = data?.pdf?.signedUrl || data?.signedUrl;
-              if (url && confirm("Open PDF now?")) {
-                window.open(url, "_blank", "noopener,noreferrer");
-              }
-            } catch (e) {
-              alert(`Issue failed: ${e.message}`);
-            }
-          }}
-        />
-      )}
-
-
-      <style>{css}</style>
-    </div>
-  );
 }
 
 /** ---------- Subcomponents ---------- */
@@ -593,7 +583,7 @@ async function handleIssueAllHandover() {
 function HeaderSummary({ contract, customer }) {
   const status = (contract?.status || "draft").toUpperCase();
   return (
-    <div className="sum">
+    <div className="sum" style={{marginBottom:12}}>
       <div><strong>Договор:</strong> #{contract.contract_id} — {contract.uuid}</div>
       <div><strong>Статус:</strong> {statusBG[status]} ({contrType[contract.type]})</div>
       <div><strong>Клиент:</strong> {displayCustomer(customer)}</div>
@@ -615,45 +605,31 @@ function CustomerPicker({ apiBase, value, onChange }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // pagination state
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(5); // 5/10/20 
+  const [limit, setLimit] = useState(5);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  // reset to page 1 whenever query changes
   useEffect(() => { setPage(1); }, [que]);
 
   const loadCustomers = async () => {
     try {
       setLoading(true);
       setErr("");
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(limit),
-      });
-      const qq = que.trim();
-      if (qq) params.set("q", qq);
-
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      const qq = que.trim(); if (qq) params.set("q", qq);
       const data = await api(`/customers?${params.toString()}`);
-
       setList(data.customers || []);
       setTotal(Number(data.total || 0));
-      setTotalPages(Number(data.totalPages || Math.max(1, Math.ceil((data.total || 0) / limit))));
+      setTotalPages(Number(data.totalPages || Math.max(1, Math.ceil((data.total || 0)/limit))));
     } catch (e) {
       setErr(e.message || "Customer search failed");
-      setList([]);
-      setTotal(0);
-      setTotalPages(1);
-    } finally {
-      setLoading(false);
-    }
+      setList([]); setTotal(0); setTotalPages(1);
+    } finally { setLoading(false); }
   };
 
-  // load on page/limit/q changes
   useEffect(() => {
-    // small debounce on q so we don’t spam requests on each keystroke
-    const t = setTimeout(() => { loadCustomers(); }, 200);
+    const t = setTimeout(loadCustomers, 200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, que]);
@@ -662,87 +638,91 @@ function CustomerPicker({ apiBase, value, onChange }) {
   const canNext = page < totalPages && !loading;
 
   return (
-    <div className="row">
-      <div className="col-8">
-        <label className="lbl">Клиенти</label>
+    <div className="ctr-split">
+      {/* Left: search & results */}
+      <div className="ctr-split-left">
+        <label className="label">Клиенти</label>
 
-        {/* Search + page size */}
-        <div className="picker" style={{ gap: 8, display: "flex", alignItems: "center" }}>
+        {/* Search row */}
+        <div className="btn-row picker-bar">
           <input
-            className="inp"
+            className="input"
             placeholder="Търси клиенти…"
             value={que}
-            onChange={e => setQue(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && loadCustomers()}
-            style={{ flex: 1 }}
+            onChange={(e) => setQue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && loadCustomers()}
           />
           <select
-            className="cust-select"
+            className="select"
             value={limit}
             onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
             title="Page size"
           >
-            <option value={5}>5 / page</option>
-            <option value={10}>10 / page</option>
-            <option value={20}>20 / page</option>
+            <option value={5}>5 / страница</option>
+            <option value={10}>10 / страница</option>
+            <option value={20}>20 / страница</option>
           </select>
-          <button className="btn" onClick={loadCustomers} disabled={loading}>
+          <button className="btn" type="button" onClick={loadCustomers} disabled={loading}>
             {loading ? "…" : "Търси"}
           </button>
         </div>
 
         {/* Results */}
-        <div className="list" style={{ marginTop: 8 }}>
-          {err && <div className="muted" style={{ color: "#b00020" }}>{err}</div>}
+        <div className="list mt-2">
+          {err && <div className="text-danger">{err}</div>}
 
-          {list.map(c => (
-            <button
-              key={c.customer_id}
-              className={`list-item ${value?.customer_id === c.customer_id ? "active" : ""}`}
-              onClick={() => onChange(c)}
-            >
-              <div className="line-1">{displayCustomer(c)}</div>
-              <div className="line-2">
-                {c.email || c.phone || c.public_uuid || c.vat_number || ""}
-              </div>
-            </button>
-          ))}
+          {list.map((c) => {
+            const isActive = value?.customer_id === c.customer_id;
+            return (
+              <button
+                key={c.customer_id}
+                type="button"
+                className={"list-item" + (isActive ? " is-active" : "")}
+                onClick={() => onChange(c)}
+              >
+                <div className="line-1">{displayCustomer(c)}</div>
+                <div className="line-2">{c.email || c.phone || c.public_uuid || c.vat_number || ""}</div>
+              </button>
+            );
+          })}
 
-          {(!loading && list.length === 0 && !err) && (
-            <div className="muted">Няма намерени клиенти.</div>
+          {!loading && list.length === 0 && !err && (
+            <div className="text-muted">Няма намерени клиенти.</div>
           )}
         </div>
 
         {/* Pager */}
-        <div className="pager" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-          <button className="btn" disabled={!canPrev} onClick={() => setPage(p => Math.max(1, p - 1))}>
+        <div className="pagination mt-2">
+          <button className="page-btn" type="button" disabled={!canPrev} onClick={() => setPage((p) => Math.max(1, p - 1))}>
             ← Предишна
           </button>
-          <span className="muted">
-            Стр. {page} от {totalPages} • Общо: {total}
-          </span>
-          <button className="btn" disabled={!canNext} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
+          <span className="results">Стр. {page} от {totalPages} • Общо: {total}</span>
+          <button className="page-btn" type="button" disabled={!canNext} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
             Следваща →
           </button>
         </div>
       </div>
 
-      <div className="col">
-        <label className="lbl">Избрани</label>
-        <div className="box">
-          {value ? (
-            <>
-              <div><strong>{displayCustomer(value)}</strong></div>
-              <div className="muted">{value.type}</div>
-            </>
-          ) : (
-            <div className="muted">Избери клиент.</div>
-          )}
+      {/* Right: selected */}
+      <div className="ctr-split-right">
+        <label className="label">Избрани</label>
+        <div className="card">
+          <div className="card-body">
+            {value ? (
+              <>
+                <div><strong>{displayCustomer(value)}</strong></div>
+                <div className="text-muted">{value.customer_type === "Company" ? "Фирма" : "Индивидуално лице"}</div>
+              </>
+            ) : (
+              <div className="text-muted">Избери клиент.</div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 /** ─────────────────────────────────────────────────────────────────────────────
  * ItemsStep
@@ -759,7 +739,7 @@ export function ItemsStep({
   setItems,
   currency,
   onBack,
-  onSave,            // parent’s save handler will call PUT /contracts/:id/items
+  onSave,
   saving,
 }) {
   const type = contract?.type || "REGULAR";
@@ -767,12 +747,11 @@ export function ItemsStep({
     contract?.advance_amount != null ? String(contract.advance_amount) : ""
   );
 
-  // Client-side preview of total
   const totalClient = useMemo(() => {
     return items.reduce((acc, it) => {
       const p = parseNumber(it.unit_price);
-      const dr = (it.discount_type === "percent") ? parseNumber(it.discount_value) : null;
-      const da = (it.discount_type === "amount")  ? parseNumber(it.discount_value) : null;
+      const dr = it.discount_type === "percent" ? parseNumber(it.discount_value) : null;
+      const da = it.discount_type === "amount"  ? parseNumber(it.discount_value) : null;
       const tr = parseNumber(it.tax_rate);
       const { total } = computePreviewLineTotals(1, p, it.discount_type, (dr ?? da), tr);
       return acc + total;
@@ -793,10 +772,9 @@ export function ItemsStep({
               {
                 vehicle_id: v.vehicle_id,
                 unit_price: v.asking_price ?? "",
-                // new fields for discount/tax (optional)
-                discount_type: "",      // "", "amount", "percent"
-                discount_value: "",     // string input
-                tax_rate: "",           // string input (percent)
+                discount_type: "",
+                discount_value: "",
+                tax_rate: "",
                 display: v,
               },
             ]);
@@ -811,48 +789,41 @@ export function ItemsStep({
         />
 
         {type === "ADVANCE" && (
-          <div className="row" style={{ marginTop: 16 }}>
-            <div className="col" style={{ maxWidth: 280 }}>
-              <label className="lbl">Авансова сума</label>
-              <MoneyInput value={advanceAmount} onChange={setAdvanceAmount} placeholder="0.00" />
-              <div className="muted" style={{ marginTop: 4 }}>
-                Тази стойност ще бъде записана към договора като аванс.
-              </div>
+          <div className="ctr-grid mt-2">
+            <div className="field" style={{ maxWidth: 320 }}>
+              <label className="label">Авансова сума</label>
+              <MoneyInput className="input" value={advanceAmount} onChange={setAdvanceAmount} placeholder="0.00" />
+              <div className="text-muted mt-1">Тази стойност ще бъде записана към договора като аванс.</div>
             </div>
           </div>
         )}
 
-        <div className="row" style={{ justifyContent: "flex-end", marginTop: 16 }}>
-          <div className="col" style={{ maxWidth: 320 }}>
-            <div className="tot-box">
-              <div className="tot-label">Client total (display only):</div>
-              <div className="tot-amt">
-                {currency} {totalClient}
-              </div>
-              <div className="tot-note">* Официалната сума се изчислява от сървъра при запис / издаване.</div>
-            </div>
+        <div className="panel-footer">
+          <div className="tot-box">
+            <div className="tot-label">Client total (display only)</div>
+            <div className="tot-amt">{currency} {totalClient}</div>
+            <div className="tot-note">* Официалната сума се изчислява от сървъра при запис / издаване.</div>
           </div>
-        </div>
 
-        <div className="actions" style={{ marginTop: 16 }}>
-          <button className="btn secondary" onClick={onBack}>Back</button>
-          <button
-            className="btn primary"
-            onClick={async () => {
-              // let parent save items first
-              await onSave({
-                advanceAmount: type === "ADVANCE" ? advanceAmount : null,
-              });
-            }}
-            disabled={saving}
-          >
-            {saving ? "Saving..." : "Save items"}
-          </button>
+          <div className="btn-row">
+            <button className="btn" type="button" onClick={onBack}>Back</button>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={async () => {
+                await onSave({ advanceAmount: type === "ADVANCE" ? advanceAmount : null });
+              }}
+              disabled={saving}
+            >
+              {saving ? "Saving..." : "Save items"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 /** ─────────────────────────────────────────────────────────────────────────────
  * VehiclePicker (frontend-only pagination)
@@ -879,11 +850,10 @@ function VehiclePicker({ apiBase, onPick }) {
       const qq = q.trim();
       if (qq) params.set("q", qq);
 
-      // GET /api/vehicles?available=1&q=...
       const res = await api(`/vehicles?${params.toString()}`);
       const rows = Array.isArray(res) ? res : (res.vehicles || res.items || res.rows || []);
       setAll(rows);
-      setPage(1); // reset to first page on new search
+      setPage(1);
     } catch (e) {
       alert(`Vehicle search failed: ${e.message}`);
       setAll([]);
@@ -893,26 +863,24 @@ function VehiclePicker({ apiBase, onPick }) {
     }
   };
 
-
   return (
     <div className="row">
       <div className="col-12">
         <label className="lbl">Добави автомобил</label>
-        <div className="picker" style={{ gap: 8, display: "flex", alignItems: "center" }}>
+
+        {/* Search row */}
+        <div className="picker-bar">
           <input
-            className="inp"
+            className="input"
             placeholder="Търси автомобили (VIN, модел, издание)…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && doSearch()}
           />
           <select
-            className="cust-select"
+            className="select"
             value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setPage(1);
-            }}
+            onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
             title="брой на страница"
           >
             <option value={5}>5 / стр.</option>
@@ -924,6 +892,7 @@ function VehiclePicker({ apiBase, onPick }) {
           </button>
         </div>
 
+        {/* Results */}
         {paged.length > 0 && (
           <div className="list" style={{ marginTop: 8 }}>
             {paged.map((v) => (
@@ -944,16 +913,21 @@ function VehiclePicker({ apiBase, onPick }) {
           </div>
         )}
 
+        {/* Pager */}
         {all.length > 0 && (
-          <div className="pager" style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
-            <button className="btn" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+          <div className="pagination" style={{ marginTop: 8 }}>
+            <button
+              className="page-btn"
+              type="button"
+              disabled={page <= 1 || loading}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
               ← Предишна
             </button>
-            <span className="muted">
-              Стр. {page} от {totalPages} • Общо: {total}
-            </span>
+            <span className="results">Стр. {page} от {totalPages} • Общо: {total}</span>
             <button
-              className="btn"
+              className="page-btn"
+              type="button"
               disabled={page >= totalPages || loading}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
@@ -963,12 +937,13 @@ function VehiclePicker({ apiBase, onPick }) {
         )}
 
         {!loading && all.length === 0 && (
-          <div className="muted" style={{ marginTop: 8 }}>Няма намерени автомобили.</div>
+          <div className="text-muted" style={{ marginTop: 8 }}>Няма намерени автомобили.</div>
         )}
       </div>
     </div>
   );
 }
+
 
 /** ─────────────────────────────────────────────────────────────────────────────
  * ItemsTable
@@ -978,18 +953,20 @@ function VehiclePicker({ apiBase, onPick }) {
  *  - Line total preview (client-side)
  * ──────────────────────────────────────────────────────────────────────────── */
 function ItemsTable({ currency, items, onChange, onRemove }) {
-  if (items.length === 0) return <div className="muted" style={{ marginTop: 8 }}>No vehicles added yet.</div>;
+  if (items.length === 0) {
+    return <div className="text-muted" style={{ marginTop: 8 }}>No vehicles added yet.</div>;
+  }
 
   return (
     <div className="table-wrap">
-      <table className="tbl">
+      <table className="table table-tight">
         <thead>
           <tr>
             <th style={{ minWidth: 260 }}>Автомобил</th>
             <th style={{ width: 160 }}>Цена</th>
-            <th style={{ width: 200 }}>Отстъпка</th>
-            <th style={{ width: 120 }}>ДДС/Данък %</th>
-            <th style={{ width: 140, textAlign: "right" }}>Общо (1 бр.)</th>
+            <th style={{ width: 220 }}>Отстъпка</th>
+            <th style={{ width: 140 }}>ДДС/Данък %</th>
+            <th style={{ width: 160, textAlign: "right" }}>Общо (1 бр.)</th>
             <th style={{ width: 60 }}></th>
           </tr>
         </thead>
@@ -997,10 +974,9 @@ function ItemsTable({ currency, items, onChange, onRemove }) {
           {items.map((it, idx) => {
             const d = it.display || {};
             const unit = parseNumber(it.unit_price);
-            const dr = (it.discount_type === "percent") ? parseNumber(it.discount_value) : null;
-            const da = (it.discount_type === "amount")  ? parseNumber(it.discount_value) : null;
+            const dr = it.discount_type === "percent" ? parseNumber(it.discount_value) : null;
+            const da = it.discount_type === "amount"  ? parseNumber(it.discount_value) : null;
             const tr = parseNumber(it.tax_rate);
-
             const { total } = computePreviewLineTotals(1, unit, it.discount_type, (dr ?? da), tr);
 
             return (
@@ -1011,7 +987,7 @@ function ItemsTable({ currency, items, onChange, onRemove }) {
                     {d.year ? `(${d.year})` : (d.model_year ? `(${d.model_year})` : "")} —{" "}
                     {(d.edition_name || d.edition || "Edition")}
                   </div>
-                  <div className="muted">
+                  <div className="text-muted">
                     VIN: {d.vin || "—"} • Цвят: {(d.exterior_color || d.exterior_color_name || "—")} /{" "}
                     {(d.interior_color || d.interior_color_name || "—")} • Град: {d.shop_city || "—"} • Км:{" "}
                     {(d.mileage_km ?? d.mileage ?? "—")} km
@@ -1020,6 +996,7 @@ function ItemsTable({ currency, items, onChange, onRemove }) {
 
                 <td>
                   <MoneyInput
+                    className="input"
                     value={it.unit_price ?? ""}
                     onChange={(val) => onChange(idx, { unit_price: val })}
                     placeholder="0.00"
@@ -1029,7 +1006,7 @@ function ItemsTable({ currency, items, onChange, onRemove }) {
                 <td>
                   <div style={{ display: "flex", gap: 8 }}>
                     <select
-                      className="inp"
+                      className="select"
                       value={it.discount_type || ""}
                       onChange={(e) => onChange(idx, { discount_type: e.target.value, discount_value: "" })}
                     >
@@ -1037,14 +1014,17 @@ function ItemsTable({ currency, items, onChange, onRemove }) {
                       <option value="amount">Сума</option>
                       <option value="percent">%</option>
                     </select>
+
                     {it.discount_type === "percent" ? (
                       <PercentInput
+                        className="input"
                         value={it.discount_value ?? ""}
                         onChange={(v) => onChange(idx, { discount_value: v })}
                         placeholder="0"
                       />
                     ) : (
                       <MoneyInput
+                        className="input"
                         value={it.discount_value ?? ""}
                         onChange={(v) => onChange(idx, { discount_value: v })}
                         placeholder="0.00"
@@ -1055,6 +1035,7 @@ function ItemsTable({ currency, items, onChange, onRemove }) {
 
                 <td>
                   <PercentInput
+                    className="input"
                     value={it.tax_rate ?? ""}
                     onChange={(v) => onChange(idx, { tax_rate: v })}
                     placeholder="20"
@@ -1066,7 +1047,7 @@ function ItemsTable({ currency, items, onChange, onRemove }) {
                 </td>
 
                 <td>
-                  <button className="btn danger" onClick={() => onRemove(idx)}>✕</button>
+                  <button className="btn btn-danger" type="button" onClick={() => onRemove(idx)}>✕</button>
                 </td>
               </tr>
             );
@@ -1077,13 +1058,14 @@ function ItemsTable({ currency, items, onChange, onRemove }) {
   );
 }
 
+
 /** ─────────────────────────────────────────────────────────────────────────────
  * Inputs & helpers
  * ──────────────────────────────────────────────────────────────────────────── */
 function MoneyInput({ value, onChange, placeholder }) {
   return (
     <input
-      className="inp"
+      className="input"
       inputMode="decimal"
       placeholder={placeholder || "0.00"}
       value={value}
@@ -1100,7 +1082,7 @@ function MoneyInput({ value, onChange, placeholder }) {
 function PercentInput({ value, onChange, placeholder }) {
   return (
     <input
-      className="inp"
+      className="input"
       inputMode="decimal"
       placeholder={placeholder || "0"}
       value={value}
@@ -1142,51 +1124,3 @@ function computePreviewLineTotals(qty, unit, discountType, discountValue, taxRat
   const total = base + tax;
   return { subtotal: sub, discount: disc, tax, total };
 }
-
-/** Tiny CSS */
-const css = `
-.tabs { display:flex; gap:8px; margin-bottom:12px; }
-.tab { padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; background:#fff; cursor:pointer; }
-.tab.active { background:#1556b0; color:#fff; border-color:#1556b0; }
-.card { border:1px solid #e5e7eb; border-radius:12px; margin:14px 0; }
-.card-body { padding:16px; }
-.row { display:flex; gap:12px; margin:10px 0; flex-wrap: wrap; }
-.col { flex:1 1 0; min-width: 220px; }
-.col-8 { flex: 1 1 600px; }
-.col-12 { flex: 1 1 100%; min-width: 100%; }
-.lbl { display:block; font-size:12px; color:#6b7280; margin-bottom:6px; }
-.inp { width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.picker { display:flex; gap:8px; }
-.list { margin-top:8px; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; }
-.list-item { display:block; width:100%; text-align:left; padding:10px 12px; border-bottom:1px solid #eee; background:#fff; cursor:pointer; }
-.list-item:hover { background:#fafafa; }
-.list-item.active { background:#eef2ff; }
-.line-1 { font-weight:600; }
-.line-2 { font-size:12px; color:#6b7280; }
-.box { border:1px solid #e5e7eb; border-radius:8px; padding:12px; min-height: 58px; }
-.sum { display:flex; gap:24px; flex-wrap:wrap; margin-bottom:12px; padding:10px 12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; }
-.seg { display:flex; gap:8px; align-items:center; }
-.seg-item { display:flex; gap:6px; align-items:center; padding:6px 10px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; cursor:pointer; }
-.seg-item input { margin:0; }
-.actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
-.btn { padding:8px 12px; border-radius:8px; background:#f3f4f6; border:1px solid #d1d5db; cursor:pointer; }
-.btn:hover { background:#eceff3; }
-.btn.primary { background:#1556b0; border-color:#1556b0; color:#fff; }
-.btn.primary:hover { background:#10458c; }
-.btn.success { background:#0b7d48; border-color:#0b7d48; color:#fff; }
-.btn.success:hover { background:#09633a; }
-.btn.secondary { background:#fff; }
-.btn.danger { background:#fee2e2; border-color:#fecaca; color:#991b1b; }
-.btn.danger:hover { background:#fecaca; }
-.table-wrap { margin-top: 10px; overflow:auto; }
-.tbl { width:100%; border-collapse: collapse; }
-.tbl th, .tbl td { border-bottom:1px solid #e5e7eb; padding:8px 10px; text-align:left; }
-.v-title { font-weight:600; }
-.tot-box { border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; }
-.tot-label { color:#6b7280; font-size:12px; }
-.tot-amt { font-size:18px; font-weight:700; margin:4px 0; }
-.tot-note { color:#6b7280; font-size:12px; }
-.muted { color:#6b7280; }
-.pager { display:flex; gap:12px; align-items:center; justify-content:flex-end; margin-top:10px; }
-`;
