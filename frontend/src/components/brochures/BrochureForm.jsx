@@ -41,7 +41,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
   useEffect(() => {
     setYears([]); setEditions([]);
     if (!modelId) return;
-      api(`/cascade/years${qs({ model_id: modelId })}`).then(setYears).catch(()=>{});
+      api(`/cascade/model-years${qs({ model_id: modelId })}`).then(setYears).catch(()=>{});
   }, [modelId, apiBase]);
 
   // When editing, fetch selection (year_ids / edition_ids) if endpoint exists
@@ -127,7 +127,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
     try {
       let data;
       if (isEdit) {
-        data = await api(`/brochures/${initial.brochure_id}`, {
+          data = await api(`/brochures/${initial.brochure_id}`, {
           method: "PUT",
           body, // pass the plain object
         });
