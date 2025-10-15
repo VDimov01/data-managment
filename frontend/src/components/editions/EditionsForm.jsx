@@ -982,7 +982,7 @@ function Row({ r, langBg, enumOptions = {}, onChangeValue, onRemove }) {
 {r.data_type === 'boolean' ? (
   <select value={String(r.value ?? '')} onChange={e => onChangeValue(e.target.value)}>
     <option value="">(null)</option>
-    <option value="true">да</option>
+    <option value="true">Да</option>
     <option value="false">Не</option>
   </select>
 ) : r.data_type === 'enum' && Array.isArray(enumOptions[r.code]) ? (
