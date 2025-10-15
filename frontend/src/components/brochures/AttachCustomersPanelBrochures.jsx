@@ -1,17 +1,13 @@
 import AttachCustomersPanel from "../attach/AttachCustomerPanel.jsx";
 import { api, qs } from "../../services/api";
 
-/**
- * If your compare API already mirrors brochures (…/attachments),
- * this wrapper works as-is. If not, adapt endpoints here ONLY.
- */
-export default function AttachCustomersPanelCompare({ compareId }) {
-  const base = `/compares/${compareId}/attachments`;
+export default function AttachCustomersPanelBrochure({ brochureId }) {
+  const base = `/brochures/${brochureId}/attachments`;
 
   return (
     <AttachCustomersPanel
       listAttached={async () => {
-        const data = await api(base); // make your server support this if it doesn't yet
+        const data = await api(base); // GET /brochures/:id/attachments
         return Array.isArray(data) ? data : (data?.items || []);
       }}
       searchCustomers={async (term) => {

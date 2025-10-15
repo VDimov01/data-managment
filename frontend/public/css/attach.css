@@ -1,0 +1,46 @@
+/* Panel layout (scoped) */
+.attach-panel { display: grid; gap: 12px; }
+
+.attach-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+.attach-col { display: grid; gap: 10px; }
+.attach-col h4 { margin: 0; }
+
+/* Lists */
+.attach-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.attach-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.attach-main { min-width: 0; } /* enable ellipsis */
+.attach-title { font-weight: 700; }
+.attach-sub { font-size: 12px; }
+
+/* Responsive: stack columns on small screens */
+@media (max-width: 860px) {
+  .attach-grid { grid-template-columns: 1fr; }
+}
+
+/* Reuse atoms:
+   - inputs use .input
+   - buttons use .btn, .btn-strong, .btn-danger
+   - muted text uses .text-muted
+   - action rows use .btn-row
+*/
