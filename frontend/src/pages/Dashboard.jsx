@@ -6,7 +6,8 @@ import BrochuresSection from "../components/brochures/BrochuresSection";
 import CustomerSection from '../components/customers/CustomerSection';
 import CompareSheetsSection from "../components/compares/CompareSheetsSection";
 import { useAuth } from "../auth/AuthContext";
-import { api } from "../services/api";
+import { api, API_BASE } from "../services/api";
+import { ThemeToggle } from "./ThemeSwitcher";
 
 
 export default function Dashboard() {
@@ -15,7 +16,7 @@ export default function Dashboard() {
   const [cars, setCars] = useState([]);
   const [activeTab, setActiveTab] = useState("Издания"); // cars | offers | storage
   const {user} = useAuth();
-  const apiBase = "http://localhost:5000";
+  const apiBase = API_BASE;
 
   const handleLogout = async () => {
     await api('/auth/logout', { method: 'POST' });
@@ -24,7 +25,9 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-container">
+      <ThemeToggle />
       <h1>Добре дошъл, {user.name}!</h1>
+
 
       {/* Tab Buttons */}
       <div className="tab-buttons">
