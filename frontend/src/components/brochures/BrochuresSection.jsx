@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Modal from "../Modal";
 import BrochureForm from "./BrochureForm";
-import AttachCustomersPanel from "./AttachCustomersPanel";
+import AttachCustomersPanel from "./AttachCustomersPanelBrochures.jsx";
 import {api, qs} from '../../services/api.js'
 
 const selectionModeBG = {
