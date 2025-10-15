@@ -6,7 +6,7 @@ import { api, qs } from "../../services/api";
  * this wrapper works as-is. If not, adapt endpoints here ONLY.
  */
 export default function AttachCustomersPanelCompare({ compareId }) {
-  const base = `/compares/${compareId}/attachments`;
+  const base = `/compares/${compareId}/attach`;
 
   return (
     <AttachCustomersPanel
