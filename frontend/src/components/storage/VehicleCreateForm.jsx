@@ -1,7 +1,6 @@
 // VehicleCreateForm.jsx
 import { useEffect, useMemo, useState } from "react";
 
-
 const STATUSES = ['InTransit','Available','Reserved','Sold','Service','Demo'];
 
 const status_to_bg = {
@@ -86,6 +85,7 @@ const [intNew, setIntNew] = useState('');
       setExtMode('existing');
       setExtValue(String(vehicle.exterior_color_id));
       setExtNew('');
+      setForm(prev => ({ ...prev, exterior_color_id: vehicle.exterior_color_id }))
     } else {
       setExtMode('existing'); // allow blank
       setExtValue('');
@@ -95,6 +95,7 @@ const [intNew, setIntNew] = useState('');
       setIntMode('existing');
       setIntValue(String(vehicle.interior_color_id));
       setIntNew('');
+      setForm(prev => ({ ...prev, interior_color_id: vehicle.interior_color_id }))
     } else {
       setIntMode('none');
       setIntValue('');
@@ -203,12 +204,12 @@ const [intNew, setIntNew] = useState('');
   return (
     <div>
       {/* <h3 style={{ marginTop: 0 }}>Create vehicle for:</h3> */}
-      <div style={{ marginBottom: 12, color: '#333' }}><h3>{title}</h3></div>
+      <div className="textarea" style={{marginBottom:12}}><h3>{title}</h3></div>
 
       <form onSubmit={handleSubmit} className="space-y-2">
         <div className="grid" style={{ display:'grid', gap:10, gridTemplateColumns:'1fr 1fr' }}>
-          <input name="vin" placeholder="VIN" value={form.vin} onChange={handleChange} required />
-          <input name="release_date" placeholder="Release date (optional)" value={form.release_date} onChange={handleChange} />
+          <input className="input" name="vin" placeholder="VIN" value={form.vin} onChange={handleChange} required />
+          <input className="input" name="release_date" placeholder="Release date (optional)" value={form.release_date} onChange={handleChange} />
 
           <SelectOrCreate
             label="Цвят на екстериора"
@@ -231,8 +232,8 @@ const [intNew, setIntNew] = useState('');
             {shops.map(s => <option key={s.shop_id} value={s.shop_id}>{s.name} - {s.address}</option>)}
           </select>
 
-          <input name="asking_price" type="number" step="0.01" placeholder="Цена" value={form.asking_price} onChange={handleChange} />
-          <input name="mileage" type="number" placeholder="Пробег (км)" value={form.mileage} onChange={handleChange} />
+          <input className="input" name="asking_price" type="number" step="0.01" placeholder="Цена" value={form.asking_price} onChange={handleChange} />
+          <input className="input" name="mileage" type="number" placeholder="Пробег (км)" value={form.mileage} onChange={handleChange} />
 
          
           <select
@@ -262,6 +263,7 @@ const [intNew, setIntNew] = useState('');
               <legend>Очаквана дата на пристигане</legend>
               <label style={{ display: 'block', marginBottom: 8 }}>
                 <input
+                  className="input"
                   type="checkbox"
                   checked={form.useDefaultEta}
                   onChange={(e) => setForm(f => ({ ...f, useDefaultEta: e.target.checked }))}
@@ -272,6 +274,7 @@ const [intNew, setIntNew] = useState('');
                   <div>
                     <label style={{ marginRight: 8 }}>Най-ранна</label>
                     <input
+                      className="input"
                       type="date"
                       value={form.expected_arrival_earliest}
                       onChange={(e) => setForm(f => ({ ...f, expected_arrival_earliest: e.target.value }))}
@@ -280,6 +283,7 @@ const [intNew, setIntNew] = useState('');
                   <div>
                     <label style={{ marginRight: 8 }}>Най-късна</label>
                     <input
+                      className="input"
                       type="date"
                       value={form.expected_arrival_latest}
                       onChange={(e) => setForm(f => ({ ...f, expected_arrival_latest: e.target.value }))}
@@ -293,8 +297,8 @@ const [intNew, setIntNew] = useState('');
         </div>
 
         <div style={{ marginTop: 12, display:'flex', gap:8 }}>
-          <button type="submit">Създай</button>
-          <button type="button" onClick={onClose}>Отказ</button>
+          <button className="btn btn-strong" type="submit">Създай</button>
+          <button className="btn btn-danger" type="button" onClick={onClose}>Отказ</button>
         </div>
       </form>
     </div>
@@ -342,7 +346,7 @@ function SelectOrCreate({
       {mode === 'new' && (
         <input
           type="text"
-          placeholder={`New ${label.toLowerCase()} name`}
+          placeholder={`Нов ${label.toLowerCase()}`}
           value={newValue}
           onChange={e => setNewValue(e.target.value)}
           style={{ width:'100%', marginTop:6 }}

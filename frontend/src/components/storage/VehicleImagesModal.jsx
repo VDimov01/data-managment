@@ -208,8 +208,8 @@ export default function VehicleImagesModal({
   return (
     <Modal open={open} onClose={onClose} title={title}>
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-        <input type="file" accept="image/*" multiple onChange={onUpload} disabled={uploading} />
-        <button onClick={refresh} disabled={busy || uploading}>
+        <input className="input" type="file" accept="image/*" multiple onChange={onUpload} disabled={uploading} />
+        <button className="btn btn-strong" onClick={refresh} disabled={busy || uploading}>
           {busy ? "Refreshing…" : "Refresh"}
         </button>
         {reordering && <span style={{ fontSize: 12, opacity: 0.7 }}>Saving order…</span>}
@@ -264,7 +264,7 @@ function SortableCard({
   const imgUrl = r.stream_url; // backend proxy URL (private bucket)
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} {...attributes} {...listeners} className="card">
       <img src={imgUrl} alt="" style={imgStyle} draggable={false} />
       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
         <button
@@ -289,6 +289,7 @@ function SortableCard({
       <div style={{ marginTop: 8 }}>
         <label style={{ display: "block", fontSize: 12, color: "#555" }}>Caption</label>
         <input
+          className="input"
           defaultValue={r.caption || ""}
           onBlur={(e) => {
             const v = e.target.value;
@@ -301,6 +302,7 @@ function SortableCard({
       <div style={{ marginTop: 8 }}>
         <label style={{ display: "block", fontSize: 12, color: "#555" }}>Sort order</label>
         <input
+          className="input"
           type="number"
           min={1}
           defaultValue={r.sort_order ?? 0}

@@ -154,80 +154,125 @@ export default function StorageSection() {
   };
 
   return (
-    <div className="storage-section">
-      <h2>Менежиране на наличност</h2>
+  <div className="storage-section">
+    <h2 className="section-title">Менежиране на наличност</h2>
 
-      <div>
-        <h2>Автомобили</h2>
-        <AvailableEditions
-          apiBase={apiBase}
-          showAddVehicle={true}
-          hideDefaultActions={true}
-          onAddVehicle={(edition) => { setEditionForVehicle(edition); setOpen(true); }}
+    <div className="card">
+      <h3 className="section-subtitle">Автомобили</h3>
+
+      <AvailableEditions
+        apiBase={apiBase}
+        showAddVehicle={true}
+        hideDefaultActions={true}
+        onAddVehicle={(edition) => { setEditionForVehicle(edition); setOpen(true); }}
+      />
+
+      {/* Create modal */}
+      <Modal
+        open={open}
+        title="Създаване на автомобил"
+        onClose={() => { setOpen(false); setEditionForVehicle(null); }}
+      >
+        {editionForVehicle && (
+          <VehicleCreateForm
+            apiBase={apiBase}
+            edition={editionForVehicle}
+            onCreated={() => { fetchVehiclesEntries(); setOpen(false); setEditionForVehicle(null); }}
+            onClose={() => { setOpen(false); setEditionForVehicle(null); }}
+          />
+        )}
+      </Modal>
+
+      {/* Edit modal */}
+      <Modal
+        open={openEdit}
+        title="Редактиране на автомобил"
+        onClose={() => { setOpenEdit(false); setVehicleForEdit(null); }}
+      >
+        {vehicleForEdit && (
+          <VehicleCreateForm
+            apiBase={apiBase}
+            vehicle={vehicleForEdit}
+            mode="edit"
+            onUpdated={() => fetchVehiclesEntries()}
+            onClose={() => { setOpenEdit(false); setVehicleForEdit(null); }}
+          />
+        )}
+      </Modal>
+    </div>
+
+    {/* Filters */}
+    <h2 className="section-title">Текуща наличност</h2>
+    <div className="card">
+      <div className="toolbar filters-grid" style={{marginBottom: 25}}>
+        <input
+          className="input"
+          placeholder="Марка / модел / версия…"
+          value={qModel}
+          onChange={(e) => setQModel(e.target.value)}
         />
-
-        {/* Create modal */}
-        <Modal open={open} title="Създаване на автомобил" onClose={() => { setOpen(false); setEditionForVehicle(null); }}>
-          {editionForVehicle && (
-            <VehicleCreateForm
-              apiBase={apiBase}
-              edition={editionForVehicle}
-              onCreated={() => { fetchVehiclesEntries(); setOpen(false); setEditionForVehicle(null); }}
-              onClose={() => { setOpen(false); setEditionForVehicle(null); }}
-            />
-          )}
-        </Modal>
-
-        {/* Edit modal */}
-        <Modal open={openEdit} title="Редактиране на автомобил" onClose={() => { setOpenEdit(false); setVehicleForEdit(null); }}>
-          {vehicleForEdit && (
-            <VehicleCreateForm
-              apiBase={apiBase}
-              vehicle={vehicleForEdit}
-              mode="edit"
-              onUpdated={() => fetchVehiclesEntries()}
-              onClose={() => { setOpenEdit(false); setVehicleForEdit(null); }}
-            />
-          )}
-        </Modal>
-      </div>
-
-      {/* Filters */}
-      <h2 style={{ marginTop: "30px" }}>Текуща наличност</h2>
-      <div style={{ display:'grid', gap:8, gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr 1fr auto', alignItems:'center', marginBottom:10 }}>
-        <input placeholder="Марка / модел / версия…" value={qModel} onChange={(e) => setQModel(e.target.value)} />
-        <input placeholder="Цвят (ext/int)…" value={qColor} onChange={(e) => setQColor(e.target.value)} />
-        <select className="cust-select" value={shopId} onChange={(e) => setShopId(e.target.value)}>
+        <div className="btn-row">
+        <input
+          className="input"
+          placeholder="Цвят (ext/int)…"
+          value={qColor}
+          onChange={(e) => setQColor(e.target.value)}
+        />
+        <select
+          className="select"
+          value={shopId}
+          onChange={(e) => setShopId(e.target.value)}
+        >
           <option value="">Магазин (всички)</option>
           {shops.map(s => <option key={s.shop_id} value={s.shop_id}>{s.name}</option>)}
         </select>
-        <select className="cust-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+        <select
+          className="select"
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+        >
           <option value="">Статус (всички)</option>
-          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          {STATUSES.map(s => <option key={s} value={s}>{status_to_bg[s]}</option>)}
         </select>
-        <input type="number" placeholder="Мин. цена" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
-        <input type="number" placeholder="Макс. цена" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
-        <div style={{ display:'flex', gap:6 }}>
-          <select 
-          className="cust-select"
-          title="Редове на страница" 
-          value={pageSize} 
-          onChange={(e) => setPageSize(Number(e.target.value))}>
+        <input
+          className="input"
+          type="number"
+          placeholder="Мин. цена"
+          value={priceMin}
+          onChange={(e) => setPriceMin(e.target.value)}
+        />
+        <input
+          className="input"
+          type="number"
+          placeholder="Макс. цена"
+          value={priceMax}
+          onChange={(e) => setPriceMax(e.target.value)}
+        />
+          <select
+            className="select"
+            title="Редове на страница"
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+          >
             {[10,20,50,100].map(n => <option key={n} value={n}>{n}/стр.</option>)}
           </select>
-          <button className="btn" type="button" onClick={() => {
-            setQModel(""); setQColor(""); setQCity("");
-            setStatus(""); setPriceMin(""); setPriceMax("");
-            setPage(1);
-          }}>
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => {
+              setQModel(""); setQColor(""); setQCity?.("");
+              setStatus(""); setPriceMin(""); setPriceMax("");
+              setPage(1);
+            }}
+          >
             Изчисти
           </button>
         </div>
       </div>
 
       {/* Table */}
-      <div className="storage-table-wrapper" style={{ overflowX:'auto' }}>
-        <table className="storage-table" style={{ width:'100%', borderCollapse:'collapse' }}>
+      <div className="table-wrap">
+        <table className="table table-striped table-hover table-tight">
           <thead>
             <tr>
               <th>Автомобил</th>
@@ -236,7 +281,6 @@ export default function StorageSection() {
               <th>Цена</th>
               <th>Магазин</th>
               <th>Град</th>
-              {/* <th>Адрес</th> */}
               <th>Статус</th>
               <th>Информация за статус</th>
               <th>Действие</th>
@@ -246,58 +290,73 @@ export default function StorageSection() {
           <tbody>
             {pageItems.length === 0 && (
               <tr>
-                <td colSpan={9} style={{ textAlign: "center", padding: "10px" }}>
+                <td colSpan={10} className="center text-muted">
                   Няма автомобили по зададените филтри.
                 </td>
               </tr>
             )}
+
             {pageItems.map((entry) => {
-              const vid = entry.vehicle_id || entry.id; // normalize
+              const vid = entry.vehicle_id || entry.id;
               const isDel = deletingIds.has(vid);
               return (
                 <tr key={vid}>
-                  <td style={{fontWeight: "bold"}}>{entry.maker || entry.make} {entry.model} {entry.model_year || entry.year} {entry.edition || entry.edition_name || ""}</td>
-                  <td>{entry.vin}</td>
+                  <td className="fw-600">
+                    {(entry.maker || entry.make)} {entry.model} {entry.model_year || entry.year} {entry.edition || entry.edition_name || ""}
+                  </td>
+                  <td className="fw-600">{entry.vin}</td>
                   <td>
                     {(entry.exterior_color || "")}
                     {entry.interior_color ? ` + ${entry.interior_color}` : ""}
                   </td>
                   <td>{fmtPrice(entry.asking_price)}</td>
                   <td>{entry.shop_name}</td>
-                  <td>{entry.shop_city || entry.city}</td> 
-                  {/* <td>{entry.shop_address || entry.address}</td> */}
+                  <td>{entry.shop_city || entry.city}</td>
+                  <td className="fw-600">{status_to_bg[entry.status]}</td>
                   <td>
-                    {status_to_bg[entry.status]}
+                    <div className="stack-xs">
+                      {entry.status === "InTransit" && entry.expected_arrival_earliest && (
+                        <span>Най-рано: {formatDateDMYDateOnly(entry.expected_arrival_earliest)}</span>
+                      )}
+                      {entry.status === "InTransit" && entry.expected_arrival_latest && (
+                        <span style={{display:"block"}}>Най-късно: {formatDateDMYDateOnly(entry.expected_arrival_latest)}</span>
+                      )}
+                      {entry.status === "Reserved" && entry.reserved_at && (
+                        <span>Резервирано на: {formatDateDMYDateOnly(entry.reserved_at)}</span>
+                      )}
+                      {entry.status === "Reserved" && entry.reserved_until && (
+                        <span>Резервирано до: {formatDateDMYDateOnly(entry.reserved_until)}</span>
+                      )}
+                    </div>
                   </td>
                   <td>
-                    <span style={{display: "block"}}>{entry.status === "InTransit" && entry.expected_arrival_earliest ? `Най-рано: ${formatDateDMYDateOnly(entry.expected_arrival_earliest)}` : ""}</span>
-                    <span>{entry.status === "InTransit" && entry.expected_arrival_latest ? `Най-късно: ${formatDateDMYDateOnly(entry.expected_arrival_latest)}` : ""}</span>
-                    <span style={{display: "block"}}>{entry.status === "Reserved" && entry.reserved_at ? `Резервирано на: ${formatDateDMYDateOnly(entry.reserved_at)}` : ""}</span>
-                    <span>{entry.status === "Reserved" && entry.reserved_until ? `Резервирано до: ${formatDateDMYDateOnly(entry.reserved_until)}` : ""}</span>
-                  </td>
-                  <td style={{ whiteSpace:'nowrap', display:'flex', gap:6 }}>
-                    <button 
-                    className="btn"
-                    type="button" 
-                    onClick={() => { setVehicleForEdit(entry); setOpenEdit(true); }} disabled={isDel}>
-                      Редактирай
-                    </button>
-                    <button
-                      className="btn"
-                      onClick={() => { setVehicleForImages(entry); setOpenImages(true); }}
-                      style={{ marginLeft: 6 }}
-                    >
-                      Снимки
-                    </button>
+                    <div className="btn-row">
+                      <button
+                        className="btn"
+                        type="button"
+                        onClick={() => { setVehicleForEdit(entry); setOpenEdit(true); }}
+                        disabled={isDel}
+                      >
+                        Редактирай
+                      </button>
 
-                    <button
-                      className="cust-btn danger"
-                      type="button"
-                      onClick={() => handleDeleteVehicle(entry)}
-                      disabled={isDel}
-                    >
-                      {isDel ? 'Изтриване…' : 'Изтрий'}
-                    </button>
+                      <button
+                        className="btn btn-danger"
+                        type="button"
+                        onClick={() => handleDeleteVehicle(entry)}
+                        disabled={isDel}
+                      >
+                        {isDel ? "Изтриване…" : "Изтрий"}
+                      </button>
+
+                      <button
+                        className="btn"
+                        onClick={() => { setVehicleForImages(entry); setOpenImages(true); }}
+                      >
+                        Снимки
+                      </button>
+
+                    </div>
                   </td>
                   <td>
                     <VehicleQRCell
@@ -311,34 +370,41 @@ export default function StorageSection() {
             })}
           </tbody>
         </table>
-
-        <PrintLabelsButton apiBase={apiBase} shopId={shopId} shopName={shopId ? shopName : ""} status={"Available"} />
-
-        {/* Pager */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8 }}>
-          <div style={{ fontSize:12, color:'#666' }}>
-            Показани {filtered.length === 0 ? 0 : start + 1}–{Math.min(start + pageSize, filtered.length)} от {filtered.length}
-          </div>
-          <Pager
-            page={page}
-            totalPages={totalPages}
-            onPrev={() => setPage(p => Math.max(1, p - 1))}
-            onNext={() => setPage(p => Math.min(totalPages, p + 1))}
-            onJump={(n) => setPage(n)}
-          />
-        </div>
       </div>
-      {vehicleForImages && (
-  <VehicleImagesModal
-    apiBase={apiBase}
-    vehicle={vehicleForImages}
-    open={openImages}
-    onClose={() => { setOpenImages(false); setVehicleForImages(null); }}
-  />
-)}
 
+      <PrintLabelsButton
+        apiBase={apiBase}
+        shopId={shopId}
+        shopName={shopId ? shopName : ""}
+        status="Available"
+      />
+
+      {/* Pager */}
+      <div className="panel-footer">
+        <div className="results text-muted">
+          Показани {filtered.length === 0 ? 0 : start + 1}–{Math.min(start + pageSize, filtered.length)} от {filtered.length}
+        </div>
+        <Pager
+          page={page}
+          totalPages={totalPages}
+          onPrev={() => setPage(p => Math.max(1, p - 1))}
+          onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+          onJump={(n) => setPage(n)}
+        />
+      </div>
     </div>
-  );
+
+    {vehicleForImages && (
+      <VehicleImagesModal
+        apiBase={apiBase}
+        vehicle={vehicleForImages}
+        open={openImages}
+        onClose={() => { setOpenImages(false); setVehicleForImages(null); }}
+      />
+    )}
+  </div>
+);
+
 }
 
 function Pager({ page, totalPages, onPrev, onNext, onJump }) {
