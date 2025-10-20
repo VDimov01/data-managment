@@ -4,10 +4,11 @@ import { useState } from "react";
 import CustomerBrochuresPage from "./customer-brochures/CustomerBrochuresPage";
 import CustomerComparesPage from "./customer-compares/CustomerComparesPage";
 import CustomerContractsPage from "./customer-contracts/CustomerContractsPage";
+import CustomerOffersPage from "./customer-offers/CustomerOffersPage";
 
 export default function CustomerPortal({ apiBase = "http://localhost:5000" }) {
   const { uuid } = useParams(); // keep route: /customer/:uuid
-  const [tab, setTab] = useState("brochures"); // 'brochures' | 'compares'
+  const [tab, setTab] = useState("brochures"); // 'brochures' | 'compares' | 'contracts' | 'offers'
 
   return (
     <div className="cp-shell">
@@ -29,6 +30,9 @@ export default function CustomerPortal({ apiBase = "http://localhost:5000" }) {
           <button className={`cp-link ${tab === 'contracts' ? 'on' : ''}`} onClick={() => setTab('contracts')}>
             Договори
           </button>
+          <button className={`cp-link ${tab === 'offers' ? 'on' : ''}`} onClick={() => setTab('offers')}>
+            Оферти
+          </button>
           
         </nav>
       </aside>
@@ -43,6 +47,11 @@ export default function CustomerPortal({ apiBase = "http://localhost:5000" }) {
         {tab === 'contracts' && (
           <CustomerContractsPage apiBase={apiBase} key={`d-${uuid}`} />
         )}
+        {tab === 'offers' && (
+          <CustomerOffersPage apiBase={apiBase} publicCustomerUuid={uuid} key={`o-${uuid}`} />
+        )
+
+        }
       </main>
     </div>
   );

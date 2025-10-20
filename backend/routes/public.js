@@ -3,12 +3,22 @@ const express = require('express');
 const router = express.Router();
 const { getPool } = require('../db');
 const pool = getPool();
-const { bucketPrivate } = require('../services/gcs');
+const { storage, BUCKET_PRIVATE, bucketPrivate } = require('../services/gcs');
 const { getVehiclePathParts } = require('../services/vehiclePathParts');
 const { getSignedReadUrl } = require('../services/contractPDF.js');
 
 
 /** ---------------- helpers (same behavior as brochures.js) ---------------- */
+
+async function signPrivate(gcsPath, { minutes = 10 } = {}) {
+  const expires = Date.now() + minutes * 60 * 1000;
+  const [signedUrl] = await storage.bucket(BUCKET_PRIVATE).file(gcsPath).getSignedUrl({
+    action: 'read',
+    expires
+  });
+  return { signedUrl, expiresAt: new Date(expires).toISOString() };
+}
+
 function labelFromCode(code) {
   // "HEADLIGHT_LOW_BEAM_TYPE" -> "Headlight Low Beam Type"
   return String(code)
@@ -634,6 +644,83 @@ router.get('/customers/contracts/:uuid/pdf/latest', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// ---------------------------------------------------------------------------
+// PUBLIC: list offers for a customer portal link
+// GET /api/public/customers/:uuid/offers
+// ---------------------------------------------------------------------------
+router.get('/customers/:uuid/offers', async (req, res) => {
+  try {
+    const pool = getPool();
+    const { uuid } = req.params;
+    const [rows] = await pool.query(
+      `
+      SELECT
+        o.offer_uuid,
+        o.offer_number,
+        o.status,
+        o.created_at,
+        o.valid_until,
+        o.currency,
+        o.total_amount,
+
+        (SELECT MAX(pv.version_no) FROM offer_pdf_version pv WHERE pv.offer_id = o.offer_id) AS latest_version,
+
+        EXISTS(SELECT 1 FROM offer_pdf_version pv WHERE pv.offer_id = o.offer_id) AS has_pdf
+      FROM offer o
+      JOIN customer c ON c.customer_id = o.customer_id
+      WHERE c.public_uuid = ?
+      AND o.status IN ('issued', 'accepted', 'rejected', 'expired', 'converted')
+      ORDER BY o.created_at DESC
+      `,
+      [uuid]
+    );
+    res.json({ items: rows || [] });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+
+// ---------------------------------------------------------------------------
+// PUBLIC: latest PDF for an offer (by offer_uuid)
+// GET /api/public/customers/offers/:offerUuid/pdf/latest
+// ---------------------------------------------------------------------------
+router.get('/customers/offers/:offerUuid/pdf/latest', async (req, res) => {
+  try {
+    const pool = getPool();
+    const { offerUuid } = req.params;
+
+    const [[o]] = await pool.query(
+      'SELECT offer_id FROM offer WHERE offer_uuid = ?',
+      [offerUuid]
+    );
+    if (!o) return res.status(404).json({ error: 'Offer not found' });
+
+    const [[v]] = await pool.query(
+      `
+      SELECT version_no, gcs_path
+      FROM offer_pdf_version
+      WHERE offer_id = ?
+      ORDER BY version_no DESC
+      LIMIT 1
+      `,
+      [o.offer_id]
+    );
+    if (!v) return res.status(404).json({ error: 'No PDF versions for this offer' });
+
+    // a missing object/bucket/creds can still throw here -> return a clean 404
+    try {
+      const url = await signPrivate(v.gcs_path, { minutes: Number(req.query.minutes || 10) });
+      return res.json({ version_no: v.version_no, ...url });
+    } catch (e) {
+      return res.status(404).json({ error: 'PDF is not available (not found or not accessible)' });
+    }
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 
 // helper if you don't already have it in the file
 // function safeParseJsonMaybe(x) {
