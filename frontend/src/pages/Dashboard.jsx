@@ -5,6 +5,7 @@ import ContractsSection from "../components/contracts/ContractsSection";
 import BrochuresSection from "../components/brochures/BrochuresSection";
 import CustomerSection from '../components/customers/CustomerSection';
 import CompareSheetsSection from "../components/compares/CompareSheetsSection";
+import OffersSection from "../components/offers/OffersSection";
 import { useAuth } from "../auth/AuthContext";
 import { api, API_BASE } from "../services/api";
 import { ThemeToggle } from "./ThemeSwitcher";
@@ -32,7 +33,7 @@ export default function Dashboard() {
 
     {/* Tab Buttons */}
     <div className="tabs" role="tablist" aria-label="Dashboard sections">
-      {["Издания", "Склад", "Клиенти", "Договори", "Брошури", "Сравнения"].map((tab) => (
+      {["Издания", "Склад", "Клиенти", "Оферти", "Договори", "Брошури", "Сравнения"].map((tab) => (
         <button
           key={tab}
           type="button"
@@ -49,7 +50,7 @@ export default function Dashboard() {
 
       {/* Sections */}
       {activeTab === "Издания" && <CarsSection />}
-      {/* {activeTab === "offers" && <OffersSection />} */}
+      {activeTab === "Оферти" && <OffersSection />}
       {activeTab === "Склад" && <StorageSection />}
       {activeTab === "Клиенти" && <CustomerSection />}
       {activeTab === "Договори" && <ContractsSection />}
