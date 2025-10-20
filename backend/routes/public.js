@@ -311,6 +311,23 @@ function unwrapSnapshotJson(snap) {
 
 /** ---------------------- Public endpoints ---------------------- */
 
+// Get customer display name
+router.get('/customer/:uuid', async (req, res) => {
+  const uuid = String(req.params.uuid || '').trim();
+
+  try{
+    const [[cust]] = await pool.query(
+      `SELECT display_name FROM customer WHERE public_uuid=?`, [uuid]
+    );
+    if(!cust) return res.status(404).json({ error: 'Not found' })
+    res.json(cust);
+
+  }catch(e){
+    console.error('Customer public portal', e);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 /**
  * GET /api/public/customers/:uuid/brochures?lang=bg|en
  * -> [{ brochure_id, title, data:{ editions, rows } }]
@@ -650,34 +667,119 @@ router.get('/customers/contracts/:uuid/pdf/latest', async (req, res) => {
 // GET /api/public/customers/:uuid/offers
 // ---------------------------------------------------------------------------
 router.get('/customers/:uuid/offers', async (req, res) => {
+  const pool = getPool();
   try {
-    const pool = getPool();
     const { uuid } = req.params;
+
+    // 0) resolve customer_id
+    const [[cust]] = await pool.query(
+      `SELECT customer_id FROM customer WHERE public_uuid = ? LIMIT 1`,
+      [uuid]
+    );
+    if (!cust) return res.status(404).json({ error: 'Customer not found' });
+
+    // paging (public: simple)
+    const page  = Math.max(1, parseInt(req.query.page || '1', 10));
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || '20', 10)));
+    const offset = (page - 1) * limit;
+
+    // 1) offers for this customer (publicly visible statuses)
+    const [offers] = await pool.query(
+      `
+      SELECT
+        o.offer_id,
+        o.offer_uuid,
+        o.public_uuid     AS offer_public_uuid,
+        o.offer_number,
+        o.status,
+        o.currency,
+        o.total_amount,
+        o.valid_until,
+        o.created_at,
+        (SELECT MAX(pv.version_no) FROM offer_pdf_version pv WHERE pv.offer_id = o.offer_id) AS latest_version,
+        EXISTS(SELECT 1 FROM offer_pdf_version pv WHERE pv.offer_id = o.offer_id) AS has_pdf
+      FROM offer o
+      WHERE o.customer_id = ?
+        AND o.status IN ('issued','accepted','rejected','expired','withdrawn','converted')
+      ORDER BY o.created_at DESC
+      LIMIT ? OFFSET ?
+      `,
+      [cust.customer_id, limit, offset]
+    );
+
+    // total for pagination
+    const [[cnt]] = await pool.query(
+      `
+      SELECT COUNT(*) AS total
+      FROM offer o
+      WHERE o.customer_id = ?
+        AND o.status IN ('issued','accepted','rejected','expired','withdrawn','converted')
+      `,
+      [cust.customer_id]
+    );
+
+    if (offers.length === 0) {
+      return res.json({ page, limit, total: cnt.total || 0, items: [] });
+    }
+
+    // 2) fetch ALL items (vehicles) for these offers in one shot
+    const offerIds = offers.map(o => o.offer_id);
+    const ph = offerIds.map(() => '?').join(',');
     const [rows] = await pool.query(
       `
       SELECT
-        o.offer_uuid,
-        o.offer_number,
-        o.status,
-        o.created_at,
-        o.valid_until,
-        o.currency,
-        o.total_amount,
-
-        (SELECT MAX(pv.version_no) FROM offer_pdf_version pv WHERE pv.offer_id = o.offer_id) AS latest_version,
-
-        EXISTS(SELECT 1 FROM offer_pdf_version pv WHERE pv.offer_id = o.offer_id) AS has_pdf
-      FROM offer o
-      JOIN customer c ON c.customer_id = o.customer_id
-      WHERE c.public_uuid = ?
-      AND o.status IN ('issued', 'accepted', 'rejected', 'expired', 'converted')
-      ORDER BY o.created_at DESC
+        oi.offer_id,
+        oi.line_no,
+        oi.vehicle_id,
+        v.vin,
+        mk.name  AS make_name,
+        md.name  AS model_name,
+        my.year AS year,
+        ed.name  AS edition_name,
+        cext.name_bg AS exterior_color,
+        cint.name_bg AS interior_color,
+        v.mileage
+      FROM offer_item oi
+      LEFT JOIN vehicle     v   ON v.vehicle_id = oi.vehicle_id
+      LEFT JOIN edition     ed  ON ed.edition_id = v.edition_id
+      LEFT JOIN model_year  my  ON my.model_year_id = ed.model_year_id
+      LEFT JOIN model       md  ON md.model_id = my.model_id
+      LEFT JOIN make        mk  ON mk.make_id = md.make_id
+      LEFT JOIN color       cext ON cext.color_id = v.exterior_color_id AND cext.type = 'exterior'
+      LEFT JOIN color       cint ON cint.color_id = v.interior_color_id AND cint.type = 'interior'
+      WHERE oi.offer_id IN (${ph})
+      ORDER BY oi.offer_id, oi.line_no
       `,
-      [uuid]
+      offerIds
     );
-    res.json({ items: rows || [] });
+
+    // 3) group vehicles by offer_id
+    const vehByOffer = new Map();
+    for (const r of rows) {
+      if (!vehByOffer.has(r.offer_id)) vehByOffer.set(r.offer_id, []);
+      vehByOffer.get(r.offer_id).push({
+        vehicle_id: r.vehicle_id,
+        vin: r.vin,
+        make_name: r.make_name,
+        model_name: r.model_name,
+        year: r.year,
+        edition_name: r.edition_name,
+        exterior_color: r.exterior_color,
+        interior_color: r.interior_color,
+        mileage: r.mileage,
+      });
+    }
+
+    // attach arrays
+    const items = offers.map(o => ({
+      ...o,
+      vehicles: vehByOffer.get(o.offer_id) || []
+    }));
+
+    res.json({ page, limit, total: cnt.total || 0, items });
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    console.error('GET /public/customers/:uuid/offers', e);
+    res.status(500).json({ error: 'DB error' });
   }
 });
 
@@ -686,38 +788,27 @@ router.get('/customers/:uuid/offers', async (req, res) => {
 // PUBLIC: latest PDF for an offer (by offer_uuid)
 // GET /api/public/customers/offers/:offerUuid/pdf/latest
 // ---------------------------------------------------------------------------
-router.get('/customers/offers/:offerUuid/pdf/latest', async (req, res) => {
+router.get('/customers/offers/:offer_public_uuid/pdf/latest', async (req, res) => {
+  const pool = getPool();
   try {
-    const pool = getPool();
-    const { offerUuid } = req.params;
-
+    const { offer_public_uuid } = req.params;
     const [[o]] = await pool.query(
-      'SELECT offer_id FROM offer WHERE offer_uuid = ?',
-      [offerUuid]
+      'SELECT offer_id FROM offer WHERE public_uuid = ?',
+      [offer_public_uuid]
     );
     if (!o) return res.status(404).json({ error: 'Offer not found' });
 
     const [[v]] = await pool.query(
-      `
-      SELECT version_no, gcs_path
-      FROM offer_pdf_version
-      WHERE offer_id = ?
-      ORDER BY version_no DESC
-      LIMIT 1
-      `,
+      'SELECT version_no, gcs_path FROM offer_pdf_version WHERE offer_id=? ORDER BY version_no DESC LIMIT 1',
       [o.offer_id]
     );
-    if (!v) return res.status(404).json({ error: 'No PDF versions for this offer' });
+    if (!v) return res.status(404).json({ error: 'No PDF generated yet' });
 
-    // a missing object/bucket/creds can still throw here -> return a clean 404
-    try {
-      const url = await signPrivate(v.gcs_path, { minutes: Number(req.query.minutes || 10) });
-      return res.json({ version_no: v.version_no, ...url });
-    } catch (e) {
-      return res.status(404).json({ error: 'PDF is not available (not found or not accessible)' });
-    }
+    const { getSignedOfferPdfUrl } = require('../services/offers/offerStorage');
+    const { signedUrl, expiresAt } = await getSignedOfferPdfUrl(v.gcs_path, { minutes: Number(req.query.minutes || 10) });
+    res.json({ signedUrl, expiresAt, version_no: v.version_no });
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    res.status(400).json({ error: e.message || 'Failed to get signed url' });
   }
 });
 

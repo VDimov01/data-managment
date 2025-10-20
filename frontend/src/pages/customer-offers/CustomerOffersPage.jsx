@@ -1,22 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { buildUrl } from "../../services/api";
 
 // If you already have a helper for dates, import it; otherwise keep this local fallback
-function fmtDate(v) {
-  if (!v) return "—";
-  // Accepts "YYYY-MM-DD" or ISO; shows "YYYY-MM-DD"
-  const s = String(v);
-  return s.slice(0, 10);
-}
-
-function buildUrl(base, path, params = {}) {
-  const root = (base || "").replace(/\/+$/, "");
-  const qs = new URLSearchParams();
-  Object.entries(params).forEach(([k,v]) => {
-    if (v !== undefined && v !== null && String(v).trim() !== "") qs.append(k, v);
-  });
-  return `${root}${path}${qs.toString() ? `?${qs}` : ""}`;
-}
-
 const BG_STATUS = {
   draft: "Чернова",
   issued: "Издадена",
@@ -29,8 +14,17 @@ const BG_STATUS = {
 };
 
 function labelStatus(s) {
-  const k = String(s || "").toLowerCase();
-  return BG_STATUS[k] || s || "—";
+  return BG_STATUS[String(s || "").toLowerCase()] || s || "—";
+}
+function fmtDate(s) {
+  if (!s) return "—";
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return String(s).slice(0, 16).replace("T", " ");
+  return d.toLocaleDateString() + " " + d.toLocaleTimeString().slice(0,5);
+}
+function vehTitle(v) {
+  const y = v.year ? ` (${v.year})` : "";
+  return `${v.make_name || ""} ${v.model_name || ""}${y} — ${v.edition_name || "Edition"}`.trim();
 }
 
 // You used these patterns in Contracts: preview on desktop, download on mobile
@@ -44,29 +38,29 @@ function labelStatus(s) {
 export default function CustomerOffersPage({apiBase, publicCustomerUuid }) {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setErr] = useState("");
+  const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 20;
+  const [total, setTotal] = useState(0);
 
   async function load() {
-    setLoading(true);
-    setErr("");
+    setLoading(true); setError("");
     try {
       const url = buildUrl(apiBase, `/api/public/customers/${publicCustomerUuid}/offers`);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const rows = Array.isArray(data) ? data : (data.items || []);
-      setOffers(rows);
+      const r = await fetch(url);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      setOffers(j.items || []);
     } catch (e) {
-      setErr(e.message || "Грешка при зареждане");
-      setOffers([]);
+      setError(e.message || "Load failed");
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { if (publicCustomerUuid) load(); }, [publicCustomerUuid]);
+  useEffect(() => { load(); }, [publicCustomerUuid, page]);
 
-  async function openLatestPdfInNewTab(offerUuid) {
+  async function openLatestPdf(offerUuid) {
   const url = buildUrl(apiBase,`/api/public/customers/offers/${offerUuid}/pdf/latest`)
   const res = await fetch(url);
   if (!res.ok) {
@@ -92,42 +86,37 @@ export default function CustomerOffersPage({apiBase, publicCustomerUuid }) {
   }
 }
 
-async function downloadLatestPdf(offerUuid, filename = "Оферта.pdf") {
-  const buildedUrl = buildUrl(apiBase,`/api/public/customers/offers/${offerUuid}/pdf/latest`)
-  const res = await fetch(buildedUrl);
-  if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
+// Mobile-friendly: force a file download (blob fallback if CORS blocks 'download')
+  async function downloadLatestPdf(offerUuid, filename = "Оферта.pdf") {
     try {
-      const ct = res.headers.get("content-type") || "";
-      if (ct.includes("application/json")) {
-        const j = await res.json();
-        if (j?.error) msg = j.error;
-      } else {
-        const t = await res.text();
-        if (t) msg = t;
+      const url = buildUrl(apiBase, `/api/public/customers/offers/${offerUuid}/pdf/latest`);
+      const r = await fetch(url);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      if (!j.signedUrl) throw new Error("PDF не е наличен.");
+
+      try {
+        const pdfResp = await fetch(j.signedUrl, { mode: "cors" });
+        if (!pdfResp.ok) throw new Error(`HTTP ${pdfResp.status}`);
+        const blob = await pdfResp.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(blobUrl);
+      } catch {
+        // Fallback: navigate to the signed URL (mobile browsers will usually offer to open in a viewer)
+        window.location.href = j.signedUrl;
       }
-    } catch {}
-    alert(msg);
-    return;
+    } catch (e) {
+      alert(`Проблем при изтегляне на PDF: ${e.message}`);
+    }
   }
-  const { signedUrl } = await res.json();
-  if (!signedUrl) return alert("Няма наличен PDF за тази оферта.");
 
-  // download blob (mobile-friendly)
-  const pdfRes = await fetch(signedUrl);
-  const blob = await pdfRes.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-
-  return (
+   return (
     <div className="cont-page">
       <div className="cont-page-toolbar">
         <h3>Оферти</h3>
@@ -150,37 +139,50 @@ async function downloadLatestPdf(offerUuid, filename = "Оферта.pdf") {
                 <span className={`cont-page-badge cont-page-${String(o.status).toLowerCase()}`}>
                   {labelStatus(o.status)}
                 </span>
+                <span className="cont-page-dot">•</span>
+                <span className="cont-page-type">Оферта</span>
               </div>
               <div className="cont-page-sub">
                 Създадена: {fmtDate(o.created_at)}
-                {o.valid_until ? <> • Валидна до: {fmtDate(o.valid_until)}</> : null}
+                {o.valid_until ? ` • Валидна до: ${fmtDate(o.valid_until)}` : ""}
               </div>
             </div>
 
             <div className="cont-page-body">
-              {/* You can add an items preview here if you expose it in the public list.
-                 For now, keep it consistent with Contracts' “total” area. */}
+              <div className="cont-page-vehicles">
+                {o.vehicles && o.vehicles.length > 0 ? (
+                  o.vehicles.map(v => (
+                    <div key={`${o.offer_uuid}-${v.vehicle_id}-${v.vin || ""}`} className="cont-page-veh">
+                      <div className="cont-page-veh-line1">{vehTitle(v)}</div>
+                      <div className="cont-page-veh-line2">
+                        VIN: {v.vin || "—"} • Цвят: {v.exterior_color || "—"} / {v.interior_color || "—"}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="cont-page-muted">Няма добавени автомобили.</div>
+                )}
+              </div>
+
               <div className="cont-page-actions">
                 <div className="cont-page-total">
-                  Обща сума: <strong>{(o.total_amount ?? 0).toFixed(2)} {o.currency || "BGN"}</strong>
+                  Обща сума: <strong>{Number(o.total_amount || 0).toFixed(2)} {o.currency || "BGN"}</strong>
                 </div>
 
-                {/* Desktop: open in new tab */}
                 <button
                   className="cont-page-btn primary cont-page-desktopOnly"
+                  onClick={() => openLatestPdf(o.offer_public_uuid || o.public_uuid)}
                   disabled={!o.has_pdf}
                   title={o.has_pdf ? "Преглед на PDF" : "Няма наличен PDF"}
-                  onClick={() => openLatestPdfInNewTab(o.offer_uuid)}
                 >
                   Преглед на PDF
                 </button>
 
-                {/* Mobile: download (blob fallback) */}
                 <button
                   className="cont-page-btn primary cont-page-mobileOnly"
+                  onClick={() => downloadLatestPdf(o.offer_public_uuid || o.public_uuid)}
                   disabled={!o.has_pdf}
-                  title={o.has_pdf ? "Изтегли PDF" : "Няма наличен PDF"}
-                  onClick={() => downloadLatestPdf(o.offer_uuid, `Оферта_${o.offer_number || o.offer_uuid}.pdf`)}
+                  title={o.has_pdf ? "Преглед на PDF" : "Няма наличен PDF"}
                 >
                   Изтегли PDF
                 </button>
