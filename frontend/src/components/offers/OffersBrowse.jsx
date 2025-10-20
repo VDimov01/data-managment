@@ -147,8 +147,8 @@ export default function OffersBrowse({ onManage }) {
                   <td className="text-muted">{niceDate(r.created_at)}</td>
                   <td>
                     <div className="btn-row">
-                      <button className="btn" onClick={() => onManage(r.offer_uuid)}>Отвори</button>
-                      <button className="btn" onClick={() => openLatestPdf(r)}>PDF</button>
+                      <button className="btn" onClick={() => onManage(r.offer_uuid)}>Редактирай</button>
+                      <button className="btn" onClick={() => openLatestPdf(r)}>Отвори PDF</button>
                       {canIssue(r) && (
                         <button className="btn btn-primary" onClick={() => issueRow(r)}>
                           Издаване
