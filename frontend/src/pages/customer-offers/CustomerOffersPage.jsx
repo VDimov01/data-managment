@@ -8,6 +8,15 @@ function fmtDate(v) {
   return s.slice(0, 10);
 }
 
+function buildUrl(base, path, params = {}) {
+  const root = (base || "").replace(/\/+$/, "");
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k,v]) => {
+    if (v !== undefined && v !== null && String(v).trim() !== "") qs.append(k, v);
+  });
+  return `${root}${path}${qs.toString() ? `?${qs}` : ""}`;
+}
+
 const BG_STATUS = {
   draft: "Чернова",
   issued: "Издадена",
@@ -25,10 +34,41 @@ function labelStatus(s) {
 }
 
 // You used these patterns in Contracts: preview on desktop, download on mobile
-async function openLatestPdfInNewTab(offerUuid) {
-  const res = await fetch(`/api/public/customers/offers/${offerUuid}/pdf/latest`, {
-    credentials: "include",
-  });
+
+
+
+/**
+ * Props:
+ *   publicCustomerUuid: string (customer.public_uuid)
+ */
+export default function CustomerOffersPage({apiBase, publicCustomerUuid }) {
+  const [offers, setOffers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setErr] = useState("");
+
+  async function load() {
+    setLoading(true);
+    setErr("");
+    try {
+      const url = buildUrl(apiBase, `/api/public/customers/${publicCustomerUuid}/offers`);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const rows = Array.isArray(data) ? data : (data.items || []);
+      setOffers(rows);
+    } catch (e) {
+      setErr(e.message || "Грешка при зареждане");
+      setOffers([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { if (publicCustomerUuid) load(); }, [publicCustomerUuid]);
+
+  async function openLatestPdfInNewTab(offerUuid) {
+  const url = buildUrl(apiBase,`/api/public/customers/offers/${offerUuid}/pdf/latest`)
+  const res = await fetch(url);
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
@@ -53,9 +93,8 @@ async function openLatestPdfInNewTab(offerUuid) {
 }
 
 async function downloadLatestPdf(offerUuid, filename = "Оферта.pdf") {
-  const res = await fetch(`/api/public/customers/offers/${offerUuid}/pdf/latest`, {
-    credentials: "include",
-  });
+  const buildedUrl = buildUrl(apiBase,`/api/public/customers/offers/${offerUuid}/pdf/latest`)
+  const res = await fetch(buildedUrl);
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
@@ -87,35 +126,6 @@ async function downloadLatestPdf(offerUuid, filename = "Оферта.pdf") {
   URL.revokeObjectURL(url);
 }
 
-/**
- * Props:
- *   publicCustomerUuid: string (customer.public_uuid)
- */
-export default function CustomerOffersPage({ publicCustomerUuid }) {
-  const [offers, setOffers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setErr] = useState("");
-
-  async function load() {
-    setLoading(true);
-    setErr("");
-    try {
-      const res = await fetch(`/api/public/customers/${publicCustomerUuid}/offers`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const rows = Array.isArray(data) ? data : (data.items || []);
-      setOffers(rows);
-    } catch (e) {
-      setErr(e.message || "Грешка при зареждане");
-      setOffers([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { if (publicCustomerUuid) load(); }, [publicCustomerUuid]);
 
   return (
     <div className="cont-page">
