@@ -15,3 +15,12 @@ export function grossFromNet(n, rate) {
   const r = Number(rate || 0) / 100;
   return round2(Number(n || 0) * (1 + r));
 }
+
+export function buildUrl(base, path, params = {}) {
+  const root = (base || "").replace(/\/+$/, "");
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k,v]) => {
+    if (v !== undefined && v !== null && String(v).trim() !== "") qs.append(k, v);
+  });
+  return `${root}${path}${qs.toString() ? `?${qs}` : ""}`;
+}
