@@ -112,7 +112,7 @@ export default function CustomerSection() {
     const base = window.location.origin || "";
     const url = `${base}/customer/${row.public_uuid}`;
     navigator.clipboard.writeText(url).then(
-      () => alert("Public link copied to clipboard"),
+      () => alert("Линкът е копиран успешно!"),
       () => alert(url) // fallback: show the link if clipboard fails
     );
   };
