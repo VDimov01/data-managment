@@ -28,6 +28,7 @@ const labelsRoutes = require('./routes/labels');
 const vehicleImagesRoutes = require('./routes/vehicleImages');
 const contractsRoutes = require('./routes/contracts');
 const handoverRoutes = require('./routes/handover');
+const offerRoutes = require('./routes/offer');
 
 const path = require('path');
 
@@ -67,7 +68,7 @@ app.use('/api/car-images', carImagesRoutes);
 // guard everything else
   app.use('/api', requireAuth); // this is the guard.. move it up after you rework the fetches in the frontend
   
-  app.use('/api/offers', offersRoutes);
+  app.use('/api/offers', offerRoutes);
   app.use("/offers", express.static(path.join(__dirname, "offers")));
   app.use('/api/shops', shopsRoutes);
   app.use('/api/contracts', contractsRoutes);
