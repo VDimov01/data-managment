@@ -1,0 +1,57 @@
+/* container can scroll if needed on small screens */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* general table feel */
+.table.offer-lines {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto; /* let columns size naturally */
+}
+
+/* cells */
+.table.offer-lines th,
+.table.offer-lines td {
+  padding: 8px 10px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+/* make non-description columns keep a single line (don’t wrap headers/inputs) */
+.table.offer-lines thead th:not(:first-child),
+.table.offer-lines tbody td:not(:first-child) {
+  white-space: nowrap;
+}
+
+/* description column: allow wrapping and guarantee some breathing room */
+.table.offer-lines tbody td:first-child {
+  white-space: normal;
+  word-break: break-word;
+  min-width: 320px;   /* not a fixed width; just prevents squeezing too much */
+}
+
+/* long helper bits */
+.table.offer-lines .meta { font-size: 12px; }
+.table.offer-lines .hint { font-size: 12px; margin-top: 4px; }
+
+/* inputs fill their cells */
+.table.offer-lines .input {
+  width: 100%;
+  min-width: 84px;    /* keep them usable even when tight */
+  box-sizing: border-box;
+}
+
+/* align totals column */
+.table.offer-lines .text-right { text-align: right; }
+
+/* Responsive tweaks */
+@media (max-width: 900px) {
+  .table.offer-lines tbody td:first-child { min-width: 260px; }
+  .table.offer-lines .hint { display: none; } /* hide extra helper text to save space */
+}
+@media (max-width: 600px) {
+  .table.offer-lines tbody td:first-child { min-width: 220px; }
+}
