@@ -51,8 +51,8 @@ router.put('/:uuid', async (req, res) => {
 // Add vehicle line
 router.post('/:uuid/items', async (req, res) => {
   try {
-    const { item_type, vehicle_id, quantity, unit_price, description, metadata_json } = req.body || {};
-    await addVehicleLine(req.params.uuid, { item_type, vehicle_id, quantity, unit_price, description, metadata_json });
+    const { item_type, vehicle_id, quantity, unit_price, unit_price_gross, description, metadata_json } = req.body || {};
+    await addVehicleLine(req.params.uuid, { item_type, vehicle_id, quantity, unit_price, unit_price_gross, description, metadata_json });
     const data = await getOfferByUUID(req.params.uuid);
     res.json(data);
   } catch (e) { res.status(400).json({ error: e.message }); }
