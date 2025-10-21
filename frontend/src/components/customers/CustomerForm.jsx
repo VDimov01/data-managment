@@ -20,7 +20,7 @@ const DEFAULTS = {
   email: "",
   phone: "",
   secondary_phone: "",
-  country: "BG",
+  country: "България",
   city: "",
   address_line: "",
   postal_code: "",
@@ -207,7 +207,7 @@ export default function CustomerForm({ editCustomer = null, onClose, onSave }) {
     <div className="cust-grid">
       <div className="cust-field">
         <label>Държава</label>
-        <input className="input" value={form.country} onChange={onText("country")} placeholder="BG" />
+        <input className="input" value={form.country} onChange={onText("country")} placeholder="България" />
       </div>
       <div className="cust-field">
         <label>Град</label>
@@ -226,17 +226,22 @@ export default function CustomerForm({ editCustomer = null, onClose, onSave }) {
 
     {/* IDs */}
     <div className="cust-grid">
+     {form.customer_type === "Individual" ? (
+        <div className="cust-field">
+          <label>ЕГН</label>
+          <input className="input" value={form.national_id} onChange={onText("national_id")} />
+        </div>
+     )
+      :
       <div className="cust-field">
-        <label>Данъчен номер (ЕИК/UIC)</label>
+        <label>Данъчен номер (ЕИК/ЕИК по Булстат)</label>
         <input className="input" value={form.tax_id} onChange={onText("tax_id")} />
       </div>
+    } 
+
       <div className="cust-field">
         <label>ДДС номер</label>
         <input className="input" value={form.vat_number} onChange={onText("vat_number")} />
-      </div>
-      <div className="cust-field">
-        <label>ЕГН</label>
-        <input className="input" value={form.national_id} onChange={onText("national_id")} />
       </div>
     </div>
 

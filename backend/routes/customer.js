@@ -34,7 +34,7 @@ function parseCustomerBody(body = {}, isUpdate = false) {
   const phone           = body.phone           != null ? String(body.phone).trim()           : null;
   const secondary_phone = body.secondary_phone != null ? String(body.secondary_phone).trim() : null;
 
-  const country      = body.country      != null ? String(body.country).trim().toUpperCase() : null;
+  const country      = body.country      != null ? String(body.country).trim() : null;
   const city         = body.city         != null ? String(body.city).trim()                  : null;
   const address_line = body.address_line != null ? String(body.address_line).trim()          : null;
   const postal_code  = body.postal_code  != null ? String(body.postal_code).trim()           : null;
