@@ -1,111 +1,198 @@
-// frontend/src/components/offers/LinesTable.jsx
 import React, { useEffect, useState } from "react";
-import { grossFromNet, netFromGross, parseNumber } from "../../utils/helpers";
 import { MoneyInput, PercentInput } from "./Inputs";
+import { parseNumber, grossFromNet, netFromGross, round2 } from "../../utils/helpers";
+
+const fmt2 = (n) => round2(n).toFixed(2);
+
+function readMeta(it) {
+  const m = it?.metadata_json ?? it?.metadata;
+  if (!m) return {};
+  if (typeof m === "string") {
+    try { return JSON.parse(m); } catch { return {}; }
+  }
+  return m;
+}
 
 export default function LinesTable({ offer, items, onUpdateLine, onDeleteLine }) {
-  const currency = offer?.currency || "BGN";
-  const [grossInput, setGrossInput] = useState({}); // line_no -> string (gross)
+  // local discount state per line (free typing)
+  const [disc, setDisc] = useState({}); // { [line_no]: { value: "12.34" } }  (gross, per unit)
 
+  // seed discount inputs from metadata_json
   useEffect(() => {
-    setGrossInput((prev) => {
+    setDisc((prev) => {
       const next = { ...prev };
-      items.forEach((it) => {
-        if (prev[it.line_no] == null) {
-          const rate = Number(it.vat_rate ?? offer?.vat_rate ?? 20);
-          next[it.line_no] = String(grossFromNet(it.unit_price || 0, rate).toFixed(2));
+      for (const it of items) {
+        const ln = it.line_no;
+        const meta = readMeta(it);
+        if (!next[ln]) {
+          next[ln] = {
+            value: meta.ui_discount_value != null ? String(meta.ui_discount_value) : "",
+          };
         }
-      });
-      Object.keys(next).forEach((k) => {
+      }
+      // cleanup removed lines
+      for (const k of Object.keys(next)) {
         if (!items.find((it) => String(it.line_no) === String(k))) delete next[k];
-      });
+      }
       return next;
     });
-  }, [items, offer?.vat_rate]);
+  }, [items]);
+
+  // apply discount: compute NEW NET unit, send to server with updated metadata_json
+  function applyDiscount(lineNo, extraPatch = {}) {
+    const it = items.find((r) => r.line_no === lineNo);
+    if (!it) return;
+
+    const meta = readMeta(it);
+    const rate = Number(it.vat_rate ?? offer?.vat_rate ?? 20);
+
+    // base NET per unit (pre-discount). If not stored yet, current unit is the base.
+    const baseNet = Number(meta.ui_original_unit_price ?? it.unit_price ?? 0);
+    const baseGross = round2(grossFromNet(baseNet, rate));
+
+    const dVal = parseNumber((disc[lineNo] && disc[lineNo].value) ?? ""); // gross discount per unit
+    const effGross = round2(Math.max(0, baseGross - dVal));
+    const effNet = netFromGross(effGross, rate);
+
+    const payload = {
+      unit_price: Number(effNet.toFixed(2)),      // store NET
+      discount_amount: dVal || 0,
+      metadata_json: {
+        ...meta,
+        ui_original_unit_price: baseNet,          // NET, stable base
+        ui_discount_type: "amount",               // fixed mode
+        ui_discount_value: dVal || 0,             // GROSS discount per unit
+        ui_effective_unit_price: Number(effNet.toFixed(2)),
+        ui_tax_rate: rate,
+      },
+      ...extraPatch
+    };
+
+    onUpdateLine(lineNo, payload);
+  }
+
+  function handleVatChange(lineNo, newVatStr) {
+    if (newVatStr === "") return; // typing
+    const newRate = Number(newVatStr);
+    // re-apply discount with the new VAT and update both vat_rate + unit_price
+    applyDiscount(lineNo, { vat_rate: newRate });
+  }
 
   return (
-    <div className="table-wrap mt-2">
-      <table className="table table-tight">
-        <thead>
+  <div className="table-wrap">
+    <table className="table table-tight offer-lines">
+      <thead>
+        <tr>
+          <th>Описание</th>
+          <th>К-во</th>
+          <th>Отстъпка (с ДДС)</th>
+          <th>Ед. цена (с ДДС)</th>
+          <th>ДДС %</th>
+          <th className="text-right">Общо (с ДДС)</th>
+          <th></th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {items.length === 0 && (
           <tr>
-            <th style={{ minWidth: 260 }}>Описание</th>
-            <th style={{ width: 90 }}>К-во</th>
-            <th style={{ width: 160 }}>Ед. цена (с ДДС)</th>
-            <th style={{ width: 100 }}>% ДДС</th>
-            <th style={{ width: 160, textAlign: "right" }}>Сума (без ДДС)</th>
-            <th style={{ width: 60 }}></th>
+            <td colSpan={7} className="text-muted center">Няма артикули.</td>
           </tr>
-        </thead>
-        <tbody>
-          {items.length === 0 && (
-            <tr><td colSpan={6} className="text-muted center">Няма добавени редове.</td></tr>
-          )}
-          {items.map((it) => {
-            const rate = Number(it.vat_rate ?? offer?.vat_rate ?? 20);
-            const net = Number(it.unit_price || 0);
-            const gross = grossInput[it.line_no] ?? String(grossFromNet(net, rate).toFixed(2));
-            return (
-              <tr key={it.line_no}>
-                <td>
-                  <input
-                    className="input"
-                    value={it.description || ""}
-                    onChange={(e) => onUpdateLine(it.line_no, { description: e.target.value })}
-                  />
-                </td>
-                <td>
-                  <MoneyInput
-                    value={it.quantity}
-                    onChange={(v) => onUpdateLine(it.line_no, { quantity: v === "" ? "" : Number(v) })}
-                    placeholder="1"
-                  />
-                </td>
-                <td>
-                  <MoneyInput
-                    value={gross}
-                    onChange={(v) => {
-                      setGrossInput(m => ({ ...m, [it.line_no]: v }));
-                      if (v === "") {
-                        onUpdateLine(it.line_no, { unit_price: "" });
-                      } else {
-                        const netVal = netFromGross(Number(v), rate);
-                        onUpdateLine(it.line_no, { unit_price: Number(netVal.toFixed(2)) });
-                      }
-                    }}
-                    placeholder="0.00"
-                  />
-                </td>
-                <td>
-                  <PercentInput
-                    value={it.vat_rate}
-                    onChange={(v) => {
-                      const newRate = v === "" ? "" : Number(v);
-                      const grossStr = grossInput[it.line_no] ?? String(grossFromNet(net, rate).toFixed(2));
-                      const grossNum = parseNumber(grossStr, 0);
-                      const newNet = v === "" ? netFromGross(grossNum, offer?.vat_rate ?? 20) : netFromGross(grossNum, newRate);
-                      setGrossInput(m => ({ ...m, [it.line_no]: grossStr }));
-                      onUpdateLine(it.line_no, {
-                        vat_rate: v === "" ? "" : newRate,
-                        unit_price: Number(newNet.toFixed(2))
-                      });
-                    }}
-                    placeholder={String(offer?.vat_rate ?? 20)}
-                  />
-                </td>
-                <td style={{ textAlign: "right" }}>
-                  <strong>{currency} {Number(it.line_total || 0).toFixed(2)}</strong>
-                  <div className="text-muted" style={{ fontSize: 12 }}>
-                    Брутo: {currency} {(Number(it.quantity || 1) * grossFromNet(net, rate)).toFixed(2)}
-                  </div>
-                </td>
-                <td>
-                  <button className="btn btn-danger" onClick={() => onDeleteLine(it.line_no)}>✕</button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+        )}
+
+        {items.map((it) => {
+          const ln   = it.line_no;
+          const qty  = Number(it.quantity || 1);
+          const rate = Number(it.vat_rate ?? offer?.vat_rate ?? 20);
+
+          const meta      = readMeta(it);
+          const baseNet   = Number(meta.ui_original_unit_price ?? it.unit_price ?? 0); // NET base
+          const baseGross = round2(grossFromNet(baseNet, rate));
+
+          const dVal          = parseNumber((disc[ln] && disc[ln].value) ?? "");
+          const effGrossUnit  = round2(Math.max(0, baseGross - dVal));
+          const effNetUnit    = netFromGross(effGrossUnit, rate);
+          const grossTotal    = round2(qty * effGrossUnit);
+          const currencyLabel = offer?.currency || "BGN";
+
+          return (
+            <tr key={ln}>
+              {/* Описание */}
+              <td>
+                <div className="v-title">{it.description || `Линия ${ln}`}</div>
+                <div className="text-muted meta">
+                  База (нето): {fmt2(baseNet)} {currencyLabel}
+                </div>
+              </td>
+
+              {/* К-во */}
+              <td>
+                <MoneyInput
+                  className="input"
+                  value={String(qty)}
+                  onChange={(v) => {
+                    if (v === "") return onUpdateLine(ln, { quantity: "" });
+                    const n = Number(v);
+                    if (!Number.isFinite(n)) return;
+                    onUpdateLine(ln, { quantity: n });
+                  }}
+                  onBlur={(e) => {
+                    const v = e.target.value;
+                    const n = v === "" ? 1 : Number(v);
+                    onUpdateLine(ln, { quantity: n });
+                  }}
+                />
+              </td>
+
+              {/* Отстъпка (сума бруто на единица) */}
+              <td>
+                <MoneyInput
+                  className="input"
+                  placeholder="0.00"
+                  value={(disc[ln] && disc[ln].value) ?? ""}
+                  onChange={(v) => setDisc((m) => ({ ...m, [ln]: { value: v } }))}
+                  onBlur={() => applyDiscount(ln)}
+                />
+                <div className="text-muted hint">
+                  Нова нето ед. цена: {fmt2(effNetUnit)} {currencyLabel}
+                </div>
+              </td>
+
+              {/* Ефективна брутна ед. цена (показваме само) */}
+              <td>
+                <MoneyInput className="input" value={fmt2(effGrossUnit)} disabled />
+              </td>
+
+              {/* ДДС % */}
+              <td>
+                <PercentInput
+                  className="input"
+                  value={String(rate)}
+                  onChange={(v) => handleVatChange(ln, v)}
+                  onBlur={(e) => {
+                    const v = e.target.value;
+                    if (v === "") return;
+                    handleVatChange(ln, v);
+                  }}
+                  placeholder="20"
+                />
+              </td>
+
+              {/* Общо (брутно) */}
+              <td className="text-right">
+                <strong>{currencyLabel} {fmt2(grossTotal)}</strong>
+              </td>
+
+              {/* Изтрий */}
+              <td>
+                <button className="btn btn-danger" onClick={() => onDeleteLine(ln)}>✕</button>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+);
+
 }

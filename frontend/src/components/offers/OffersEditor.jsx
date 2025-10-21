@@ -1,35 +1,72 @@
-// frontend/src/components/offers/OfferEditor.jsx
 import React, { useMemo, useState } from "react";
 import { api } from "../../services/api";
 import CustomerPicker from "./CustomerPicker";
 import VehiclePicker from "./VehiclePicker";
 import LinesTable from "./LinesTable";
-import { netFromGross, offerKey } from "../../utils/helpers";
+import { netFromGross, offerKey, round2, grossFromNet } from "../../utils/helpers";
 import { MoneyInput, PercentInput } from "./Inputs";
 
-export default function OfferEditor({ initialOffer, initialItems, onExit, reloadOffer }) {
+function readMeta(it) {
+  const m = it?.metadata_json ?? it?.metadata;
+  if (!m) return {};
+  if (typeof m === "string") {
+    try { return JSON.parse(m); } catch { return {}; }
+  }
+  return m;
+}
+
+export default function OfferEditor({ initialOffer, initialItems, onExit }) {
   const [offer, setOffer] = useState(initialOffer || null);
   const [items, setItems] = useState(initialItems || []);
   const [customer, setCustomer] = useState(null);
 
-  // header
+  // header fields
   const [currency, setCurrency] = useState(offer?.currency || "BGN");
   const [vatRate, setVatRate] = useState(String(offer?.vat_rate ?? "20"));
   const [validUntil, setValidUntil] = useState(offer?.valid_until ? String(offer.valid_until).slice(0, 10) : "");
   const [notesPublic, setNotesPublic] = useState(offer?.notes_public || "");
   const [notesInternal, setNotesInternal] = useState(offer?.notes_internal || "");
-  const [discountAmt, setDiscountAmt] = useState(offer?.discount_amount != null ? String(offer.discount_amount) : "");
+
+  // LIVE derived discount from lines
+  const discountAgg = useMemo(() => {
+    let grossSum = 0; // sum of per-unit gross discount * qty
+    let netSum = 0;   // same but net per-unit at each line's VAT
+
+    for (const it of items) {
+      const qty = Number(it.quantity || 1);
+      const rate = Number(it.vat_rate ?? offer?.vat_rate ?? 20);
+      const meta = readMeta(it);
+
+      const baseNet = Number(meta.ui_original_unit_price ?? it.unit_price ?? 0);
+      const baseGross = round2(grossFromNet(baseNet, rate));
+
+      const dPerUnitGross = Number(meta.ui_discount_value || 0);
+      const dPerUnitGrossClamped = Math.max(0, Math.min(baseGross, dPerUnitGross));
+
+      grossSum += dPerUnitGrossClamped * qty;
+
+      // convert the discount amount to net to understand effect on totals
+      const dPerUnitNet = netFromGross(dPerUnitGrossClamped, rate);
+      netSum += dPerUnitNet * qty;
+    }
+
+    return {
+      gross: round2(grossSum),
+      net: round2(netSum),
+    };
+  }, [items, offer?.vat_rate]);
 
   const totals = useMemo(() => {
     const o = offer || {};
     return {
       subtotal: Number(o.subtotal_amount || 0).toFixed(2),
-      discount: Number(o.discount_amount || 0).toFixed(2),
+      // Show derived discount (net) next to totals (your DB header discount stays 0)
+      discount_gross: discountAgg.gross.toFixed(2),
       vat: Number(o.vat_amount || 0).toFixed(2),
       total: Number(o.total_amount || 0).toFixed(2),
-      currency: o.currency || "BGN"
+      currency: o.currency || "BGN",
     };
-  }, [offer]);
+  }, [offer, discountAgg.net]);
 
   async function saveHeader() {
     const uuid = offerKey(offer);
@@ -42,10 +79,12 @@ export default function OfferEditor({ initialOffer, initialItems, onExit, reload
         valid_until: validUntil || null,
         notes_public: notesPublic || null,
         notes_internal: notesInternal || null,
-        discount_amount: discountAmt === "" ? 0 : Number(discountAmt) // net discount
+        // keep header discount at 0 — line discounts are already baked into unit prices
+        discount_amount: 0
       }
     });
-    // Force totals recompute if lines exist
+
+    // Force totals recompute if lines exist (touch first line)
     if (items.length > 0) {
       const first = items[0];
       await api(`/offers/${uuid}/items/${first.line_no}`, { method: "PUT", body: { unit_price: first.unit_price } });
@@ -62,25 +101,29 @@ export default function OfferEditor({ initialOffer, initialItems, onExit, reload
     const gross = v.asking_price != null ? Number(v.asking_price) : 0;
     const rate = Number(vatRate || offer?.vat_rate || 20);
     const net = netFromGross(gross, rate);
+
     const meta = {
       vehicle_id: v.vehicle_id,
       source: "picker",
-      ui_price_gross: gross,
-      ui_vat_rate: rate,
-      ui_price_net: net,
+      ui_original_unit_price: Number(net.toFixed(2)), // base NET (pre-discount)
+      ui_discount_type: "amount",
+      ui_discount_value: 0,                           // start with no discount
+      ui_effective_unit_price: Number(net.toFixed(2)),
+      ui_tax_rate: rate,
       make: v.make_name || v.make || null,
       model: v.model_name || v.model || null,
       year: v.year || v.model_year || null,
       edition: v.edition_name || v.edition || null,
       vin: v.vin || null
     };
+
     const data = await api(`/offers/${uuid}/items`, {
       method: "POST",
       body: {
         item_type: "vehicle",
         vehicle_id: v.vehicle_id,
         quantity: 1,
-        unit_price: net,          // NET to backend
+        unit_price: net,                 // NET
         description: desc,
         metadata_json: meta
       }
@@ -168,7 +211,7 @@ export default function OfferEditor({ initialOffer, initialItems, onExit, reload
 
           <div className="ctr-grid">
             <div className="field field-col-1">
-              <label className="label">Публични бележки</label>
+              <label className="label">Публични бележки (виждат се в офертата)</label>
               <textarea className="input" rows={2} value={notesPublic} onChange={(e) => setNotesPublic(e.target.value)} />
             </div>
             <div className="field field-col-1">
@@ -177,15 +220,16 @@ export default function OfferEditor({ initialOffer, initialItems, onExit, reload
             </div>
           </div>
 
+          {/* Derived discount from lines (display-only) */}
           <div className="ctr-grid" style={{ marginTop: 8 }}>
-            <div className="field" style={{ maxWidth: 280 }}>
-              <label className="label">Отстъпка (общо, без ДДС)</label>
-              <MoneyInput value={discountAmt} onChange={setDiscountAmt} placeholder="0.00" />
-              <div className="text-muted mt-1">* Отстъпката е преди ДДС (нето).</div>
+            <div className="field" style={{ maxWidth: 320 }}>
+              <label className="label">Отстъпка (общо, с ДДС)</label>
+              <MoneyInput value={discountAgg.gross.toFixed(2)} disabled />
+              <div className="text-muted mt-1">без ДДС: {discountAgg.net.toFixed(2)} {offer?.currency || "BGN"}</div>
             </div>
           </div>
 
-          <div className="btn-row actions-end">
+          <div className="btn-row actions-end" style={{marginTop:12}}>
             <button className="btn" onClick={onExit}>Назад</button>
             <button className="btn btn-primary" onClick={saveHeader}>Запази заглавието</button>
           </div>
@@ -209,7 +253,7 @@ export default function OfferEditor({ initialOffer, initialItems, onExit, reload
 
       <div className="panel-footer">
         <div className="tot-box"><div className="tot-label">Междинна сума (без ДДС)</div><div className="tot-amt">{totals.currency} {totals.subtotal}</div></div>
-        <div className="tot-box"><div className="tot-label">Отстъпка</div><div className="tot-amt">{totals.currency} {totals.discount}</div></div>
+        <div className="tot-box"><div className="tot-label">Отстъпка</div><div className="tot-amt">{totals.currency} {totals.discount_gross}</div></div>
         <div className="tot-box"><div className="tot-label">ДДС</div><div className="tot-amt">{totals.currency} {totals.vat}</div></div>
         <div className="tot-box"><div className="tot-label"><strong>Общо (с ДДС)</strong></div><div className="tot-amt"><strong>{totals.currency} {totals.total}</strong></div></div>
 

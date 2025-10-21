@@ -1,13 +1,16 @@
 // frontend/src/components/offers/Inputs.jsx
 import React from "react";
 
-export function MoneyInput({ className = "input", value, onChange, placeholder = "0.00" }) {
+// unchanged behaviour, just forward extra DOM props to <input/>
+export function MoneyInput({ value, onChange, placeholder, className, disabled, ...rest }) {
   return (
     <input
-      className={className}
+      {...rest}
+      className={className || "input"}
+      disabled={disabled}
       inputMode="decimal"
-      placeholder={placeholder}
-      value={value ?? ""}
+      placeholder={placeholder || "0.00"}
+      value={value}
       onChange={(e) => {
         const raw = e.target.value.replace(/,/g, ".").replace(/[^\d.]/g, "");
         const parts = raw.split(".");
@@ -18,13 +21,15 @@ export function MoneyInput({ className = "input", value, onChange, placeholder =
   );
 }
 
-export function PercentInput({ className = "input", value, onChange, placeholder = "20" }) {
+export function PercentInput({ value, onChange, placeholder, className, disabled, ...rest }) {
   return (
     <input
-      className={className}
+      {...rest}
+      className={className || "input"}
+      disabled={disabled}
       inputMode="decimal"
-      placeholder={placeholder}
-      value={value ?? ""}
+      placeholder={placeholder || "0"}
+      value={value}
       onChange={(e) => {
         const raw = e.target.value.replace(/,/g, ".").replace(/[^\d.]/g, "");
         const num = raw === "" ? "" : String(Math.min(1000, Math.max(0, Number(raw))));
