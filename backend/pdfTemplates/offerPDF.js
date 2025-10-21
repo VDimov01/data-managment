@@ -445,10 +445,9 @@ async function renderOfferPdfBuffer(snapshot) {
 
   // Prefer env var (so you can override per environment), fallback to your static file
   const absLogoPath =
-    process.env.DEALER_LOGO_PATH ||
     path.join(__dirname, '../static/next-auto-logo.png');
 
-  const logoUri = fileToDataUri(absLogoPath);
+  const logoUri = process.env.DEALER_LOGO_PATH || fileToDataUri(absLogoPath);
 
   const element = React.createElement(OfferDoc, { snap: snapshot, logoUri });
   return elementToBuffer(element);
