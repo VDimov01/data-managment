@@ -6,26 +6,6 @@ const crypto = require("crypto");
 const algorithm = "aes-256-cbc";
 const secret = process.env.UCN_SECRET_KEY;
 
-function decryptUCN(encrypted) {
-  if (!encrypted || !secret || secret.length !== 32) {
-    return null;
-  }
-
-  try {
-    const [ivHex, encryptedHex] = encrypted.split(":");
-    const iv = Buffer.from(ivHex, "hex");
-    const encryptedText = Buffer.from(encryptedHex, "hex");
-
-    const decipher = crypto.createDecipheriv(algorithm, Buffer.from(secret), iv);
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString("utf8");
-  } catch (err) {
-    console.error("Error decrypting UCN:", err);
-    return null;
-  }
-}
-
 // Register font
 Font.register({
   family: "DejaVu",
@@ -71,13 +51,11 @@ function boldText(text){
   return React.createElement(Text, { style: { fontWeight: "bold" } }, text);
 }
 
-function AdvanceContractPDF({ buyer, cars = [], advance_amount, type }) {
-  const totalAmount = cars.reduce((sum, car) => sum + car.car_price_bgn * car.quantity, 0);
+function AdvanceContractPDF({ buyer, cars = [], advance_amount }) {
+  const totalAmount = cars.reduce((sum, car) => sum + car.unit_price * car.quantity, 0);
   const remaining = totalAmount - advance_amount;
   const deliveryDays = 60;
   const today = new Date().toLocaleDateString("bg-BG");
-
-  const decryptedUCN = buyer?.ucn ? decryptUCN(buyer.ucn) : null;
 
   return React.createElement(
     Document,
@@ -95,8 +73,8 @@ function AdvanceContractPDF({ buyer, cars = [], advance_amount, type }) {
         React.createElement(View, {style: {marginTop: 10, marginBottom: 10} }),
         React.createElement(Text, null,``, boldText(`"Некст Авто“ ЕООД, с ЕИК:`), ` 208224080, гр. Стара Загора, ул. "Темида" 1, вх. Б, ап. 16, тел.: 0996600900, e-mail: sales@solaris.expert, представлявано от Пламен Иванов Генчев – `, boldText(`ПРОДАВАЧ`)),
         React.createElement(Text, null, `и`),
-        buyer.customer_type === "Individual" && boldedClientName(buyer),
-        buyer.customer_type === "Company" && React.createElement(Text, null, ``, boldText(`${buyer.name} с ЕИК: `), `${buyer.vat_number} и адрес на управление ${buyer.address || ""}, ${buyer.city || ""}`, `, представлявано от ${buyer.rep_first_name} ${buyer.rep_middle_name || ""} ${buyer.rep_last_name || ""}, наричан по-долу – `, boldText(`КУПУВАЧ`)),
+        buyer.customer_type === "Individual" && React.createElement(Text, null, ``, boldText(`${buyer.display_name} с ЕГН: `), `${buyer.national_id} и адрес ${buyer.city || ""}, ${buyer.address_line || ""} и тел: ${buyer.phone}`, `, наричан по-долу – `, boldText(`КУПУВАЧ`)),
+        buyer.customer_type === "Company" && React.createElement(Text, null, ``, boldText(`${buyer.display_name} с ЕИК: `), `${buyer.vat_number} и адрес на управление ${buyer.city || ""}, ${buyer.address_line || ""}`, `, представлявано от ${buyer.rep_first_name} ${buyer.rep_middle_name || ""} ${buyer.rep_last_name || ""}, наричан по-долу – `, boldText(`КУПУВАЧ`)),
       ]),
 
       // Vehicle info
@@ -107,7 +85,7 @@ function AdvanceContractPDF({ buyer, cars = [], advance_amount, type }) {
   React.createElement(Text, { key: idx, style: styles.carDescription },
     ``,boldText(`Лек автомобил`), `, марка/модел "`,
     React.createElement(Text, { style: { fontWeight: "bold" } }, `${car.maker} ${car.model} ${car.edition || ""}`),
-    ` ", Идентификационен номер на превозното средство с VIN № ${car.vin}, цвят ${car.exterior_color || "неуточнен"} / ${car.interior_color || ""}, пробег на автомобила - ${car.mileage_km} км, количество ${car.quantity}, единична цена ${(car.car_price_bgn).toLocaleString()} лв, обща цена ${(car.car_price_bgn * car.quantity).toLocaleString()} лв.`
+    ` ", Идентификационен номер на превозното средство с VIN № ${car.vin}, цвят ${car.exterior_color || "неуточнен"} / ${car.interior_color || ""}, пробег на автомобила - ${car.mileage_km} км, количество ${car.quantity}, единична цена ${(car.unit_price).toLocaleString()} лв, обща цена ${(car.unit_price * car.quantity).toLocaleString()} лв.`
   )
 )
       
@@ -119,7 +97,7 @@ function AdvanceContractPDF({ buyer, cars = [], advance_amount, type }) {
         React.createElement(Text, null, `1. `, boldText(`ПРОДАВАЧЪТ`), ` продава на `, boldText(`КУПУВАЧА`), ` изброените по-горе МПС-та в отлично техническо състояние и външен вид, и заедно с всички принадлежности, числящи се към автомобилите за сумата ${totalAmount.toLocaleString()} лв. (с включено ДДС), която сума продавача ще получи по банков път от купувача:`),
         React.createElement(Text, {style: {marginLeft: 20}}, `1.1. Авансово плащане от ${advance_amount.toLocaleString()} лв при сключване на договора.`),
         React.createElement(Text, {style: {marginLeft: 20}}, `1.2. Остатък от ${remaining.toLocaleString()} лв при предаване на автомобилите.`),
-        React.createElement(Text, {style: {marginLeft: 20}}, `1.3. Очаквания срок за доставка е 60 дни след подписване на договора. При забаваповече от 30 дни продавача е длъжен да върне заплатената сума авансово и да издаде кредитно известие. Продавача осигурява 5 години гаранционно обслужване на автомобила и 6 години на батерията или 150000 /сто и петдесетхиляди км./, което настъпи по-рано. Гаранцията е валидна за дефекти непредизвикани от купувача. За всички останали случаи продавача осигурява следгаранционен сервиз по цени на компонентите и тарифи на трудаофициално обявени в магазините и сервизите на същия.`),
+        React.createElement(Text, {style: {marginLeft: 20}}, `1.3. Очаквания срок за доставка е 60 дни след подписване на договора. При забававяне повече от 30 дни продавача е длъжен да върне заплатената сума авансово и да издаде кредитно известие. Продавача осигурява 5 години гаранционно обслужване на автомобила и 6 години на батерията или 150000 /сто и петдесетхиляди км./, което настъпи по-рано. Гаранцията е валидна за дефекти непредизвикани от купувача. За всички останали случаи продавача осигурява следгаранционен сервиз по цени на компонентите и тарифи на трудаофициално обявени в магазините и сервизите на същия.`),
       ]),
 
       // Additional clauses

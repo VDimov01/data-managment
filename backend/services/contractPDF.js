@@ -58,7 +58,7 @@ function buildTemplateProps({ type, buyer, items, advance_amount }) {
     interior_color: it.interior_color || '',
     mileage_km: it.mileage ?? 0,
     quantity: it.quantity,
-    car_price_bgn: toNum(it.unit_price),
+    unit_price: toNum(it.line_total),
   }));
 
   return {
@@ -115,9 +115,10 @@ async function elementToBuffer(element) {
 }
 
 async function renderContractPdfBuffer({ type, buyer, items, advance_amount }) {
+  console.log(buyer);
   const Doc = type === 'ADVANCE' ? AdvanceContractPDF : RegularContractPDF;
   // DO NOT CALL Doc(...) directly — create a React element
-  const element = React.createElement(Doc, buildTemplateProps({ type, buyer, items, advance_amount }));
+  const element = React.createElement(Doc, buildTemplateProps({ buyer, items, advance_amount }));
   const buf = await elementToBuffer(element);
 
   // Optional debug:

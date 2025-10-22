@@ -62,6 +62,9 @@ async function loadItemsSnapshot(conn, contract_id) {
       ci.vehicle_id,
       ci.quantity,
       ci.unit_price,
+      ci.discount_type,
+      ci.discount_value,
+      ci.line_total,
       ci.currency_code,
 
       v.vin, v.mileage,
@@ -93,6 +96,9 @@ async function loadItemsSnapshot(conn, contract_id) {
     vehicle_id: r.vehicle_id,
     quantity: r.quantity,
     unit_price: r.unit_price,           // DECIMAL as string from driver
+    discount_type: r.discount_type,
+    discount_amount: r.discount_value,
+    line_total: r.line_total,
     currency_code: r.currency_code,
     vin: r.vin,
     exterior_color: r.exterior_color,

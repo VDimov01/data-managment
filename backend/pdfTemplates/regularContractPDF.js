@@ -6,26 +6,6 @@ const crypto = require("crypto");
 const algorithm = "aes-256-cbc";
 const secret = process.env.UCN_SECRET_KEY;
 
-function decryptUCN(encrypted) {
-  if (!encrypted || !secret || secret.length !== 32) {
-    return null;
-  }
-
-  try {
-    const [ivHex, encryptedHex] = encrypted.split(":");
-    const iv = Buffer.from(ivHex, "hex");
-    const encryptedText = Buffer.from(encryptedHex, "hex");
-
-    const decipher = crypto.createDecipheriv(algorithm, Buffer.from(secret), iv);
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString("utf8");
-  } catch (err) {
-    console.error("Error decrypting UCN:", err);
-    return null;
-  }
-}
-
 // Register font
 Font.register({
   family: "DejaVu",
@@ -64,19 +44,17 @@ function boldedCompanyName(buyer){
 }
 
 function boldedClientName(buyer){
-  return React.createElement(Text, { style: { fontWeight: "bold" } }, `${buyer.first_name} ${buyer.middle_name} ${buyer.last_name}, с ЕГН: ${decryptUCN(buyer.ucn)}`);
+  return React.createElement(Text, { style: { fontWeight: "bold" } }, `${buyer.first_name} ${buyer.middle_name} ${buyer.last_name}, с ЕГН:`);
 }
 
 function boldText(text){
   return React.createElement(Text, { style: { fontWeight: "bold" } }, text);
 }
 
-function RegularContractPDF({ buyer, cars = [], type}) {
-  const totalAmount = cars.reduce((sum, car) => sum + car.price * car.quantity, 0);
+function RegularContractPDF({ buyer, cars = []}) {
+  const totalAmount = cars.reduce((sum, car) => sum + car.unit_price * car.quantity, 0);
   const deliveryDays = 60;
   const today = new Date().toLocaleDateString("bg-BG");
-
-  const decryptedUCN = buyer?.ucn ? decryptUCN(buyer.ucn) : null;
 
   return React.createElement(
     Document,
@@ -94,8 +72,14 @@ function RegularContractPDF({ buyer, cars = [], type}) {
         React.createElement(View, {style: {marginTop: 10, marginBottom: 10} }),
         React.createElement(Text, null,``, boldText(`"Некст Авто“ ЕООД, с ЕИК:`), ` 208224080, гр. Стара Загора, ул. "Темида" 1, вх. Б, ап. 16, тел.: 0996600900, e-mail: sales@solaris.expert, представлявано от Пламен Иванов Генчев – `, boldText(`ПРОДАВАЧ`)),
         React.createElement(Text, null, `и`),
-        type === "client" && boldedClientName(buyer),
-        type === "company" && React.createElement(Text, null, ``, boldText(`${buyer.name} с ЕИК: `), `${buyer.vat_number} и адрес на управление ${buyer.address || ""}, ${buyer.city || ""}`, `, представлявано от ${buyer.rep_first_name} ${buyer.rep_middle_name || ""} ${buyer.rep_last_name || ""}, наричан по-долу – `, boldText(`КУПУВАЧ`)),
+        buyer.customer_type === "Individual" && React.createElement(Text, null, ``, boldText(`${buyer.display_name} с ЕГН: `), 
+        `${buyer.national_id} и адрес ${buyer.city || ""}, ${buyer.address_line || ""} и тел: ${buyer.phone}`, `, наричан по-долу – `, 
+        boldText(`КУПУВАЧ`)),
+        
+        buyer.customer_type === "Company" && React.createElement(Text, null, ``, boldText(`${buyer.display_name} с ЕИК: `), 
+        `${buyer.vat_number} и адрес на управление ${buyer.city || ""}, ${buyer.address_line || ""}`, 
+        `, представлявано от ${buyer.rep_first_name} ${buyer.rep_middle_name || ""} ${buyer.rep_last_name || ""}, наричан по-долу – `, 
+        boldText(`КУПУВАЧ`)),
       ]),
 
       // Vehicle info
@@ -106,7 +90,7 @@ function RegularContractPDF({ buyer, cars = [], type}) {
   React.createElement(Text, { key: idx, style: styles.carDescription },
     ``,boldText(`Лек автомобил`), `, марка/модел "`,
     React.createElement(Text, { style: { fontWeight: "bold" } }, `${car.maker} ${car.model} ${car.edition || ""}`),
-    ` ", Идентификационен номер на превозното средство с VIN № ${car.vin}, цвят ${car.color || "неуточнен"}, пробег на автомобила - ${car.mileage_km} км, количество ${car.quantity}, единична цена ${(car.car_price_bgn).toLocaleString()} лв, обща цена ${(car.car_price_bgn * car.quantity).toLocaleString()} лв.`
+    ` ", Идентификационен номер на превозното средство с VIN № ${car.vin}, цвят ${car.exterior_color || "неуточнен"} / ${car.interior_color || ""}, пробег на автомобила - ${car.mileage_km} км, количество ${car.quantity}, единична цена ${(car.unit_price).toLocaleString()} лв, обща цена ${(car.unit_price * car.quantity).toLocaleString()} лв.`
   )
 )
       
@@ -119,6 +103,15 @@ function RegularContractPDF({ buyer, cars = [], type}) {
         React.createElement(Text, {style: {marginLeft: 20}}, `1.1. `),
         React.createElement(Text, {style: {marginLeft: 20}}, `1.2. `),
         React.createElement(Text, {style: {marginLeft: 20}}, `1.3. `),
+      ]),
+
+      // Static clauses
+      React.createElement(View, { style: styles.section }, [
+        React.createElement(Text, null, `2. `, boldText(`КУПУВАЧЪТ`), ` заяви, че купува описаното по - горе МПС при посочените условия и за посочената цена, изплатими напълно на продавачa. Разноските по регистрацията са за сметка на купувача.`),
+        React.createElement(Text, null, `3. `, boldText(`ПРОДАВАЧЪТ`), ` декларира, че автомобилът не е предмет на особен залог или обезпечение, върху него няма наложен запор, не е давано пълномощно за продажбата му на други лица и че не съществуват никакви пречки да бъде извършена продажбата. `),
+        React.createElement(Text, null, `4. Настоящият договор може да бъде изменян само в писмена форма.`),
+        React.createElement(Text, null, `5. Всички спорове се решават по взаимно съгласие, а при невъзможност – чрез съда.`),
+        React.createElement(Text, null, `6. Договорът се изготвя в два екземпляра – по един за всяка от страните.`),
       ]),
 
       // Additional clauses
@@ -135,22 +128,13 @@ function RegularContractPDF({ buyer, cars = [], type}) {
         React.createElement(Text, null, `Банка: Първа инвестиционна банка АД`),
       ]),
 
-      // Static clauses
-      React.createElement(View, { style: styles.section }, [
-        React.createElement(Text, null, `2. `, boldText(`КУПУВАЧЪТ`), ` заяви, че купува описаното по - горе МПС при посочените условия и за посочената цена, изплатими напълно на продавачa. Разноските по регистрацията са за сметка на купувача.`),
-        React.createElement(Text, null, `3. `, boldText(`ПРОДАВАЧЪТ`), ` декларира, че автомобилът не е предмет на особен залог или обезпечение, върху него няма наложен запор, не е давано пълномощно за продажбата му на други лица и че не съществуват никакви пречки да бъде извършена продажбата. `),
-        React.createElement(Text, null, `4. Настоящият договор може да бъде изменян само в писмена форма.`),
-        React.createElement(Text, null, `5. Всички спорове се решават по взаимно съгласие, а при невъзможност – чрез съда.`),
-        React.createElement(Text, null, `6. Договорът се изготвя в два екземпляра – по един за всяка от страните.`),
-      ]),
-
       // Signatures
       React.createElement(View, { style: styles.section }, [
         React.createElement(View, { style: { marginTop: 10, marginBottom: 10 } }),
         React.createElement(Text, null, "ПРОДАВАЧ: ...................................          / Пламен Генчев /"),
         React.createElement(View, { style: { marginTop: 10, marginBottom: 10 } }),
-        type === "company" && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.rep_first_name} ${buyer.rep_last_name}`) + " /"),
-        type === "client" && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.first_name} ${buyer.last_name}`) + " /"),
+        buyer.customer_type === "Company" && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.rep_first_name} ${buyer.rep_last_name}`) + " /"),
+        buyer.customer_type === "Individual" && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.first_name} ${buyer.last_name}`) + " /"),
       ])
     )
   );
