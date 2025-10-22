@@ -23,7 +23,6 @@ export default function Dashboard() {
     await api('/auth/logout', { method: 'POST' });
     window.location.href = "/login";
   };
-
   return (
     <div className="dashboard-container">
       <ThemeToggle />
@@ -49,13 +48,13 @@ export default function Dashboard() {
 
 
       {/* Sections */}
-      {activeTab === "Издания" && <CarsSection />}
-      {activeTab === "Оферти" && <OffersSection />}
-      {activeTab === "Склад" && <StorageSection />}
-      {activeTab === "Клиенти" && <CustomerSection />}
-      {activeTab === "Договори" && <ContractsSection />}
-      {activeTab === "Брошури" && <BrochuresSection apiBase={apiBase}/>}
-      {activeTab === "Сравнения" && <CompareSheetsSection apiBase={apiBase} />}
+      {activeTab === "Издания" && <CarsSection user={user} />}
+      {activeTab === "Оферти" && <OffersSection user={user} />}
+      {activeTab === "Склад" && <StorageSection user={user} />}
+      {activeTab === "Клиенти" && <CustomerSection user={user} />}
+      {activeTab === "Договори" && <ContractsSection user={user} />}
+      {activeTab === "Брошури" && <BrochuresSection apiBase={apiBase} user={user} />}
+      {activeTab === "Сравнения" && <CompareSheetsSection apiBase={apiBase} user={user} />}
 
       {/* Logout Button */}
 
