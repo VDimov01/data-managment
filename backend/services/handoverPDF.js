@@ -7,6 +7,17 @@ const { pdf, Document, Page, Text, View, StyleSheet, Font } = require('@react-pd
 const { bucketPrivate, storage, BUCKET_PRIVATE } = require('./gcs');
 const HandoverRecordBG = require ('../pdfTemplates/handoverRecordBG.js');
 
+const seller = { 
+    name: process.env.DEALER_NAME || 'Некст Авто ЕООД',
+    tax_id: '208224080',
+    address: 'ул. Темида 1, вх. Б, ап.16',
+    city: 'Стара Загора',
+    country: 'България',
+    email: 'sales@solaris.expert',
+    phone: '0996600900',
+    representative: 'Пламен Иванов Генчев'
+   };
+
 let fontsReady = false;
 function ensureFonts() {
   if (fontsReady) return;
@@ -58,7 +69,7 @@ async function elementToBuffer(element) {
 
 async function renderHandoverPdfBuffer({ buyer, vehicle, handover }) {
   ensureFonts();
-  const element = React.createElement(HandoverRecordBG, { record: handover , seller: {}, buyer, vehicle});
+  const element = React.createElement(HandoverRecordBG, { record: handover , seller, buyer, vehicle});
   const buffer = await elementToBuffer(element);
   return ensureBuffer(buffer, 'handover pdf');
 }

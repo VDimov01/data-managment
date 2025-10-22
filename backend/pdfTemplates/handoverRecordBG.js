@@ -18,7 +18,7 @@ function fmtDate(dt) {
     const yyyy = d.getFullYear();
     const hh = pad(d.getHours());
     const mi = pad(d.getMinutes());
-    return `${dd}.${mm}.${yyyy} ${hh}:${mi}`;
+    return `${dd}.${mm}.${yyyy}`;
   } catch {
     return safe(dt);
   }
@@ -102,16 +102,7 @@ const styles = StyleSheet.create({
  * }
  */
 function HandoverRecordBG({ record = {}, seller = {}, buyer = {}, vehicle = {} }) {
-  const protocolNo = safe(record.number || record.handover_record_id || record.uuid || "");
-  const sellerName =
-    seller.display_name ||
-    seller.company_name ||
-    "";
-  const buyerName =
-    buyer.display_name ||
-    [buyer.first_name, buyer.middle_name, buyer.last_name].filter(Boolean).join(" ") ||
-    buyer.company_name ||
-    "";
+  const protocolNo = "00000000" + safe(record.number || record.handover_record_id || record.uuid || "");
 
   const fullTitle = "ПРИЕМО-ПРЕДАВАТЕЛЕН ПРОТОКОЛ";
 
@@ -130,7 +121,7 @@ function HandoverRecordBG({ record = {}, seller = {}, buyer = {}, vehicle = {} }
         protocolNo ? React.createElement(Text, { style: styles.subtitle }, `Протокол № ${protocolNo}`) : null
       ),
       React.createElement(View, { style: styles.metaLine },
-        React.createElement(Text, null, `Дата на документа: ${fmtDate(record.handover_date)}`),
+        React.createElement(Text, null, `Дата на предаване: ${fmtDate(record.handover_date)}`),
         React.createElement(Text, null, `Местоположение: ${safe(record.location || "—")}`)
       ),
 
@@ -139,18 +130,24 @@ function HandoverRecordBG({ record = {}, seller = {}, buyer = {}, vehicle = {} }
         React.createElement(Text, { style: styles.h2 }, "Страни по протокола"),
         React.createElement(View, { style: styles.twoCol },
           React.createElement(View, { style: styles.col },
-            row("Продавач", sellerName, styles),
-            row("ЕИК/ДДС", seller.vat_number || "—", styles),
-            row("Град / Адрес", [seller.city, seller.address_line].filter(Boolean).join(", ") || "—", styles),
+            row("Продавач", seller.name, styles),
+            row("ЕИК/ДДС", seller.tax_id || "—", styles),
+            row("Град / Адрес", [seller.city, seller.address].filter(Boolean).join(", ") || "—", styles),
             row("Контакт", [seller.email, seller.phone].filter(Boolean).join(" ") || "—", styles),
+            row("Представител", seller.representative || "—", styles),
           ),
           React.createElement(View, { style: styles.colSpacer }),
           React.createElement(View, { style: styles.col },
-            row("Купувач", buyerName, styles),
-            row("ЕИК/ДДС / ЛНЧ/ЕГН", buyer.vat_number || buyer.tax_id || buyer.national_id || "—", styles),
-            row("Контакт", [buyer.email, buyer.phone].filter(Boolean).join(" ") || "—", styles),
-            row("Град / Адрес", [buyer.city, buyer.address_line].filter(Boolean).join(", ") || "—", styles),
-          ),
+            row("Купувач", buyer.display_name, styles),
+            buyer.type === "individual" ?
+              row("ЕГН / ЛНЧ", `${buyer.person.egn} ${buyer.person.vat_number ? ` / ${buyer.person.vat_number}` : ""}` || "—", styles) :
+              row("ЕИК/ДДС", `${buyer.company.tax_id} ${buyer.company.vat_number ? ` / ${buyer.company.vat_number}` : ""}` || "—", styles),
+            row("Контакт", [buyer.contact.email, buyer.contact.phone].filter(Boolean).join(" ") || "—", styles),
+            row("Град / Адрес", [buyer.contact.city, buyer.contact.address].filter(Boolean).join(", ") || "—", styles),
+            buyer.type === 'company' ? 
+              row("Представител", [buyer.company.rep_first_name, buyer.company.rep_middle_name, buyer.company.rep_last_name].filter(Boolean).join(" ") || "—", styles) 
+              : null     
+            ),
         )
       ),
 
@@ -166,7 +163,7 @@ function HandoverRecordBG({ record = {}, seller = {}, buyer = {}, vehicle = {} }
       // Delivery details
       React.createElement(View, { style: styles.section },
         React.createElement(Text, { style: styles.h2 }, "Данни за предаване"),
-        row("Дата и час", fmtDate(record.handover_date), styles),
+        // row("Дата и час", fmtDate(record.handover_date), styles),
         row("Местоположение", safe(record.location || "—"), styles),
       ),
 
@@ -176,15 +173,15 @@ function HandoverRecordBG({ record = {}, seller = {}, buyer = {}, vehicle = {} }
         React.createElement(View, { style: styles.checklist },
           React.createElement(View, { style: styles.chkRow },
             React.createElement(Text, { style: styles.chkLeft }, "□ Ключове (бр.) ________"),
-            React.createElement(Text, { style: styles.chkRight }, "□ Сервизна книжка / документи"),
+            React.createElement(Text, { style: styles.chkLeft }, "□ Сервизна книжка / документи"),
           ),
           React.createElement(View, { style: styles.chkRow },
             React.createElement(Text, { style: styles.chkLeft }, "□ Резервна гума / комплект за гуми"),
-            React.createElement(Text, { style: styles.chkRight }, "□ Зарядно / кабели (ако е приложимо)"),
+            React.createElement(Text, { style: styles.chkLeft }, "□ Зарядно / кабели (ако е приложимо)"),
           ),
           React.createElement(View, { style: styles.chkRow },
             React.createElement(Text, { style: styles.chkLeft }, "□ Външно състояние — проверено"),
-            React.createElement(Text, { style: styles.chkRight }, "□ Вътрешно състояние — проверено"),
+            React.createElement(Text, { style: styles.chkLeft }, "□ Вътрешно състояние — проверено"),
           ),
         )
       ),
@@ -202,12 +199,12 @@ function HandoverRecordBG({ record = {}, seller = {}, buyer = {}, vehicle = {} }
         React.createElement(View, { style: styles.signCol },
           React.createElement(Text, null, "За Продавача"),
           React.createElement(View, { style: styles.signLine }),
-          React.createElement(Text, { style: styles.signLabel }, "Подпис / Име и длъжност / Дата")
+          React.createElement(Text, { style: styles.signLabel }, "/   Подпис  /")
         ),
         React.createElement(View, { style: styles.signColLast },
           React.createElement(Text, null, "За Купувача"),
           React.createElement(View, { style: styles.signLine }),
-          React.createElement(Text, { style: styles.signLabel }, "Подпис / Име / Дата")
+          React.createElement(Text, { style: styles.signLabel }, "/   Подпис  /")
         )
       ),
 

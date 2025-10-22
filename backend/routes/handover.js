@@ -14,6 +14,12 @@ const {
 
 const { decryptNationalId } = require('../services/cryptoCust.js');
 
+// helpers
+function toDateOnly(v) {
+  if (!v) return null;
+  const s = String(v);
+  return s.length >= 10 ? s.slice(0, 10) : s;
+}
 
 // ---- txn helper
 async function withTxn(fn) {
@@ -46,13 +52,17 @@ async function loadContractItemWithVehicle(conn, contract_item_id) {
       e.name AS edition_name,
       my.year,
       mo.name AS model_name,
-      m.name  AS make_name
+      m.name  AS make_name,
+      cext.name_bg AS exterior_color,
+      cint.name_bg AS interior_color
     FROM contract_item ci
     JOIN vehicle v     ON v.vehicle_id = ci.vehicle_id
     JOIN edition e     ON e.edition_id = v.edition_id
     JOIN model_year my ON my.model_year_id = e.model_year_id
     JOIN model mo      ON mo.model_id = my.model_id
     JOIN make m        ON m.make_id = mo.make_id
+    JOIN color cext     ON cext.color_id = v.exterior_color_id
+    JOIN color cint     ON cint.color_id = v.interior_color_id
     WHERE ci.contract_item_id = ?
     `,
     [contract_item_id]
@@ -71,24 +81,33 @@ async function loadBuyerSnapshotFromContractOrCustomer(conn, contract_id, custom
   // Fallback to a constructed minimal snapshot from customer table (no new fields)
   const [[cust]] = await conn.query(
     `
-    SELECT customer_id, display_name, first_name, middle_name, last_name, email, phone
+    SELECT customer_id, display_name, first_name, middle_name, last_name, email, phone,
+      country, city, address_line, postal_code, tax_id, vat_number, national_id_enc
     FROM customer
     WHERE customer_id = ?`,
     [customer_id]
   );
   if (!cust) throw new Error('customer not found');
+  
+  try{   const decrypted = cust.national_id_enc ? decryptNationalId(cust.national_id_enc) : null;}catch{ /* ignore */ }
+  cust.national_id = decrypted;
 
   return {
     captured_at_utc: new Date().toISOString(),
     customer_id: cust.customer_id,
-    display_name: cust.display_name ||
-      [cust.first_name, cust.middle_name, cust.last_name].filter(Boolean).join(' '),
-    person: {
-      first_name: cust.first_name || null,
-      middle_name: cust.middle_name || null,
-      last_name: cust.last_name || null,
-    },
-    contact: { email: cust.email || null, phone: cust.phone || null },
+    display_name: cust.display_name,
+    first_name: cust.first_name,
+    middle_name: cust.middle_name,
+    last_name: cust.last_name,
+    email: cust.email,
+    phone: cust.phone,
+    country: cust.country,
+    city: cust.city,
+    address_line: cust.address_line,
+    postal_code: cust.postal_code,
+    tax_id: cust.tax_id,
+    vat_number: cust.vat_number,
+    national_id: cust.national_id,
   };
 }
 
@@ -133,7 +152,7 @@ router.post('/', async (req, res) => {
       if (item.contract_id !== contract_id) throw new Error('item does not belong to contract');
 
       const customer_id = ctr.customer_id;
-      const buyerSnapObj = buyer_snapshot || await loadBuyerSnapshotFromContractOrCustomer(conn, contract_id, customer_id);
+      const buyerSnapObj = await loadBuyerSnapshotFromContractOrCustomer(conn, contract_id, customer_id);
 
       const handover_uuid = uuidv4();
       const created_by_user_id = req.user?.user_id || 1; // plug your auth later
@@ -187,21 +206,54 @@ router.patch('/:handover_record_id', async (req, res) => {
     const handover_record_id = Number(req.params.handover_record_id);
     if (!handover_record_id) return res.status(400).json({ error: 'handover_record_id required' });
 
-    const { handover_date = null, location = null, odometer_km = null, notes = null } = req.body || {};
+    const body = req.body || {};
+    const owns = (k) => Object.prototype.hasOwnProperty.call(body, k);
 
     const out = await withTxn(async (conn) => {
-      const [[hr]] = await conn.query(`SELECT * FROM handover_record WHERE handover_record_id = ?`, [handover_record_id]);
+      const [[hr]] = await conn.query(
+        `SELECT * FROM handover_record WHERE handover_record_id = ? FOR UPDATE`,
+        [handover_record_id]
+      );
       if (!hr) throw new Error('handover not found');
       if (hr.status !== 'draft') throw new Error('only draft handovers can be edited');
 
-      await conn.query(
-        `UPDATE handover_record
-           SET handover_date = ?, location = ?, odometer_km = ?, notes = ?, updated_at = NOW()
-         WHERE handover_record_id = ?`,
-        [handover_date || null, location || null, (odometer_km ?? null), notes || null, handover_record_id]
-      );
+      const sets = [];
+      const args = [];
 
-      const [[row]] = await conn.query(`SELECT * FROM handover_record WHERE handover_record_id = ?`, [handover_record_id]);
+      if (owns('handover_date')) {
+        sets.push('handover_date = ?');
+        args.push(toDateOnly(body.handover_date || null));
+      }
+      if (owns('location')) {
+        sets.push('location = ?');
+        const loc = body.location == null || body.location === '' ? null : String(body.location);
+        args.push(loc);
+      }
+      if (owns('odometer_km')) {
+        sets.push('odometer_km = ?');
+        const odo = (body.odometer_km === '' || body.odometer_km == null)
+          ? null
+          : Math.max(0, parseInt(body.odometer_km, 10) || 0);
+        args.push(odo);
+      }
+      if (owns('notes')) {
+        sets.push('notes = ?');
+        const notes = body.notes == null || body.notes === '' ? null : String(body.notes);
+        args.push(notes);
+      }
+
+      if (sets.length > 0) {
+        args.push(handover_record_id);
+        await conn.query(
+          `UPDATE handover_record SET ${sets.join(', ')}, updated_at = NOW() WHERE handover_record_id = ?`,
+          args
+        );
+      }
+
+      const [[row]] = await conn.query(
+        `SELECT * FROM handover_record WHERE handover_record_id = ?`,
+        [handover_record_id]
+      );
       return row;
     });
 
@@ -214,12 +266,14 @@ router.patch('/:handover_record_id', async (req, res) => {
 
 /**
  * Issue (generate PDF v+1) and attach.
- * Body: { override?: boolean }  // not used now; kept for symmetry
+ * Body: { handover_date?: 'YYYY-MM-DD'|Dateish, location?: string, odometer_km?: number|string, override?: boolean }
  */
 router.post('/:handover_record_id/issue', async (req, res) => {
   try {
     const handover_record_id = Number(req.params.handover_record_id);
     if (!handover_record_id) return res.status(400).json({ error: 'handover_record_id required' });
+
+    const { handover_date, location, odometer_km } = req.body || {};
 
     const out = await withTxn(async (conn) => {
       const [[hr]] = await conn.query(
@@ -228,6 +282,32 @@ router.post('/:handover_record_id/issue', async (req, res) => {
       );
       if (!hr) throw new Error('handover not found');
 
+      // If the caller sent values, persist them before rendering
+      const sets = [];
+      const args = [];
+      if (typeof handover_date !== 'undefined') {
+        sets.push('handover_date = ?');
+        const d = toDateOnly(handover_date);
+        args.push(d);
+        hr.handover_date = d; // mutate local copy used below
+      }
+      if (typeof location !== 'undefined') {
+        sets.push('location = ?');
+        const loc = location === '' ? null : String(location);
+        args.push(loc);
+        hr.location = loc;
+      }
+      if (typeof odometer_km !== 'undefined') {
+        sets.push('odometer_km = ?');
+        const odo = (odometer_km === '' || odometer_km == null) ? null : Math.max(0, parseInt(odometer_km, 10) || 0);
+        args.push(odo);
+        hr.odometer_km = odo;
+      }
+      if (sets.length > 0) {
+        args.push(handover_record_id);
+        await conn.query(`UPDATE handover_record SET ${sets.join(', ')}, updated_at = NOW() WHERE handover_record_id = ?`, args);
+      }
+
       // Load contract + item+vehicle to populate PDF and path
       const ctr = await loadContract(conn, hr.contract_id);
       if (!ctr) throw new Error('contract not found');
@@ -235,7 +315,7 @@ router.post('/:handover_record_id/issue', async (req, res) => {
       const item = await loadContractItemWithVehicle(conn, hr.contract_item_id);
       if (!item) throw new Error('contract item not found');
 
-      const buyer = hr.buyer_snapshot_json || await loadBuyerSnapshotFromContractOrCustomer(conn, hr.contract_id, hr.customer_id);
+      const buyer = await loadBuyerSnapshotFromContractOrCustomer(conn, hr.contract_id, hr.customer_id);
       const vehicle = {
         vehicle_id: item.vehicle_id,
         vin: item.vin,
@@ -244,6 +324,8 @@ router.post('/:handover_record_id/issue', async (req, res) => {
         model_name: item.model_name,
         edition_name: item.edition_name,
         year: item.year,
+        exterior_color: item.exterior_color,
+        interior_color: item.interior_color,
       };
 
       // next version
@@ -254,14 +336,16 @@ router.post('/:handover_record_id/issue', async (req, res) => {
       );
       const version = ver.next_ver;
 
-      // render
+      // render with the (possibly) updated fields
       const buffer = await renderHandoverPdfBuffer({
         buyer,
         vehicle,
         handover: {
-          handover_date: hr.handover_date ? new Date(hr.handover_date).toISOString().slice(0, 10) : null,
-          location: hr.location,
-          odometer_km: hr.odometer_km,
+          handover_date: hr.handover_date ? toDateOnly(hr.handover_date) : null,
+          location: hr.location || null,
+          odometer_km: hr.odometer_km ?? null,
+          notes: hr.notes || null,
+          handover_record_id: hr.handover_record_id,
         },
       });
 
@@ -327,6 +411,7 @@ router.post('/:handover_record_id/issue', async (req, res) => {
   }
 });
 
+
 /**
  * Regenerate PDF (v+1) without changing status.
  */
@@ -345,7 +430,7 @@ router.post('/:handover_record_id/pdf', async (req, res) => {
       const item = await loadContractItemWithVehicle(conn, hr.contract_item_id);
       if (!item) throw new Error('contract item not found');
 
-      const buyer = hr.buyer_snapshot_json || await loadBuyerSnapshotFromContractOrCustomer(conn, hr.contract_id, hr.customer_id);
+      const buyer = await loadBuyerSnapshotFromContractOrCustomer(conn, hr.contract_id, hr.customer_id);
       const vehicle = {
         vehicle_id: item.vehicle_id,
         vin: item.vin,
@@ -354,6 +439,8 @@ router.post('/:handover_record_id/pdf', async (req, res) => {
         model_name: item.model_name,
         edition_name: item.edition_name,
         year: item.year,
+        exterior_color: item.exterior_color,
+        interior_color: item.interior_color,
       };
 
       const [[ver]] = await conn.query(
@@ -369,6 +456,8 @@ router.post('/:handover_record_id/pdf', async (req, res) => {
           handover_date: hr.handover_date ? new Date(hr.handover_date).toISOString().slice(0, 10) : null,
           location: hr.location,
           odometer_km: hr.odometer_km,
+          notes: hr.notes || null,
+          handover_record_id: hr.handover_record_id,
         },
       });
 
@@ -434,7 +523,7 @@ router.get('/by-contract/:contract_id', async (req, res) => {
       `
       SELECT
         hr.handover_record_id, hr.uuid, hr.contract_id, hr.contract_item_id, hr.vehicle_id, hr.customer_id,
-        hr.status, hr.handover_date, hr.location, hr.odometer_km, hr.created_at, hr.updated_at,
+        hr.status, hr.handover_date, hr.location, hr.odometer_km, hr.notes, hr.created_at, hr.updated_at,
         v.vin, v.mileage AS mileage_km,
         e.name AS edition_name, my.year, mo.name AS model_name, m.name AS make_name,
         pdf.handover_record_pdf_id AS latest_pdf_id, pdf.version AS latest_pdf_version, pdf.gcs_key AS latest_pdf_gcs_key,

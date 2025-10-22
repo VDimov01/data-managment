@@ -59,10 +59,11 @@ function buildBuyerSnapshot(c) {
       middle_name: c.middle_name || null,
       last_name: c.last_name || null,
       egn: c.national_id || null,
-      tax_id: c.tax_id || null,
+      vat_number: c.vat_number || null,
     },
     company: {
       legal_name: c.company_name || c.name || null,
+      tax_id: c.tax_id || null,
       vat_number: c.vat_number || null,
       rep_first_name: c.rep_first_name || null,
       rep_middle_name: c.rep_middle_name || null,
@@ -852,7 +853,8 @@ function VehiclePicker({ apiBase, onPick }) {
 
       const res = await api(`/vehicles?${params.toString()}`);
       const rows = Array.isArray(res) ? res : (res.vehicles || res.items || res.rows || []);
-      setAll(rows);
+      const filteredRows = rows.filter((v) => v.status === "Available");
+      setAll(filteredRows);
       setPage(1);
     } catch (e) {
       alert(`Vehicle search failed: ${e.message}`);

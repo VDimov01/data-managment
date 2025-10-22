@@ -2,6 +2,7 @@
 import React from "react";
 import { api } from "../../services/api";
 import Modal from '../Modal';
+import { formatDateDMYDateOnly } from "../../utils/dates";
 
 function fmtDateDisplay(isoish) {
   if (!isoish) return "—";
@@ -76,15 +77,26 @@ export default function HandoverTab({ apiBase, contract }) {
     }
   };
 
-  const doIssue = async (id) => {
-    try {
-      const data = await api(`/handover/${id}/issue`, { method: "POST" });
-      if (data?.pdf?.signedUrl) window.open(data.pdf.signedUrl, "_blank", "noopener,noreferrer");
-      await load();
-    } catch (e) {
-      alert(`Generate PDF failed: ${e.message}`);
-    }
-  };
+  // inside HandoverTab.jsx
+const doIssue = async (id) => {
+  try {
+    const row = rows.find(r => r.handover_record_id === id);
+    if (!row) return;
+
+    const payload = {
+      handover_date: row.handover_date || null,  // e.g. 'YYYY-MM-DD' from the date input
+      location: row.location || null,
+      odometer_km: (row.odometer_km === "" || row.odometer_km == null) ? null : Number(row.odometer_km),
+    };
+
+    const data = await api(`/handover/${id}/issue`, { method: "POST", body: payload });
+    if (data?.pdf?.signedUrl) window.open(data.pdf.signedUrl, "_blank", "noopener,noreferrer");
+    await load(); // refresh after issuing
+  } catch (e) {
+    alert(`Generate PDF failed: ${e.message}`);
+  }
+};
+
 
   const doRegen = async (id) => {
     try {
@@ -121,23 +133,26 @@ export default function HandoverTab({ apiBase, contract }) {
   };
 
   // persist patch — PATCH first, fallback to PUT for older routes
-  const doUpdate = async (id, patch) => {
-    const hr = rows.find((r) => r.handover_record_id === id);
-    if (!hr || hr.status !== "draft") return; // hard guard
+const doUpdate = async (id, patch) => {
+  const hr = rows.find(r => r.handover_record_id === id);
+  if (!hr || hr.status !== "draft") return;
 
-    try {
-      await api(`/handover/${id}`, { method: "PATCH", body: patch });
-      await load();
-    } catch (e) {
-      if (e.status === 404 || e.status === 405) {
-        // server only supports PUT? try again
-        await api(`/handover/${id}`, { method: "PUT", body: patch });
-        await load();
-      } else {
-        alert(`Update failed: ${e.message}`);
-      }
-    }
-  };
+  const merged = { ...hr, ...patch };
+  const body = {};
+  // only include keys you care about; let PATCH handler ignore missing ones
+  if ('handover_date' in merged) body.handover_date = merged.handover_date || null;
+  if ('location' in merged) body.location = merged.location || null;
+  if ('odometer_km' in merged) body.odometer_km = merged.odometer_km ?? null;
+  if ('notes' in merged) body.notes = merged.notes || null;
+
+  patchRowLocal(id, patch);
+  const resp = await api(`/handover/${id}`, { method: "PATCH", body });
+  if (resp) {
+    setRows(prev => prev.map(r => r.handover_record_id === id ? { ...r, ...resp } : r));
+  }
+};
+
+
 
       return (
       <div>

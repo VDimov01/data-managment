@@ -117,7 +117,7 @@ router.get('/', async (req, res) => {
     // Don’t decrypt everything for a list; return masked + last4
     const customers = rows.map(r => ({
       ...r,
-      national_id: r.national_id_last4 ? `***${r.national_id_last4}` : null
+      national_id: decryptNationalId(r.national_id_enc)
     }));
 
     res.json({ page, limit, total: cnt, totalPages: Math.max(1, Math.ceil(cnt/limit)), customers });
