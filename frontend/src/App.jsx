@@ -9,7 +9,7 @@ import VehiclePublicPage from './pages/VehiclePublicPage';
 import {API_BASE} from './services/api.js';
 
 function App() {
-  const isLoggedIn = !!localStorage.getItem('token');
+  const isLoggedIn = true;
   const apiBase = API_BASE;
 
   return (
