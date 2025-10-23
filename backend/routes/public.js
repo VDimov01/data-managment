@@ -7,6 +7,7 @@ const { storage, BUCKET_PRIVATE, bucketPrivate } = require('../services/gcs');
 const { getVehiclePathParts } = require('../services/vehiclePathParts');
 const { getSignedReadUrl } = require('../services/contractPDF.js');
 const { getSignedOfferPdfUrl } = require('../services/offers/offerStorage');
+const { Readable } = require('node:stream');
 
 
 /** ---------------- helpers (same behavior as brochures.js) ---------------- */
@@ -835,9 +836,10 @@ function withContentDisposition(signedUrl, filename, storageHint = 'gcs') {
 }
 
 router.get('/customers/offers/:offerUuid/pdf/latest/download', async (req, res) => {
-  const offerUuid = req.params.offerUuid;
+  try {
+    const { offerUuid } = req.params;
 
-  const [[o]] = await pool.query(
+    const [[o]] = await pool.query(
       'SELECT offer_id FROM offer WHERE public_uuid = ?',
       [offerUuid]
     );
@@ -849,18 +851,18 @@ router.get('/customers/offers/:offerUuid/pdf/latest/download', async (req, res) 
     );
     if (!v) return res.status(404).json({ error: 'No PDF generated yet' });
 
-  try {
     const meta = await getSignedOfferPdfUrl(v.gcs_path, { minutes: 15 });
     if (!meta?.signedUrl) return res.status(404).json({ error: 'PDF not available' });
 
     const filename = meta.filename || `Оферта-${offerUuid}.pdf`;
     const cdHeader = `attachment; filename="${filename}"; filename*=UTF-8''${encodeFilenameRFC5987(filename)}`;
 
-    // Try to stream (best UX for most browsers)
-    const ac = new AbortController();
-    const t = setTimeout(() => ac.abort(), 15000); // 15s guard
-    const upstream = await fetch(meta.signedUrl, { redirect: 'follow', signal: ac.signal });
-    clearTimeout(t);
+    // Try to stream the file (best for iOS + in-app browsers)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s guard
+
+    const upstream = await fetch(meta.signedUrl, { redirect: 'follow', signal: controller.signal });
+    clearTimeout(timeout);
 
     if (upstream.ok && upstream.body) {
       const ct = upstream.headers.get('content-type') || 'application/pdf';
@@ -871,16 +873,17 @@ router.get('/customers/offers/:offerUuid/pdf/latest/download', async (req, res) 
       if (cl) res.setHeader('Content-Length', cl);
       res.setHeader('Cache-Control', 'private, max-age=120');
 
-      return upstream.body.pipe(res);
+      // IMPORTANT: undici/web stream → Node stream
+      return Readable.fromWeb(upstream.body).pipe(res);
     }
 
-    // If streaming failed (e.g., 403 expired/404), log & fall back to redirect
+    // Upstream not OK (expired 403/404 etc.) → log and fallback to redirect
     const status = upstream.status;
-    const text = await upstream.text().catch(() => '');
-    console.warn('PDF upstream not OK', { status, snippet: text.slice(0, 200) });
+    const snippet = await upstream.text().catch(() => '');
+    console.warn('PDF upstream not OK', { status, snippet: snippet.slice(0, 200) });
 
-    const redirectUrl = withContentDisposition(meta.signedUrl, filename, meta.storage);
-    return res.redirect(302, redirectUrl);
+    // Last resort: redirect to the signed URL (viewer will handle it)
+    return res.redirect(302, meta.signedUrl);
 
   } catch (e) {
     console.error('PUBLIC download proxy error', e);
