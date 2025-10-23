@@ -1,6 +1,5 @@
 // backend/services/offerPdfService.js
 const React = require('react');
-const fs = require('fs');
 const path = require('path');
 const {
   pdf,
@@ -11,25 +10,15 @@ const {
   Font,
   StyleSheet,
   Image,
+  Svg,
+  G,
+  Path,
 } = require('@react-pdf/renderer');
 
 function splitOfferNumber(s) {
   const parts = String(s || '').split('-'); // e.g. OF-2025-00023
   const [prefix, year, number] = parts;
   return { prefix: prefix || '', year: year || '', number: number || '' };
-}
-
-function fileToDataUri(absPath) {
-  try {
-    const buf = fs.readFileSync(absPath);
-    const ext = (absPath.split('.').pop() || '').toLowerCase();
-    const mime =
-      ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
-      ext === 'svg' ? 'image/svg+xml' : 'image/png';
-    return `data:${mime};base64,${buf.toString('base64')}`;
-  } catch {
-    return null;
-  }
 }
 
 
@@ -84,47 +73,55 @@ function fmtDate(value, { fallback = '—' } = {}) {
   return `${d}/${m}/${y}`; // dd/mm/yyyy
 }
 
-function hasFile(p) {
-  try { return !!(p && fs.existsSync(p)); } catch { return false; }
+//Used for png/jpg logos
+
+// function fileToDataUri(absPath) {
+//   try {
+//     const buf = fs.readFileSync(absPath);
+//     const ext = (absPath.split('.').pop() || '').toLowerCase();
+//     const mime =
+//       ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
+//       ext === 'svg' ? 'image/svg+xml' : 'image/png';
+//     return `data:${mime};base64,${buf.toString('base64')}`;
+//   } catch {
+//     return null;
+//   }
+// }
+
+// function hasFile(p) {
+//   try { return !!(p && fs.existsSync(p)); } catch { return false; }
+// }
+
+//--------------------------------------------
+
+function Logo({ cfg, width = 160, height = 48 }) {
+  if (!cfg) return null;
+  return (
+    React.createElement(Svg, { width, height, viewBox: cfg.viewBox },
+      React.createElement(G, { transform: cfg.groupTransform },
+        ...(cfg.paths || []).map((p, i) =>
+          React.createElement(Path, { key: i, d: p.d, fill: p.fill || cfg.fill || '#111' })
+        )
+      )
+    )
+  );
 }
+
 
 /* ───────────── Styles ───────────── */
 const styles = StyleSheet.create({
-  page: {
-    paddingTop: 28,
-    paddingBottom: 36,
-    paddingHorizontal: 28,
-    fontFamily: 'DejaVu',
-    fontSize: 11,
-    color: '#111827',
-  },
+  page: { paddingTop: 28, paddingBottom: 36, paddingHorizontal: 28, fontFamily: 'DejaVu', fontSize: 11, color: '#111827' },
 
-  /* Header */
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    alignItems: 'stretch',
-    marginBottom: 12,
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: 12 },
   logoBox: {
-    width: 160,
-    height: 48,
-    border: '1pt solid #e5e7eb',
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fafafa',
+    width: 160, height: 48,
+    alignItems: 'center', justifyContent: 'center',
+    marginRight: 12
   },
-  logo: { width: 160 },
   logoText: { fontSize: 10, color: '#6b7280' },
 
-  hdrRight: {
-    flexGrow: 1,
-    padding: 10,
-    border: '1pt solid #e5e7eb',
-    borderRadius: 6,
-  },
+  hdrRight: { flexGrow: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderStyle: 'solid', borderRadius: 6 },
+
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   h1: { fontSize: 16, fontWeight: 'bold' },
   meta: { color: '#6b7280', fontSize: 10, marginTop: 2 },
@@ -272,27 +269,19 @@ function OfferDoc({ snap, logoUri }) {
       Page,
       { size: 'A4', style: styles.page },
 
-      /* Header: logo + meta */
-      React.createElement(
-        View,
-        { style: styles.header },
-        React.createElement(
-          View,
-          { style: styles.logoBox },
+      // ── Header: SVG logo + meta
+      React.createElement(View, { style: styles.header },
+        React.createElement(View, { style: styles.logoBox },
           logoUri
-            ? React.createElement(Image, { src: logoUri, style: styles.logo })
+            ? React.createElement(Logo, { cfg: logoUri, width: 160})
             : React.createElement(Text, { style: styles.logoText }, 'LOGO')
         ),
-        React.createElement(
-          View,
-          { style: styles.hdrRight },
-          React.createElement(
-            View,
-            { style: styles.titleRow },
-            React.createElement(Text, { style: styles.h1 }, `Оферта №${titleNumber}`),
-            React.createElement(Text, { style: styles.meta }, ccy)
+        React.createElement(View, { style: styles.hdrRight },
+          React.createElement(View, { style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' } },
+            React.createElement(Text, { style: { fontSize: 16, fontWeight: 'bold' } }, `Оферта №${titleNumber}`),
+            React.createElement(Text, { style: { color: '#6b7280', fontSize: 10 } }, ccy)
           ),
-          React.createElement(Text, { style: styles.meta }, [dateText, validText].filter(Boolean).join(' • '))
+          React.createElement(Text, { style: { color: '#6b7280', fontSize: 10, marginTop:4 } }, [dateText, validText].filter(Boolean).join(' • '))
         )
       ),
 
@@ -440,14 +429,28 @@ async function elementToBuffer(element) {
   return Buffer.from(str, 'binary');
 }
 
+const logoUri = {
+  viewBox: "0 0 300 120",
+  groupTransform: "translate(0,120) scale(0.1,-0.1)", // from <g ... transform="...">
+  paths: [
+    { d: "M123 790 c-55 -33 -63 -61 -63 -230 l0 -150 80 0 80 0 0 163 c0 113 4 167 12 175 8 8 61 12 175 12 150 0 163 -1 173 -19 6 -11 10 -87 10 -175 l0 -156 80 0 80 0 0 146 c0 164 -10 202 -64 235 -28 17 -54 19 -281 19 -230 0 -253 -2 -282 -20z" },
+    { d: "M873 790 c-57 -34 -68 -62 -68 -175 0 -115 14 -153 68 -182 28 -16 66 -18 300 -21 l267 -3 0 25 0 26 -213 0 c-274 0 -257 -10 -257 154 0 81 4 126 12 134 9 9 75 12 235 12 l223 0 0 25 0 25 -267 0 c-248 0 -270 -2 -300 -20z" },
+    { d: "M1500 779 c0 -28 6 -32 110 -81 61 -28 107 -54 103 -58 -4 -4 -28 -14 -53 -23 -25 -9 -71 -26 -102 -37 l-58 -21 0 -70 c0 -68 1 -70 23 -63 12 3 100 35 196 71 l174 64 145 -71 c79 -38 146 -70 148 -70 2 0 4 13 4 28 0 27 -9 33 -167 109 -93 44 -248 119 -345 166 l-178 86 0 -30z" },
+    { d: "M2025 750 l-159 -58 81 -41 82 -41 73 26 c40 14 77 29 81 34 4 4 7 36 5 72 l-3 66 -160 -58z" },
+    { d: "M2250 785 l0 -25 119 0 c86 0 122 -4 130 -13 6 -8 12 -76 13 -173 l3 -159 80 0 80 0 3 159 c1 97 7 165 13 173 8 9 44 13 130 13 l119 0 0 25 0 25 -345 0 -345 0 0 -25z" },
+    { d: "M1020 615 l0 -25 201 0 200 0 -3 23 c-3 22 -4 22 -200 25 l-198 2 0 -25z" },
+  ],
+  fill: "#000000", // default fill
+};
+
 async function renderOfferPdfBuffer(snapshot) {
   ensureFonts();
 
-  // Prefer env var (so you can override per environment), fallback to your static file
-  const absLogoPath =
-    path.join(__dirname, '../static/next-auto-logo.png');
+  //Used for png/jpg logos
+  // const absLogoPath =
+  //   path.join(__dirname, '../static/next-auto-logo.png');
 
-  const logoUri = process.env.DEALER_LOGO_PATH || fileToDataUri(absLogoPath);
+  // const logoUri = process.env.DEALER_LOGO_PATH || fileToDataUri(absLogoPath);
 
   const element = React.createElement(OfferDoc, { snap: snapshot, logoUri });
   return elementToBuffer(element);
