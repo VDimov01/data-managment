@@ -812,35 +812,67 @@ router.get('/customers/offers/:offer_public_uuid/pdf/latest', async (req, res) =
   }
 });
 
-router.get('/customers/offers/:offerUuid/pdf/latest/download', async (req, res) => {
-  try {
-    const offerUuid = req.params.offerUuid;
+function encodeFilenameRFC5987(name) {
+  return encodeURIComponent(name).replace(/['()]/g, escape).replace(/\*/g, '%2A');
+}
 
-    // Reuse your access control here (same checks as /pdf/latest JSON route).
+/** Append Content-Disposition to signed URL (GCS/S3 compatible) */
+function withContentDisposition(signedUrl, filename, storageHint = 'gcs') {
+  const u = new URL(signedUrl);
+  const cd = `attachment; filename="${filename}"; filename*=UTF-8''${encodeFilenameRFC5987(filename)}`;
+
+  // GCS uses response-content-disposition
+  // S3 uses ResponseContentDisposition
+  // Add both; irrelevant ones are ignored by the other provider
+  u.searchParams.set('response-content-disposition', cd);
+  u.searchParams.set('ResponseContentDisposition', cd);
+
+  // Optional: content type hint
+  u.searchParams.set('response-content-type', 'application/pdf');
+  u.searchParams.set('ResponseContentType', 'application/pdf');
+
+  return u.toString();
+}
+
+router.get('/customers/offers/:offerUuid/pdf/latest/download', async (req, res) => {
+  const offerUuid = req.params.offerUuid;
+
+  try {
     const meta = await getSignedOfferPdfUrl(offerUuid);
     if (!meta?.signedUrl) return res.status(404).json({ error: 'PDF not available' });
 
-    // Fetch the PDF from storage and stream it to the client.
-    const upstream = await fetch(meta.signedUrl);
-    if (!upstream.ok || !upstream.body) {
-      return res.status(502).json({ error: `Upstream fetch failed (HTTP ${upstream.status})` });
+    const filename = meta.filename || `Оферта-${offerUuid}.pdf`;
+    const cdHeader = `attachment; filename="${filename}"; filename*=UTF-8''${encodeFilenameRFC5987(filename)}`;
+
+    // Try to stream (best UX for most browsers)
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 15000); // 15s guard
+    const upstream = await fetch(meta.signedUrl, { redirect: 'follow', signal: ac.signal });
+    clearTimeout(t);
+
+    if (upstream.ok && upstream.body) {
+      const ct = upstream.headers.get('content-type') || 'application/pdf';
+      const cl = upstream.headers.get('content-length');
+
+      res.setHeader('Content-Type', ct);
+      res.setHeader('Content-Disposition', cdHeader);
+      if (cl) res.setHeader('Content-Length', cl);
+      res.setHeader('Cache-Control', 'private, max-age=120');
+
+      return upstream.body.pipe(res);
     }
 
-    const filename = meta.filename || `Оферта-${offerUuid}.pdf`;
-    const contentType = meta.contentType || 'application/pdf';
+    // If streaming failed (e.g., 403 expired/404), log & fall back to redirect
+    const status = upstream.status;
+    const text = await upstream.text().catch(() => '');
+    console.warn('PDF upstream not OK', { status, snippet: text.slice(0, 200) });
 
-    // Important: attachment forces download on mobile; same-origin makes it respected.
-    res.setHeader('Content-Type', contentType);
-    // RFC 5987 filename* encoding for non-ASCII
-    const enc = encodeURIComponent(filename).replace(/['()]/g, escape).replace(/\*/g, '%2A');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${enc}`);
-    if (meta.byteSize) res.setHeader('Content-Length', String(meta.byteSize));
-    res.setHeader('Cache-Control', 'private, max-age=120');
+    const redirectUrl = withContentDisposition(meta.signedUrl, filename, meta.storage);
+    return res.redirect(302, redirectUrl);
 
-    upstream.body.pipe(res);
   } catch (e) {
-    console.error('GET /offers/:offerUuid/pdf/latest/download', e);
-    res.status(400).json({ error: e.message || 'Download failed' });
+    console.error('PUBLIC download proxy error', e);
+    return res.status(502).json({ error: 'Upstream download failed' });
   }
 });
 
