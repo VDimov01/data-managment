@@ -812,7 +812,7 @@ router.get('/customers/offers/:offer_public_uuid/pdf/latest', async (req, res) =
   }
 });
 
-router.get('/api/public/customers/offers/:offerUuid/pdf/latest/download', async (req, res) => {
+router.get('/customers/offers/:offerUuid/pdf/latest/download', async (req, res) => {
   try {
     const offerUuid = req.params.offerUuid;
 
