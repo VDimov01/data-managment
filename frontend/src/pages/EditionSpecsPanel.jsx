@@ -148,7 +148,7 @@ return (
   <div className="public-specs">
     {/* Optional controls */}
     <div className="public-specs__controls">
-      <button className="public-specs__control-btn" onClick={expandAll}>Разгъни всички</button>
+      <button className="public-specs__control-btn" onClick={expandAll}>Разпъни всички</button>
       <button className="public-specs__control-btn" onClick={collapseAll}>Свий всички</button>
     </div>
 
