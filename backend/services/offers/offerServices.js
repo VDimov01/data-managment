@@ -450,12 +450,15 @@ async function getSignedPdfUrl(uuid, version_no, { minutes = 10 } = {}) {
   if (!o) throw new Error('Offer not found');
 
   const [[v]] = await pool.query(
-    'SELECT gcs_path FROM offer_pdf_version WHERE offer_id=? AND version_no=?',
+    'SELECT gcs_path, bytes_size FROM offer_pdf_version WHERE offer_id=? AND version_no=?',
     [o.offer_id, version_no]
   );
   if (!v) throw new Error('Version not found');
 
-  return await getSignedOfferPdfUrl(v.gcs_path, { minutes });
+  const byteSize = v.bytes_size || 0;
+  if (byteSize <= 0) throw new Error('PDF not available');
+
+  return await getSignedOfferPdfUrl(v.gcs_path, { minutes }, byteSize);
 }
 
 async function withdrawOffer(uuid, admin_id = null) {

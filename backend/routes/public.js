@@ -6,6 +6,7 @@ const pool = getPool();
 const { storage, BUCKET_PRIVATE, bucketPrivate } = require('../services/gcs');
 const { getVehiclePathParts } = require('../services/vehiclePathParts');
 const { getSignedReadUrl } = require('../services/contractPDF.js');
+const { getSignedOfferPdfUrl } = require('../services/offers/offerStorage');
 
 
 /** ---------------- helpers (same behavior as brochures.js) ---------------- */
@@ -804,11 +805,42 @@ router.get('/customers/offers/:offer_public_uuid/pdf/latest', async (req, res) =
     );
     if (!v) return res.status(404).json({ error: 'No PDF generated yet' });
 
-    const { getSignedOfferPdfUrl } = require('../services/offers/offerStorage');
     const { signedUrl, expiresAt } = await getSignedOfferPdfUrl(v.gcs_path, { minutes: Number(req.query.minutes || 10) });
     res.json({ signedUrl, expiresAt, version_no: v.version_no });
   } catch (e) {
     res.status(400).json({ error: e.message || 'Failed to get signed url' });
+  }
+});
+
+router.get('/api/public/customers/offers/:offerUuid/pdf/latest/download', async (req, res) => {
+  try {
+    const offerUuid = req.params.offerUuid;
+
+    // Reuse your access control here (same checks as /pdf/latest JSON route).
+    const meta = await getSignedOfferPdfUrl(offerUuid);
+    if (!meta?.signedUrl) return res.status(404).json({ error: 'PDF not available' });
+
+    // Fetch the PDF from storage and stream it to the client.
+    const upstream = await fetch(meta.signedUrl);
+    if (!upstream.ok || !upstream.body) {
+      return res.status(502).json({ error: `Upstream fetch failed (HTTP ${upstream.status})` });
+    }
+
+    const filename = meta.filename || `Оферта-${offerUuid}.pdf`;
+    const contentType = meta.contentType || 'application/pdf';
+
+    // Important: attachment forces download on mobile; same-origin makes it respected.
+    res.setHeader('Content-Type', contentType);
+    // RFC 5987 filename* encoding for non-ASCII
+    const enc = encodeURIComponent(filename).replace(/['()]/g, escape).replace(/\*/g, '%2A');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${enc}`);
+    if (meta.byteSize) res.setHeader('Content-Length', String(meta.byteSize));
+    res.setHeader('Cache-Control', 'private, max-age=120');
+
+    upstream.body.pipe(res);
+  } catch (e) {
+    console.error('GET /offers/:offerUuid/pdf/latest/download', e);
+    res.status(400).json({ error: e.message || 'Download failed' });
   }
 });
 

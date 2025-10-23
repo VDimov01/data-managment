@@ -87,34 +87,28 @@ export default function CustomerOffersPage({apiBase, publicCustomerUuid }) {
 }
 
 // Mobile-friendly: force a file download (blob fallback if CORS blocks 'download')
-  async function downloadLatestPdf(offerUuid, filename = "Оферта.pdf") {
-    try {
-      const url = buildUrl(apiBase, `/api/public/customers/offers/${offerUuid}/pdf/latest`);
-      const r = await fetch(url);
-      const j = await r.json();
-      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-      if (!j.signedUrl) throw new Error("PDF не е наличен.");
+  // in CustomerOffersPage.jsx
 
-      try {
-        const pdfResp = await fetch(j.signedUrl, { mode: "cors" });
-        if (!pdfResp.ok) throw new Error(`HTTP ${pdfResp.status}`);
-        const blob = await pdfResp.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(blobUrl);
-      } catch {
-        // Fallback: navigate to the signed URL (mobile browsers will usually offer to open in a viewer)
-        window.location.href = j.signedUrl;
-      }
-    } catch (e) {
-      alert(`Проблем при изтегляне на PDF: ${e.message}`);
-    }
+async function downloadLatestPdf(offerUuid, filename = "Оферта.pdf") {
+  // Same-origin route that streams with Content-Disposition: attachment
+  const url = buildUrl(apiBase, `/api/public/customers/offers/${offerUuid}/pdf/latest/download`);
+
+  // Prefer a direct navigation from the click handler (recognized as a user gesture on iOS)
+  try {
+    // Best compatibility: use a temporary <a download> for same-origin URL
+    const a = document.createElement('a');
+    a.href = url;
+    // download attr is optional when server sends Content-Disposition, but it doesn't hurt
+    a.setAttribute('download', filename);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch {
+    // Fallback
+    window.location.assign(url);
   }
+}
+
 
    return (
     <div className="cont-page">
