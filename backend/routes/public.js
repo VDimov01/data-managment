@@ -837,8 +837,20 @@ function withContentDisposition(signedUrl, filename, storageHint = 'gcs') {
 router.get('/customers/offers/:offerUuid/pdf/latest/download', async (req, res) => {
   const offerUuid = req.params.offerUuid;
 
+  const [[o]] = await pool.query(
+      'SELECT offer_id FROM offer WHERE public_uuid = ?',
+      [offerUuid]
+    );
+    if (!o) return res.status(404).json({ error: 'Offer not found' });
+
+    const [[v]] = await pool.query(
+      'SELECT version_no, gcs_path FROM offer_pdf_version WHERE offer_id=? ORDER BY version_no DESC LIMIT 1',
+      [o.offer_id]
+    );
+    if (!v) return res.status(404).json({ error: 'No PDF generated yet' });
+
   try {
-    const meta = await getSignedOfferPdfUrl(offerUuid);
+    const meta = await getSignedOfferPdfUrl(v.gcs_path, { minutes: 15 });
     if (!meta?.signedUrl) return res.status(404).json({ error: 'PDF not available' });
 
     const filename = meta.filename || `Оферта-${offerUuid}.pdf`;
