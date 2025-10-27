@@ -115,7 +115,7 @@ export default function CompareTable({ editions, rows, onlyDiff, filter }) {
       <table className="cb-table">
         <thead>
           <tr>
-            <th style={{minWidth:220}}>Атрибут</th>
+            <th style={{minWidth:220}} className="cb-attr-name">Атрибут</th>
             {editions.map(ed => (
               <th key={ed.edition_id}>
                 <div className="cb-ed-h">
@@ -163,7 +163,7 @@ function SectionRows({ title, items, editions }) {
           </td>
           {editions.map(ed => {
             const v = r.values?.[ed.edition_id] ?? null;
-            return <td key={ed.edition_id} className="public-text">{formatVal(v, r.data_type, r.unit)}</td>;
+            return <td key={ed.edition_id}>{formatVal(v, r.data_type, r.unit)}</td>;
           })}
         </tr>
       ))}

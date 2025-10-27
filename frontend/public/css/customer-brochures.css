@@ -73,7 +73,7 @@
 .cb-section td { background: #f8fafc; font-weight: 700; border-bottom: 1px solid #e5e7eb; }
 .cb-sec-btn { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; font-weight: 700; cursor: pointer; }
 .cb-caret { display: inline-block; width: 1.2em; text-align: center; color: #64748b; }
-.cb-attr-name { font-weight: 600; }
+.cb-attr-name { font-weight: 600; color: #111827; }
 .cb-attr-meta { font-size: 12px; color: #6b7280; }
 
 /* Gallery */
