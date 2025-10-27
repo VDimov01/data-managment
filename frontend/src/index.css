@@ -125,6 +125,8 @@
     --page-hover-bg: var(--btn-hover-bg);
 
     --focus-ring:    color-mix(in oklab, var(--primary), black 70%);
+
+    --public-text: #0a1a30;
   }
 }
 
