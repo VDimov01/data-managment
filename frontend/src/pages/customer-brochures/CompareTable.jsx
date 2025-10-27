@@ -163,7 +163,7 @@ function SectionRows({ title, items, editions }) {
           </td>
           {editions.map(ed => {
             const v = r.values?.[ed.edition_id] ?? null;
-            return <td key={ed.edition_id}>{formatVal(v, r.data_type, r.unit)}</td>;
+            return <td key={ed.edition_id} style={{color: "#111827"}}>{formatVal(v, r.data_type, r.unit)}</td>;
           })}
         </tr>
       ))}
