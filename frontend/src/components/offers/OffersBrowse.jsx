@@ -65,7 +65,7 @@ export default function OffersBrowse({ onManage }) {
 
   const canIssue = (row) => {
     const s = String(row.status || "").toLowerCase();
-    return s === "draft" || s === "revised";
+    return s === "draft" || s === "revised" || s === "withdrawn";
   };
 
   // Withdraw from list
