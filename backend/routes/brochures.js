@@ -357,8 +357,11 @@ router.post('/', async (req, res) => {
         await conn.query(`INSERT INTO brochure_year (brochure_id, model_year_id) VALUES ?`, [values]);
       }
       if (selection_mode === 'EDITIONS' && edition_ids.length) {
-        const values = edition_ids.map(e => [brochureId, e]);
-        await conn.query(`INSERT INTO brochure_edition (brochure_id, edition_id) VALUES ?`, [values]);
+        const values = edition_ids.map((e, idx) => {
+
+          return [brochureId, e, year_ids[idx] ? year_ids[idx] : null];
+        });
+        await conn.query(`INSERT INTO brochure_edition (brochure_id, edition_id, model_year_id) VALUES ?`, [values]);
       }
 
       // Snapshot now?
@@ -482,8 +485,11 @@ router.put('/:id', async (req, res) => {
       } else if (selection_mode === 'EDITIONS') {
         await conn.query(`DELETE FROM brochure_edition WHERE brochure_id=?`, [id]);
         if (edition_ids.length) {
-          const values = edition_ids.map(e => [id, e]);
-          await conn.query(`INSERT INTO brochure_edition (brochure_id, edition_id) VALUES ?`, [values]);
+          const values = edition_ids.map((e, idx) => {
+
+          return [id, e, year_ids[idx] ? year_ids[idx] : null];
+        });
+          await conn.query(`INSERT INTO brochure_edition (brochure_id, edition_id, model_year_id) VALUES ?`, [values]);
         }
         await conn.query(`DELETE FROM brochure_year WHERE brochure_id=?`, [id]);
       } else {
@@ -732,13 +738,14 @@ router.get('/:id/selection', async (req, res) => {
       year_ids = yrs.map(r => r.model_year_id);
     } else if (b.selection_mode === 'EDITIONS') {
       const [eds] = await conn.query(
-        `SELECT edition_id
+        `SELECT edition_id, model_year_id
          FROM brochure_edition
          WHERE brochure_id = ?
          ORDER BY edition_id`,
         [id]
       );
       edition_ids = eds.map(r => r.edition_id);
+      year_ids = eds.map(r => r.model_year_id).filter((v, i, a) => v != null && a.indexOf(v) === i); // unique non-null
     }
 
     // 3) Return a clean, form-friendly payload

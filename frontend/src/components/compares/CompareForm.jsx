@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, qs } from "../../services/api";
+import SelectOrCreate from "../editions/SelectOrCreate";
+
+/* =================== Compare Form =================== */
 
 export default function CompareForm({ apiBase, initial = null, onSaved }) {
   const isEdit = !!initial;
@@ -234,27 +237,30 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
 
         <div className="cmp-grid">
           <div className="cmp-field">
-            <label>Марка</label>
-            <select className="select" value={makeId} onChange={(e)=>setMakeId(e.target.value)}>
-              <option value="">Изберете марка…</option>
-              {makes.map(m => <option key={m.make_id} value={m.make_id}>{m.name}</option>)}
-            </select>
+            <SelectOrCreate 
+              showCreate={false}
+              label="Изберете производител"
+              options={makes.map(m => ({ value:String(m.make_id), label:m.name }))}
+              value={makeId} setValue={(v)=>setMakeId(v)}
+            />
           </div>
 
           <div className="cmp-field">
-            <label>Модел</label>
-            <select className="select" value={modelId} onChange={(e)=>setModelId(e.target.value)} disabled={!makeId}>
-              <option value="">Изберете модел…</option>
-              {models.map(m => <option key={m.model_id} value={m.model_id}>{m.name}</option>)}
-            </select>
+            <SelectOrCreate
+              showCreate={false}
+              label="Модел"
+              options={models.map(m => ({ value:String(m.model_id), label:m.name }))}
+              value={modelId} setValue={(v)=>setModelId(v)}
+            />
           </div>
 
           <div className="cmp-field">
-            <label>Година</label>
-            <select className="select" value={yearId} onChange={(e)=>setYearId(e.target.value)} disabled={!modelId}>
-              <option value="">Изберете година…</option>
-              {years.map(y => <option key={y.model_year_id} value={y.model_year_id}>{y.year}</option>)}
-            </select>
+            <SelectOrCreate
+              showCreate={false}
+              label="Година"
+              options={years.map(y => ({ value:String(y.model_year_id), label:y.year }))}
+              value={yearId} setValue={(v)=>setYearId(v)}
+            />
           </div>
 
           <div className="cmp-field">

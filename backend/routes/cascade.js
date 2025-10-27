@@ -51,7 +51,7 @@ router.get('/editions', async (req, res) => {
   const conn = await mysql.createConnection(process.env.DATABASE_URL);
   try {
     const [rows] = await conn.execute(
-      'SELECT edition_id, name FROM edition WHERE model_year_id=? ORDER BY name', [model_year_id]
+      'SELECT edition_id, name, my.year FROM edition e JOIN model_year my ON my.model_year_id = e.model_year_id WHERE e.model_year_id=? ORDER BY name', [model_year_id]
     );
     res.json(rows);
   } catch (e) {

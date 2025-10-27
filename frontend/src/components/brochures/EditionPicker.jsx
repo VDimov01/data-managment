@@ -3,9 +3,9 @@ import {api, qs} from '../../services/api.js'
 
 /* =================== Edition Picker =================== */
 
-export default function EditionPicker({ apiBase, selectedYearIds, selectedEditionIds, onToggleEdition }) {
+export default function EditionPicker({ apiBase, selectedYearIds, selectedEditionIds, onToggleEdition, years }) {
   const [map, setMap] = useState(new Map()); // year_id -> editions[]
-
+  console.log(years);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -20,15 +20,15 @@ export default function EditionPicker({ apiBase, selectedYearIds, selectedEditio
     return () => { cancelled = true; };
   }, [apiBase, selectedYearIds]);
 
-  const years = Array.from(map.keys());
+  const yearsFromMap = Array.from(map.keys());
 
   return (
     <>
-      {years.map(y => {
+      {yearsFromMap.map((y, idx) => {
         const list = map.get(String(y)) || [];
         return (
           <div key={y} className="br-year-group">
-            <div className="br-year-title">Year {list[0]?.year ?? ""}</div>
+            <div className="br-year-title">Година на модел: {years.find(yr => yr.model_year_id === Number(y))?.year || "000"}</div>
             <div className="br-editions-grid">
               {list.map(e => {
                 const on = selectedEditionIds.has(String(e.edition_id));

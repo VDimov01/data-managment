@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import EditionPicker from "./EditionPicker";
 import { api, qs } from "../../services/api";
+import SelectOrCreate from "../editions/SelectOrCreate";
 
 /* ======================= Brochure Form ======================= */
 
 export default function BrochureForm({ apiBase, initial = null, onSaved }) {
   const isEdit = !!initial;
+  console.log()
 
   const [title, setTitle] = useState(initial?.title || "");
   const [description, setDescription] = useState(initial?.description || "");
@@ -32,14 +34,14 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
 
   // load models by make
   useEffect(() => {
-    setModels([]); setModelId(""); setYears([]); setEditions([]);
+    setModels([]); setModelId(""); setYears([]); setEditions([]); selectedYearIds.clear(); selectedEditionIds.clear();
     if (!makeId) return;
       api(`/cascade/models${qs({ make_id: makeId })}`).then(setModels).catch(()=>{});
   }, [makeId, apiBase]);
 
   // load years by model
   useEffect(() => {
-    setYears([]); setEditions([]);
+    setYears([]); setEditions([]); selectedYearIds.clear(); selectedEditionIds.clear();
     if (!modelId) return;
       api(`/cascade/model-years${qs({ model_id: modelId })}`).then(setYears).catch(()=>{});
   }, [modelId, apiBase]);
@@ -50,6 +52,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
     (async () => {
       try {
         const sel = await api(`/brochures/${initial.brochure_id}/selection`);
+        console.log("Loaded selection:", sel);
         if (sel.selection_mode) setSelectionMode(sel.selection_mode);
         if (Array.isArray(sel.year_ids)) setSelectedYearIds(new Set(sel.year_ids.map(String)));
         if (Array.isArray(sel.edition_ids)) setSelectedEditionIds(new Set(sel.edition_ids.map(String)));
@@ -121,6 +124,7 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
     if (selectionMode === "YEARS") {
       body.year_ids = Array.from(selectedYearIds).map(Number);
     } else if (selectionMode === "EDITIONS") {
+      body.year_ids = Array.from(selectedYearIds).map(Number);
       body.edition_ids = Array.from(selectedEditionIds).map(Number);
     }
 
@@ -178,19 +182,21 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
         </div>
 
         <div>
-          <label>Производител *</label>
-          <select value={makeId} onChange={(e)=>setMakeId(e.target.value)}>
-            <option value="">Изберете производител…</option>
-            {makes.map(m => <option key={m.make_id} value={m.make_id}>{m.name}</option>)}
-          </select>
+          <SelectOrCreate 
+            showCreate={false}
+            label="Изберете производител"
+            options={makes.map(m => ({ value:String(m.make_id), label:m.name }))}
+            value={makeId} setValue={(v)=>setMakeId(v)}
+          />
         </div>
 
         <div>
-          <label>Модел *</label>
-          <select value={modelId} onChange={(e)=>setModelId(e.target.value)} disabled={!makeId}>
-            <option value="">Изберете модел…</option>
-            {models.map(m => <option key={m.model_id} value={m.model_id}>{m.name}</option>)}
-          </select>
+          <SelectOrCreate
+            showCreate={false}
+            label="Модел"
+            options={models.map(m => ({ value:String(m.model_id), label:m.name }))}
+            value={modelId} setValue={(v)=>setModelId(v)}
+          />
         </div>
       </div>
 
@@ -277,6 +283,9 @@ export default function BrochureForm({ apiBase, initial = null, onSaved }) {
                   selectedYearIds={Array.from(selectedYearIds)}
                   selectedEditionIds={selectedEditionIds}
                   onToggleEdition={toggleEdition}
+                  makeId={makeId}
+                  modelId={modelId}
+                  years={years}
                 />
               )}
             </div>
