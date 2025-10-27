@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { api, qs } from "../../services/api";
 import SelectOrCreate from "../editions/SelectOrCreate";
 
@@ -25,6 +25,16 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
 
   // basket of selected editions
   const [selected, setSelected] = useState([]);
+
+  const currentMakeName = useMemo(
+  () => makes.find(m => String(m.make_id) === makeId)?.name || "",
+  [makes, makeId]
+);
+  const currentModelName = useMemo(
+  () => models.find(m => String(m.model_id) === modelId)?.name || "",
+  [models, modelId]
+);
+
 
   // load makes
   useEffect(() => {
@@ -116,53 +126,54 @@ export default function CompareForm({ apiBase, initial = null, onSaved }) {
   }, [isEdit, initial?.compare_id]);
 
   const addEdition = (e) => {
-    const val = e.target.value;
-    if (!val) return;
+  const val = e.target.value;
+  if (!val) return;
 
-    if (val === "__ALL__") {
-      // Add all editions from the loaded list, deduped
-      const existing = new Set(selected.map(s => s.edition_id));
-      const toAdd = (listEditions || [])
-        .filter(ed => !existing.has(ed.edition_id))
-        .map(ed => ({
-          edition_id: ed.edition_id,
-          edition_name: ed.name,
-          year: ed.year,
-          model_name: ed.model_name || "",
-          make_name: ed.make_name || ""
-        }));
+  if (val === "__ALL__") {
+    const existing = new Set(selected.map(s => s.edition_id));
+    const toAdd = (listEditions || [])
+      .filter(ed => !existing.has(ed.edition_id))
+      .map(ed => ({
+        edition_id: ed.edition_id,
+        edition_name: ed.name,
+        year: ed.year,
+        model_name: ed.model_name || currentModelName,
+        make_name: ed.make_name || currentMakeName,
+      }));
 
-      if (toAdd.length > 0) {
-        setSelected(prev => [...prev, ...toAdd]);
-      }
+    if (toAdd.length > 0) setSelected(prev => [...prev, ...toAdd]);
 
-      // reset pickers like your original flow
-      setMakeId(""); setModelId(""); setYearId(""); setListEditions([]);
-      return;
+    setMakeId("");
+    setModelId("");
+    setYearId("");
+    setListEditions([]);
+    return;
+  }
+
+  const id = Number(val);
+  if (!id) return;
+  if (selected.some(x => x.edition_id === id)) return;
+
+  const meta = listEditions.find(x => x.edition_id === id);
+  if (!meta) return;
+
+  setSelected(prev => [
+    ...prev,
+    {
+      edition_id: meta.edition_id,
+      edition_name: meta.name,
+      year: meta.year,
+      model_name: meta.model_name || currentModelName,
+      make_name: meta.make_name || currentMakeName,
     }
+  ]);
 
-    // Single edition add (original behavior)
-    const id = Number(val);
-    if (!id) return;
-    const exists = selected.some(x => x.edition_id === id);
-    if (exists) return;
-    const meta = listEditions.find(x => x.edition_id === id);
-    if (!meta) return;
+  setMakeId("");
+  setModelId("");
+  setYearId("");
+  setListEditions([]);
+};
 
-    setSelected(prev => [
-      ...prev,
-      {
-        edition_id: meta.edition_id,
-        edition_name: meta.name,
-        year: meta.year,
-        model_name: meta.model_name || "",
-        make_name: meta.make_name || ""
-      }
-    ]);
-
-    // reset pickers
-    setMakeId(""); setModelId(""); setYearId(""); setListEditions([]);
-  };
 
   const removeEdition = (id) => {
     setSelected(prev => prev.filter(x => x.edition_id !== id));
