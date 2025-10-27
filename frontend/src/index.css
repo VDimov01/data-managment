@@ -627,7 +627,8 @@ button.page-btn:disabled {
 }
 
 .public-muted { color: var(--public-text-muted); }
-.public-mono  { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: var(--public-text); }
+.public-text {color: var(--public-text); }
+.public-mono  { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 
 .public-stickyActions {
   position: sticky;
