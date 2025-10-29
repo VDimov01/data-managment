@@ -128,8 +128,8 @@ function AdvanceContractPDF({ buyer, cars = [], advance_amount }) {
         React.createElement(View, { style: { marginTop: 10, marginBottom: 10 } }),
         React.createElement(Text, null, "ПРОДАВАЧ: ...................................          / Пламен Генчев /"),
         React.createElement(View, { style: { marginTop: 10, marginBottom: 10 } }),
-        type === "company" && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.rep_first_name} ${buyer.rep_last_name}`) + " /"),
-        type === "client" && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.first_name} ${buyer.last_name}`) + " /"),
+        buyer.customer_type === "company" && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.rep_first_name} ${buyer.rep_last_name}`) + " /"),
+        buyer.customer_type === "client" && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.first_name} ${buyer.last_name}`) + " /"),
       ])
     )
   );
