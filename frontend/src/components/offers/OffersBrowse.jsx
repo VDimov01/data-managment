@@ -111,7 +111,7 @@ export default function OffersBrowse({ onManage }) {
       row,
       type: "REGULAR",
       advance: "",
-      markConverted: false,
+      markConverted: true,
       loading: false,
       error: null,
     });
