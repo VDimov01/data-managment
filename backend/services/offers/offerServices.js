@@ -194,7 +194,7 @@ async function listOffers({ term = null, limit = 25, offset = 0, status = null }
   const pool = getPool();
   let sql = `
     SELECT o.offer_uuid, o.offer_number, o.status, o.created_at, o.valid_until,
-           o.currency, o.total_amount,
+           o.currency, o.total_amount, o.customer_id,
            c.display_name AS customer_name
       FROM offer o
       LEFT JOIN customer c ON c.customer_id = o.customer_id

@@ -1201,6 +1201,217 @@ router.post('/:contract_id/sign', async (req, res) => {
   }
 });
 
+// Create a contract draft from an existing offer (with type + advance support)
+// POST /api/contracts/from-offer
+// body: {
+//   offer_id? | offer_uuid? | offer_number?,
+//   type?: 'REGULAR'|'ADVANCE',
+//   advance_amount?: DECIMAL string|number,
+//   mark_converted?: boolean
+// }
+router.post('/from-offer', async (req, res) => {
+  try {
+    const {
+      offer_id = null,
+      offer_uuid = null,
+      offer_number = null,
+      type = 'REGULAR',
+      advance_amount = null,
+      mark_converted = false,
+    } = req.body || {};
+
+    if (!offer_id && !offer_uuid && !offer_number) {
+      return res.status(400).json({ error: 'Provide offer_id or offer_uuid or offer_number' });
+    }
+    if (!['REGULAR', 'ADVANCE'].includes(type)) {
+      return res.status(400).json({ error: "type must be 'REGULAR' or 'ADVANCE'" });
+    }
+
+    // Validate/normalize advance
+    let advanceNorm = null;
+    const hasAdvanceInBody = Object.prototype.hasOwnProperty.call(req.body || {}, 'advance_amount');
+    if (hasAdvanceInBody) {
+      advanceNorm = (advance_amount == null || advance_amount === '') ? null : Number(advance_amount).toFixed(2);
+      if (advanceNorm != null && Number(advanceNorm) < 0) {
+        return res.status(400).json({ error: 'advance_amount must be >= 0' });
+      }
+      if (type !== 'ADVANCE' && advanceNorm != null) {
+        return res.status(400).json({ error: 'advance_amount can only be set for ADVANCE contracts' });
+      }
+    }
+
+    const out = await withTxn(async (conn) => {
+      // 1) Load + lock offer
+      const where = offer_id
+        ? { sql: 'offer_id = ?', val: offer_id }
+        : offer_uuid
+          ? { sql: 'offer_uuid = ?', val: offer_uuid }
+          : { sql: 'offer_number = ?', val: offer_number };
+
+      const [[offer]] = await conn.query(
+        `SELECT * FROM offer WHERE ${where.sql} FOR UPDATE`,
+        [where.val]
+      );
+      if (!offer) throw new Error('Offer not found');
+      if (!offer.customer_id) throw new Error('Offer has no customer_id');
+
+      // 2) Items (vehicle-only)
+      const [items] = await conn.query(
+        `SELECT offer_item_id, offer_id, line_no, item_type, vehicle_id, description,
+                quantity, unit_price, unit_price_gross, vat_rate, line_total, metadata_json
+           FROM offer_item
+          WHERE offer_id = ?
+          ORDER BY line_no`,
+        [offer.offer_id]
+      );
+
+      const vehItems = items.filter(
+        (it) => it.item_type === 'vehicle' && it.vehicle_id && Number(it.quantity) > 0
+      );
+      if (vehItems.length === 0) {
+        throw new Error('Offer contains no vehicle lines to convert');
+      }
+
+      // 3) Load vehicle joins for title/subtitle
+      const ids = [...new Set(vehItems.map((i) => Number(i.vehicle_id)))];
+      const [vrows] = await conn.query(
+        `SELECT v.vehicle_id, v.vin, v.mileage AS mileage_km,
+                ed.name AS edition_name, my.year,
+                md.name AS model_name, mk.name AS make_name
+           FROM vehicle v
+           JOIN edition ed     ON ed.edition_id = v.edition_id
+           JOIN model_year my  ON my.model_year_id = ed.model_year_id
+           JOIN model md       ON md.model_id = my.model_id
+           JOIN make mk        ON mk.make_id = md.make_id
+          WHERE v.vehicle_id IN (${ids.map(() => '?').join(',')})`,
+        ids
+      );
+      const vmap = new Map(vrows.map((r) => [Number(r.vehicle_id), r]));
+
+      // Prevent double-reservation
+      const [alreadyReserved] = await conn.query(
+        `SELECT vehicle_id FROM vehicle
+          WHERE vehicle_id IN (${ids.map(() => '?').join(',')})
+            AND reserved_by_contract_id IS NOT NULL`,
+        ids
+      );
+      if (alreadyReserved.length) {
+        const bad = alreadyReserved.map((r) => r.vehicle_id).join(', ');
+        throw new Error(`Some vehicles are already reserved: [${bad}]`);
+      }
+
+      // 4) Snapshot buyer & create contract header (persist type + advance)
+      const buyer = await loadBuyer(conn, offer.customer_id);
+      const contract_uuid = uuidv4();
+      const number = await nextContractNumber(conn);
+      const curr = (offer.currency || 'BGN').toUpperCase().slice(0, 3);
+      const vu = null;
+      const created_by_user_id = req.user?.user_id || 1; // TODO: wire real auth
+
+      const [insC] = await conn.execute(
+        `INSERT INTO contract
+           (uuid, status, contract_number, type, customer_id,
+            currency, currency_code, advance_amount, valid_until,
+            created_by_user_id, created_at, buyer_snapshot_json, note)
+         VALUES
+           (?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, NOW(), CAST(? AS JSON), ?)`,
+        [
+          contract_uuid,
+          number,
+          type,                          // <-- persist type
+          offer.customer_id,
+          curr,
+          curr,
+          advanceNorm,                   // <-- persist advance_amount (null if not provided)
+          vu,
+          created_by_user_id,
+          JSON.stringify(buyer),
+          `Converted from offer ${offer.offer_number}`,
+        ]
+      );
+      const contract_id = insC.insertId;
+
+      // 5) Insert items + compute totals
+      let subtotal = 0, discount_total = 0, tax_total = 0, total = 0;
+      let pos = 1;
+
+      for (const it of vehItems) {
+        const v = vmap.get(Number(it.vehicle_id));
+        if (!v) throw new Error(`Vehicle ${it.vehicle_id} not found/join failed`);
+
+        const qty = Number(it.quantity) || 1;
+        const unit = toDecimalString(it.unit_price) ?? '0.00';
+        const tax_rate = it.vat_rate != null ? toDecimalString(it.vat_rate) : null;
+
+        const t = computeLineTotals(qty, unit, null, null, tax_rate);
+        subtotal += t.subtotal;
+        discount_total += t.discount;
+        tax_total += t.tax;
+        total += t.total;
+
+        const title = buildItemTitle(v);
+        const subtitle = buildItemSubtitle(v);
+
+        await conn.execute(
+          `INSERT INTO contract_item
+             (contract_id, vehicle_id, quantity, unit_price,
+              discount_type, discount_value, tax_rate, line_total,
+              title, subtitle, position, currency_code)
+           VALUES
+             (?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?)`,
+          [
+            contract_id,
+            it.vehicle_id,
+            qty,
+            unit,
+            tax_rate,
+            toDecimalString(t.total) ?? '0.00',
+            title,
+            subtitle || null,
+            pos++,
+            curr,
+          ]
+        );
+      }
+
+      await conn.execute(
+        `UPDATE contract
+            SET subtotal = ?, discount_total = ?, tax_total = ?, total = ?
+          WHERE contract_id = ?`,
+        [
+          toDecimalString(subtotal) ?? '0.00',
+          toDecimalString(discount_total) ?? '0.00',
+          toDecimalString(tax_total) ?? '0.00',
+          toDecimalString(total) ?? '0.00',
+          contract_id,
+        ]
+      );
+
+      // 7) Optionally mark offer converted
+      if (mark_converted) {
+        await conn.execute(
+          `UPDATE offer
+              SET status = 'converted', updated_at = NOW()
+            WHERE offer_id = ?`,
+          [offer.offer_id]
+        );
+      }
+
+      const [[contractRow]] = await conn.query(
+        `SELECT * FROM contract WHERE contract_id = ?`,
+        [contract_id]
+      );
+
+      return { contract: contractRow, inserted_items: vehItems.length };
+    });
+
+    res.status(201).json(out);
+  } catch (e) {
+    console.error('POST /contracts/from-offer', e);
+    res.status(400).json({ error: e.message || 'Convert failed' });
+  }
+});
+
 
 
 module.exports = router;

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "../../services/api.js";            // <-- explicit .js
 import { niceDate } from "../../utils/helpers";
 import { statusToBG } from "../../utils/i18n.js";
+import Modal from "../Modal.jsx";
 
 export default function OffersBrowse({ onManage }) {
   const [term, setTerm] = useState("");
@@ -11,6 +12,17 @@ export default function OffersBrowse({ onManage }) {
   const [offset, setOffset] = useState(0);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Modal state for contract creation
+  const [contractModal, setContractModal] = useState({
+    open: false,
+    row: null,
+    type: "REGULAR",
+    advance: "",
+    markConverted: true,
+    loading: false,
+    error: null,
+  });
 
   const page = Math.floor(offset / limit) + 1;
 
@@ -45,12 +57,11 @@ export default function OffersBrowse({ onManage }) {
     }
   }
 
-  // NEW: Issue directly from the list
+  // Issue directly from the list
   async function issueRow(row) {
     try {
       const uuid = row.offer_uuid;
       const out = await api(`/offers/${uuid}/issue`, { method: "POST" });
-      // out = { offer_number, version_no, gcs_path }
       if (out?.version_no) {
         const sig = await api(`/offers/${uuid}/pdfs/${out.version_no}/signed-url`);
         if (sig?.signedUrl && confirm("Офертата е издадена. Отвори PDF сега?")) {
@@ -84,6 +95,67 @@ export default function OffersBrowse({ onManage }) {
   const canWithdraw = (row) => {
     const s = String(row.status || "").toLowerCase();
     return s === "issued" || s === "signed"; // 'signed' tolerated if ever added
+  };
+
+  // ---- Contract creation (modal flow) ----
+  const moneyToStr = (val) => {
+    if (val == null || val === "") return null;
+    const n = Number(String(val).replace(",", "."));
+    if (!Number.isFinite(n) || n < 0) return null;
+    return n.toFixed(2);
+  };
+
+  function createContract(row) {
+    setContractModal({
+      open: true,
+      row,
+      type: "REGULAR",
+      advance: "",
+      markConverted: false,
+      loading: false,
+      error: null,
+    });
+  }
+
+  async function submitContractFromOffer() {
+    setContractModal((m) => ({ ...m, loading: true, error: null }));
+    try {
+      const { row, type, advance, markConverted } = contractModal;
+
+      const body = {
+        offer_id: row.offer_id,               // also sending uuid for convenience
+        offer_uuid: row.offer_uuid,
+        type,
+        mark_converted: !!markConverted,
+      };
+
+      if (type === "ADVANCE") {
+        const a = moneyToStr(advance);
+        if (a == null) throw new Error("Невалидна авансова сума");
+        if (row.total_amount && Number(a) > Number(row.total_amount)) {
+          throw new Error("Авансът не може да е по-голям от общата сума по офертата");
+        }
+        body.advance_amount = a;
+      }
+
+      const res = await api(`/contracts/from-offer`, {
+        method: "POST",
+        body,
+      });
+
+      const c = res.contract;
+      // Close and navigate
+      setContractModal((m) => ({ ...m, open: false, loading: false }));
+      alert("Създаването на договор е успешно. Номер на договора: " + (c.contract_number || "—"));
+    } catch (e) {
+      setContractModal((m) => ({ ...m, loading: false, error: e.message || String(e) }));
+    }
+  }
+  // ---------------------------------------
+
+  const canCreateContract = (row) => {
+    const s = String(row.status || "").toLowerCase();
+    return s === "issued"; // 'signed' tolerated if ever added
   };
 
   return (
@@ -147,7 +219,11 @@ export default function OffersBrowse({ onManage }) {
                   <td className="text-muted">{niceDate(r.created_at)}</td>
                   <td>
                     <div className="btn-row">
-                      <button className="btn" onClick={() => onManage(r.offer_uuid)}>Редактирай</button>
+                      {r.status.toLowerCase() !== "converted" && (
+                        <button className="btn" onClick={() => onManage(r.offer_uuid)}>
+                          Редактирай
+                        </button>
+                      )}
                       <button className="btn" onClick={() => openLatestPdf(r)}>Отвори PDF</button>
                       {canIssue(r) && (
                         <button className="btn btn-primary" onClick={() => issueRow(r)}>
@@ -157,6 +233,11 @@ export default function OffersBrowse({ onManage }) {
                       {canWithdraw(r) && (
                         <button className="btn btn-danger" onClick={() => withdrawRow(r)}>
                           Оттегли
+                        </button>
+                      )}
+                      {canCreateContract(r) && (
+                        <button className="btn btn-primary" onClick={() => createContract(r)}>
+                          Създай договор (от офертата)
                         </button>
                       )}
                     </div>
@@ -185,6 +266,74 @@ export default function OffersBrowse({ onManage }) {
           </button>
         </div>
       </div>
+
+      {/* Contract creation modal */}
+      <Modal
+        open={contractModal.open}
+        title="Създай договор от оферта"
+        onClose={() => setContractModal((m) => ({ ...m, open: false }))}
+      >
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (!contractModal.loading) submitContractFromOffer(); }}
+          style={{ display: "grid", gap: 12 }}
+        >
+          <div>
+            <label className="label">Тип договор</label>
+            <select
+              className="select"
+              value={contractModal.type}
+              onChange={(e) => setContractModal((m) => ({ ...m, type: e.target.value }))}
+            >
+              <option value="REGULAR">Регулярен</option>
+              <option value="ADVANCE">Авансов</option>
+            </select>
+          </div>
+
+          {contractModal.type === "ADVANCE" && (
+            <div>
+              <label className="label">Авансова сума (с ДДС)</label>
+              <input
+                className="input"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={contractModal.advance}
+                onChange={(e) => setContractModal((m) => ({ ...m, advance: e.target.value }))}
+                required
+              />
+              {contractModal?.row?.total_amount ? (
+                <small className="text-muted">
+                  Макс: {Number(contractModal.row.total_amount).toFixed(2)} {contractModal.row.currency || "BGN"}
+                </small>
+              ) : null}
+            </div>
+          )}
+
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={contractModal.markConverted}
+              onChange={(e) => setContractModal((m) => ({ ...m, markConverted: e.target.checked }))}
+            />
+            Маркирай офертата като „Конвертирана“
+          </label>
+
+          {contractModal.error && (
+            <div style={{ color: "crimson" }}>{contractModal.error}</div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+            <button type="button" className="btn" onClick={() => setContractModal((m) => ({ ...m, open: false }))}>
+              Отказ
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={contractModal.loading}>
+              {contractModal.loading ? "Създаване..." : "Създай договор"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
