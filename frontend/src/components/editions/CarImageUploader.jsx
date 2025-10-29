@@ -235,8 +235,8 @@ export default function EditionImageUploader({
           <option value="exterior">Exterior</option>
           <option value="interior">Interior</option> */}
         </select>
-        <input type="file" accept="image/*" multiple onChange={onUpload} disabled={uploading}/>
-        <button onClick={refresh} disabled={busy||uploading}>{busy ? "Refreshing…" : "Refresh"}</button>
+        <input className="input" type="file" accept="image/*" multiple onChange={onUpload} disabled={uploading}/>
+        <button className="btn" onClick={refresh} disabled={busy||uploading}>{busy ? "Refreshing…" : "Refresh"}</button>
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -266,7 +266,7 @@ function DroppableSection({ part, title, hint, items, children }) {
   const { isOver, setNodeRef } = useDroppable({ id: `container:${part}`, data: { part } });
   return (
     <div style={{ border:"1px solid #eee", borderRadius:8, margin:"12px 0" }}>
-      <div style={{ padding:"8px 12px", background:"#fafafa", display:"flex", gap:8 }}>
+      <div style={{ padding:"8px 12px", background: "var(--bg)", display:"flex", gap:8, color: "var(--text" }}>
         <strong>{title}</strong>
         {hint && <span style={{ fontSize:12, color:"#777" }}>— {hint}</span>}
       </div>
@@ -299,10 +299,10 @@ function Card({ img, onDelete }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: img.id });
   const style = {
-    border:"1px solid #ddd",
+    border:"1px solid var(--control-border)",
     borderRadius:8,
     padding:8,
-    background:"#fff",
+    background: "var(--surface)",
     position:"relative",
     transform: CSS.Transform.toString(transform),
     transition,
@@ -314,7 +314,7 @@ function Card({ img, onDelete }) {
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <img src={img.image_url} alt="" style={{ width:"100%", height:120, objectFit:"cover", borderRadius:6 }} />
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:8 }}>
-        <span style={{ fontSize:12, color:"#666" }}>#{img.sort_order ?? "-"}</span>
+        <span style={{ fontSize:12, color:"var(--text-muted)" }}>#{img.sort_order ?? "-"}</span>
         <button onClick={onDelete} style={{ fontSize:12, padding:"4px 8px", border:"1px solid #c00", color:"#c00", borderRadius:6 }}>
           Delete
         </button>
