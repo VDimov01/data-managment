@@ -115,10 +115,9 @@ async function elementToBuffer(element) {
 }
 
 async function renderContractPdfBuffer({ type, buyer, items, advance_amount }) {
-  console.log(buyer);
   const Doc = type === 'ADVANCE' ? AdvanceContractPDF : RegularContractPDF;
   // DO NOT CALL Doc(...) directly — create a React element
-  const element = React.createElement(Doc, buildTemplateProps({ buyer, items, advance_amount }));
+  const element = React.createElement(Doc, buildTemplateProps({type, buyer, items, advance_amount }));
   const buf = await elementToBuffer(element);
 
   // Optional debug:
