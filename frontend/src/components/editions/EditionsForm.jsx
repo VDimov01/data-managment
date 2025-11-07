@@ -153,6 +153,155 @@ const passSourceFilter = (row) => {
   return true;
 };
 
+// === COPY/PASTE additions START ===
+const [copyFromEditionId, setCopyFromEditionId] = useState('');
+// Copy/paste options
+const [copyScope, setCopyScope] = useState('effective');      // 'overrides' | 'effective'
+const [fillTargets, setFillTargets] = useState('non_overrides');      // 'empty' | 'non_overrides'
+
+const CLIP_KEY = 'editionAttrClipboard_v1';
+
+// Reuse your loader logic to fetch another edition's rows (same shape as `rows`)
+async function fetchEditionRowsForCopy(edId) {
+  // Fetch exactly as your loadEditionAttributes does:
+  const defs = await fetch(`${apiBase}/api/editions/${edId}/attributes?effective=1&lang=bg`, { credentials: 'include' }).then(r => r.json());
+  const specs = await fetch(`${apiBase}/api/editions/${edId}/specs?lang=bg`, { credentials: 'include' }).then(r => r.json());
+
+  const eavNum = new Map((specs?.eav?.numeric || []).map(row => [row.code, row.val]));
+  const eavBool = new Map((specs?.eav?.boolean || []).map(row => [row.code, row.val ? 1 : 0]));
+  const jsonAttrs = specs?.json?.attributes || {};
+  const jsonBG = specs?.json_i18n?.bg?.attributes || {};
+
+  const jsonHas = (code, dt) => {
+    const o = jsonAttrs[code];
+    return o && (o.dt === dt || (!o.dt && dt === 'text'));
+  };
+  const jsonVal = (code) => jsonAttrs[code]?.v;
+
+  const srcRows = defs.map(a => {
+    let value = '';
+    if (a.data_type === 'boolean') {
+      const ev = (a.value_boolean != null ? a.value_boolean :
+                  eavBool.has(a.code) ? eavBool.get(a.code) :
+                  jsonHas(a.code, 'boolean') ? (jsonVal(a.code) ? 1 : 0) : null);
+      value = ev == null ? '' : (ev ? 'true' : 'false');
+    } else if (a.data_type === 'int' || a.data_type === 'decimal') {
+      const ev = (a.value_numeric != null ? a.value_numeric :
+                  eavNum.has(a.code) ? eavNum.get(a.code) :
+                  (jsonHas(a.code, a.data_type) ? Number(jsonVal(a.code)) : null));
+      value = ev == null ? '' : ev;
+    } else if (a.data_type === 'enum') {
+      value = (a.enum_code || '').toUpperCase() || (a.enum_label || '');
+    } else {
+      const fromJson = (jsonBG[a.code] ?? (jsonHas(a.code, 'text') ? String(jsonVal(a.code)) : null));
+      value = fromJson != null ? fromJson : (a.value_text ?? '');
+    }
+    return { ...a, source: a.source ?? null, value };
+  });
+
+  const enums = specs?.enums || {};
+  return { srcRows, enums }; // enums.DRIVE_TYPE if present
+}
+
+// --- helpers ---
+const isNonEmpty = (v) => v !== '' && v != null;
+const isEditionOverride = (row) => row.source === 'edition';
+
+// Copy only rows that match scope
+function rowEligibleByScope(row, scope) {
+  if (scope === 'overrides') return isEditionOverride(row);
+  // 'effective': any non-empty value (includes inherited)
+  return isNonEmpty(row.value);
+}
+
+// Can we write into this target row under the selected fill mode?
+function canWriteTarget(targetRow, mode, fillTargetsOpt) {
+  if (mode === 'overwrite') return true;
+  // fill mode:
+  if (fillTargetsOpt === 'non_overrides') {
+    // allow writing if it's NOT already an edition override
+    return !isEditionOverride(targetRow);
+  }
+  // 'empty': only if UI shows empty (no effective value)
+  return !isNonEmpty(targetRow.value);
+}
+
+// Export current values to local clipboard
+function copyCurrentToClipboard(scope = copyScope) {
+  const payload = { ts: Date.now(), enums: {}, values: {} };
+  if (driveType) payload.enums.DRIVE_TYPE = driveType;
+
+  let total = rows.length, eligible = 0;
+  for (const r of rows) {
+    if (!rowEligibleByScope(r, scope)) continue;
+    eligible++;
+    payload.values[r.code] = r.value;
+  }
+  localStorage.setItem('editionAttrClipboard_v1', JSON.stringify(payload));
+  alert(`Copied ${Object.keys(payload.values).length}/${eligible} (scope: ${scope}, total rows: ${total}).`);
+}
+
+// Paste from clipboard
+function pasteFromClipboard(mode = 'fill') {
+  const raw = localStorage.getItem('editionAttrClipboard_v1');
+  if (!raw) { alert('Clipboard is empty.'); return; }
+  const clip = JSON.parse(raw);
+
+  let considered = 0, written = 0, skippedHasOverride = 0, skippedHasValue = 0;
+  setRows(prev => prev.map(r => {
+    const srcVal = clip.values?.[r.code];
+    if (srcVal == null) return r;
+    considered++;
+    if (!canWriteTarget(r, mode, fillTargets)) {
+      if (isEditionOverride(r)) skippedHasOverride++;
+      else if (isNonEmpty(r.value)) skippedHasValue++;
+      return r;
+    }
+    written++;
+    return { ...r, value: srcVal };
+  }));
+
+  if (clip.enums?.DRIVE_TYPE) setDriveType(clip.enums.DRIVE_TYPE);
+  setNotices([`Pasted ${written}/${considered} (mode=${mode}, fillTargets=${fillTargets}). Skipped: overrides=${skippedHasOverride}, non-empty=${skippedHasValue}`]);
+}
+
+// Copy directly from another edition
+async function copyFromEdition(sourceEditionId, { scope = copyScope, mode = 'fill' } = {}) {
+  if (!sourceEditionId) { alert('Choose a source edition first.'); return; }
+  if (String(sourceEditionId) === String(editionId)) { alert('Source and target are the same.'); return; }
+
+  const { srcRows, enums } = await fetchEditionRowsForCopy(sourceEditionId);
+
+  const byCode = new Map(srcRows.map(r => [r.code, r]));
+  let considered = 0, eligible = 0, written = 0, skippedHasOverride = 0, skippedHasValue = 0;
+
+  setRows(prev => prev.map(r => {
+    const s = byCode.get(r.code);
+    if (!s) return r;
+
+    considered++;
+    if (!rowEligibleByScope(s, scope)) return r;
+    eligible++;
+    if (!isNonEmpty(s.value)) return r;
+
+    if (!canWriteTarget(r, mode, fillTargets)) {
+      if (isEditionOverride(r)) skippedHasOverride++;
+      else if (isNonEmpty(r.value)) skippedHasValue++;
+      return r;
+    }
+
+    written++;
+    return { ...r, value: s.value };
+  }));
+
+  if (enums?.DRIVE_TYPE) setDriveType(enums.DRIVE_TYPE);
+
+  setNotices([`Copied from edition ${sourceEditionId}: written=${written}, eligible=${eligible}, considered=${considered}, skipped: overrides=${skippedHasOverride}, non-empty=${skippedHasValue} (scope=${scope}, mode=${mode}, fillTargets=${fillTargets})`]);
+}
+
+// === COPY/PASTE additions END ===
+
+
 
 useEffect(() => {
   if (!edition) return;
@@ -778,7 +927,63 @@ const selectedEditionName = selectedEditionObj?.name || "";
               Възстанови премахнатите
             </button>
           </div>
+          
         )}
+        {/* === COPY/PASTE UI START === */}
+{/* === COPY/PASTE UI (Bulgarian) === */}
+<div className="copy-tools" style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', margin:'8px 0' }}>
+  <select
+    value={copyFromEditionId}
+    onChange={e => setCopyFromEditionId(e.target.value)}
+  >
+    <option value="">Копирай от издание…</option>
+    {editions
+      .filter(e => String(e.edition_id) !== String(editionId))
+      .map(e => (
+        <option key={e.edition_id} value={e.edition_id}>
+          #{e.edition_id} — {e.name}
+        </option>
+      ))}
+  </select>
+
+  <button type="button" className="btn" onClick={() => copyFromEdition(copyFromEditionId, { scope: copyScope, mode: 'fill' })}>
+    Копирай (попълни)
+  </button>
+  {/* <button type="button" className="btn" onClick={() => copyFromEdition(copyFromEditionId, { scope: copyScope, mode: 'overwrite' })}>
+    Копирай (презапиши)
+  </button>
+
+  <span style={{margin:'0 6px'}}>•</span>
+
+  <button type="button" className="btn" onClick={() => copyCurrentToClipboard(copyScope)}>
+    Копирай текущите стойности → Клипборд
+  </button>
+  <button type="button" className="btn" onClick={() => pasteFromClipboard('fill')}>
+    Постави (попълни)
+  </button>
+  <button type="button" className="btn" onClick={() => pasteFromClipboard('overwrite')}>
+    Постави (презапиши)
+  </button> */}
+</div>
+
+<div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+  <label>Обхват:&nbsp;
+    <select value={copyScope} onChange={e => setCopyScope(e.target.value)}>
+      <option value="effective">Ефективни (вкл. наследени)</option>
+      <option value="overrides">Само изрични стойности (override)</option>
+    </select>
+  </label>
+
+  <label>Попълване:&nbsp;
+    <select value={fillTargets} onChange={e => setFillTargets(e.target.value)}>
+      <option value="non_overrides">Не-override (вкл. наследени)</option>
+      <option value="empty">Само празни</option>
+    </select>
+  </label>
+</div>
+
+{/* === COPY/PASTE UI END === */}
+
 
 
       {!isCreating && notices.length > 0 && (
