@@ -11,6 +11,12 @@ const statusBG = {
   cancelled: "Отменен",
 };
 
+const contractTypesBG = {
+  REGULAR: "Стандартен",
+  ADVANCE: "Авансов",
+  "REGULAR EXTENDED": "Стандартен (разширен)",
+};
+
 export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onIssue }) {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -114,7 +120,7 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
                     <td>{r.contract_number || r.contract_id}</td>
                     <td><code className="text-muted mono">{r.uuid}</code></td>
                     <td>{(statusBG[r.status] || r.status).toUpperCase()}</td>
-                    <td>{r.type === "ADVANCE" ? "Авансов" : "Редовен"}</td>
+                    <td>{contractTypesBG[r.type] || r.type}</td>
                     <td>{r.customer_display_name || r.customer_name || r.customer || "—"}</td>
                     <td>{(r.currency_code || r.currency || "BGN")} {r.total ?? r.subtotal ?? "0.00"}</td>
                     <td>{r.items_count ?? r.item_count ?? "—"}</td>
