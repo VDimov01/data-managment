@@ -284,8 +284,9 @@ export default function OffersBrowse({ onManage }) {
               value={contractModal.type}
               onChange={(e) => setContractModal((m) => ({ ...m, type: e.target.value }))}
             >
-              <option value="REGULAR">Регулярен</option>
+              <option value="REGULAR">Стандартен</option>
               <option value="ADVANCE">Авансов</option>
+              <option value="REGULAR EXTENDED">Стандартен (разширен)</option>
             </select>
           </div>
 

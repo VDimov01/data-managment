@@ -11,8 +11,10 @@ function requireDefault(m) { return m && m.__esModule ? m.default : m; }
 
 const AdvanceContractPDF = requireDefault(require('../pdfTemplates/advanceContractPDF'));
 let RegularContractPDF;
+let ExtendedRegularContractPDF
 try {
   RegularContractPDF = requireDefault(require('../pdfTemplates/regularContractPDF'));
+  ExtendedRegularContractPDF = requireDefault(require('../pdfTemplates/extendedRegularContractPDF'));
 } catch {
   // Minimal fallback so dev doesn’t block
   const { Document, Page, Text, StyleSheet, Font } = require('@react-pdf/renderer');
@@ -115,7 +117,7 @@ async function elementToBuffer(element) {
 }
 
 async function renderContractPdfBuffer({ type, buyer, items, advance_amount }) {
-  const Doc = type === 'ADVANCE' ? AdvanceContractPDF : RegularContractPDF;
+  const Doc = type === 'ADVANCE' ? AdvanceContractPDF : type === 'REGULAR' ? RegularContractPDF : type === 'REGULAR EXTENDED' ? ExtendedRegularContractPDF : null;
   // DO NOT CALL Doc(...) directly — create a React element
   const element = React.createElement(Doc, buildTemplateProps({type, buyer, items, advance_amount }));
   const buf = await elementToBuffer(element);

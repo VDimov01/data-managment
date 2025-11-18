@@ -429,8 +429,8 @@ router.post('/', async (req, res) => {
     } = req.body || {};
 
     if (!customer_id) return res.status(400).json({ error: 'customer_id is required' });
-    if (!['ADVANCE','REGULAR'].includes(type)) {
-      return res.status(400).json({ error: 'type must be ADVANCE or REGULAR' });
+    if (!['ADVANCE','REGULAR','REGULAR EXTENDED'].includes(type)) {
+      return res.status(400).json({ error: 'type must be ADVANCE/REGULAR/REGULAR EXTENDED' });
     }
 
     const out = await withTxn(async (conn) => {
@@ -1223,8 +1223,8 @@ router.post('/from-offer', async (req, res) => {
     if (!offer_id && !offer_uuid && !offer_number) {
       return res.status(400).json({ error: 'Provide offer_id or offer_uuid or offer_number' });
     }
-    if (!['REGULAR', 'ADVANCE'].includes(type)) {
-      return res.status(400).json({ error: "type must be 'REGULAR' or 'ADVANCE'" });
+    if (!['REGULAR', 'ADVANCE', 'REGULAR EXTENDED'].includes(type)) {
+      return res.status(400).json({ error: "type must be 'REGULAR', 'ADVANCE' or 'REGULAR EXTENDED'" });
     }
 
     // Validate/normalize advance

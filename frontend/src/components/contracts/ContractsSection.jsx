@@ -184,7 +184,7 @@ export default function ContractsSection() {
     try {
       const payload = {
         customer_id: customer.customer_id,
-        type, // 'REGULAR' | 'ADVANCE'
+        type, // 'REGULAR' | 'ADVANCE | 'REGULAR EXTENDED'
         currency_code: currency,
         valid_until: toValidUntil(expiresAt),
         note: note || null,
@@ -413,7 +413,14 @@ async function handleIssueAllHandover() {
                           className={"btn btn-ghost" + (type === "REGULAR" ? " btn-active" : "")}
                           onClick={() => setType("REGULAR")}
                         >
-                          Нормален
+                          Стандартен
+                        </button>
+                        <button
+                          type="button"
+                          className={"btn btn-ghost" + (type === "REGULAR EXTENDED" ? " btn-active" : "")}
+                          onClick={() => setType("REGULAR EXTENDED")}
+                        >
+                          Стандартен (разширен)
                         </button>
                         <button
                           type="button"
