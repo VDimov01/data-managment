@@ -129,6 +129,10 @@ function HandoverRecordBG({ record = {}, seller = {}, buyer = {}, vehicle = {}, 
     vehicle.model_name || vehicle.model || ""
   )}${vehicle.year ? ` (${vehicle.year})` : ""}${vehicle.edition_name ? ` — ${vehicle.edition_name}` : ""}`.trim();
 
+  if (!record.handover_date){
+    record.handover_date = new Date().toISOString();
+  }
+
   return React.createElement(
     Document, null,
     React.createElement(
@@ -166,9 +170,9 @@ function HandoverRecordBG({ record = {}, seller = {}, buyer = {}, vehicle = {}, 
             row("Купувач", buyer.display_name, styles),
             buyer.type === "individual" ?
               row("ЕГН / ЛНЧ", `${buyer.person.egn} ${buyer.person.vat_number ? ` / ${buyer.person.vat_number}` : ""}` || "—", styles) :
-              row("ЕИК/ДДС", `${buyer.company.tax_id} ${buyer.company.vat_number ? ` / ${buyer.company.vat_number}` : ""}` || "—", styles),
-              row("Град / Адрес", [buyer.contact.city, buyer.contact.address].filter(Boolean).join(", ") || "—", styles),
-            row("Контакт", [buyer.contact.email, buyer.contact.phone].filter(Boolean).join(" ") || "—", styles),
+              buyer.type === 'company' ? row("ЕИК/ДДС", `${buyer.company.tax_id} ${buyer.company.vat_number ? ` / ${buyer.company.vat_number}` : ""}` || "—", styles) : null,
+              row("Град / Адрес", [buyer.city, buyer.address_line].filter(Boolean).join(", ") || "—", styles),
+            row("Контакт", [buyer.email, buyer.phone].filter(Boolean).join(" ") || "—", styles),
             buyer.type === 'company' ? 
               row("Представител", [buyer.company.rep_first_name, buyer.company.rep_middle_name, buyer.company.rep_last_name].filter(Boolean).join(" ") || "—", styles) 
               : null     
