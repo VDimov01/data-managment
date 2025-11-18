@@ -1,9 +1,7 @@
 const React = require("react");
 const { Page, Text, View, Document, StyleSheet, Font } = require("@react-pdf/renderer");
 const path = require("path");
-const crypto = require("crypto");
 
-const algorithm = "aes-256-cbc";
 const secret = process.env.UCN_SECRET_KEY;
 
 // Register font
