@@ -7,7 +7,6 @@ const {
   withdrawOffer
 } = require('../services/offers/offerServices');
 const { getCurrentUserId } = require('../utils/getCurrentUser');
-const { get } = require('http');
 
 const router = express.Router();
 

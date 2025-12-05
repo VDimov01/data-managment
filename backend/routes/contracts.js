@@ -19,7 +19,6 @@ const {
   uploadInvoicePdfBuffer,
   getSignedInvoiceReadUrl,
 } = require('../services/invoiceServicePDF');
-const { createObjectBindingPattern } = require('typescript');
 
 
 async function withTxn(fn) {
