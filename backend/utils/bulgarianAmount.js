@@ -66,11 +66,16 @@ function integerToWordsBG(n, genderForUnits = "m") {
     return "минус " + integerToWordsBG(Math.abs(n), genderForUnits);
   }
 
-  const parts = [];
+  // Събираме групите с информация за:
+  // - idx: 0 = единици, 1 = хиляди, 2 = милиони, ...
+  // - trip: числото в тази група (0–999)
+  // - words: текст за тази група
+  const groups = [];
   let groupIndex = 0;
+  let remaining = n;
 
-  while (n > 0) {
-    const trip = n % 1000;
+  while (remaining > 0) {
+    const trip = remaining % 1000;
 
     if (trip > 0) {
       let groupWords = "";
@@ -104,14 +109,40 @@ function integerToWordsBG(n, genderForUnits = "m") {
         groupWords = tripletToWordsBG(trip, "m");
       }
 
-      parts.push(groupWords);
+      groups.push({ idx: groupIndex, trip, words: groupWords });
     }
 
     groupIndex++;
-    n = Math.floor(n / 1000);
+    remaining = Math.floor(remaining / 1000);
   }
 
-  return parts.reverse().join(" ");
+  // Обръщаме: от най-голямата група към единиците
+  groups.reverse();
+
+  if (groups.length === 0) return "нула";
+  if (groups.length === 1) return groups[0].words;
+
+  // Специален случай: точно две групи – ХИЛЯДИ + ЕДИНИЦИ,
+  // и долната група е "чисти стотици" → вмъкваме "и".
+  //
+  // Примери:
+  //  1 500   → "хиляда и петстотин"
+  // 72 500   → "седемдесет и две хиляди и петстотин"
+  //
+  // 33 325   остава "тридесет и три хиляди триста и двадесет и пет"
+  if (
+    groups.length === 2 &&
+    groups[0].idx === 1 && // горната група са хиляди
+    groups[1].idx === 0    // долната – единици
+  ) {
+    const lowTrip = groups[1].trip;
+    if (lowTrip >= 100 && lowTrip % 100 === 0) {
+      return `${groups[0].words} и ${groups[1].words}`;
+    }
+  }
+
+  // Всички останали случаи – просто join с интервал
+  return groups.map(g => g.words).join(" ");
 }
 
 function amountToBGWords(amount) {
