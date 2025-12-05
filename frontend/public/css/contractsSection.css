@@ -173,3 +173,61 @@ textarea.input.handover-notes {
   .handover-grid { grid-template-columns: 1fr; }
 }
 
+/* ===== Payments: Summary ===== */
+.contract-payments-tab .pay-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.contract-payments-tab .pay-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: var(--shadow, none);
+}
+.contract-payments-tab .pay-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.contract-payments-tab .pay-amt {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* ===== Payments: Form ===== */
+.contract-payments-tab .payments-form { margin-bottom: 12px; }
+.contract-payments-tab .pay-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.contract-payments-tab .form-field .lbl {
+  display: block;
+  margin-bottom: 6px;
+}
+.contract-payments-tab .form-field--wide {
+  grid-column: 1 / -1; /* note spans full width on desktop */
+}
+.contract-payments-tab .actions.actions--end {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* ===== Payments: Table ===== */
+.contract-payments-tab .table-wrap { margin-top: 8px; }
+.contract-payments-tab .payments-table .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+  .contract-payments-tab .pay-grid { grid-template-columns: 1fr 1fr; }
+  .contract-payments-tab .pay-form-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 680px) {
+  .contract-payments-tab .pay-grid { grid-template-columns: 1fr; }
+  .contract-payments-tab .pay-form-grid { grid-template-columns: 1fr; }
+}
