@@ -67,7 +67,7 @@ app.use('/api/car-images', carImagesRoutes);
 
 // guard everything else
   app.use('/api', requireAuth); // this is the guard.. move it up after you rework the fetches in the frontend
-  
+
   app.use('/api/offers', offerRoutes);
   app.use("/offers", express.static(path.join(__dirname, "offers")));
   app.use('/api/shops', shopsRoutes);
