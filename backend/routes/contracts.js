@@ -6,12 +6,21 @@ const pool = getPool();
 const React = require('react');
 const { ensureEditionSpecsPdf, getSignedUrl } = require('../services/specsPDF');
 const { decryptNationalId } = require('../services/cryptoCust.js');
+const { getCurrentUserId } = require('../utils/getCurrentUser');
 
 const {
   renderContractPdfBuffer,
   uploadContractPdfBuffer,
   getSignedReadUrl,
 } = require('../services/contractPDF');
+
+const {
+  renderInvoicePdfBuffer,
+  uploadInvoicePdfBuffer,
+  getSignedInvoiceReadUrl,
+} = require('../services/invoiceServicePDF');
+const { createObjectBindingPattern } = require('typescript');
+
 
 async function withTxn(fn) {
   const conn = await pool.getConnection();
@@ -129,6 +138,13 @@ async function nextContractNumber(conn) {
   // naive example; replace with your own sequence generator
   const [r] = await conn.query(`SELECT LPAD(IFNULL(MAX(contract_id)+1,1), 6, '0') AS n FROM contract`);
   return `CNT-${r[0].n}`;
+}
+
+async function nextInvoiceNumber(conn) {
+  const [r] = await conn.query(
+    `SELECT LPAD(IFNULL(MAX(invoice_id)+1,1), 6, '0') AS n FROM invoice`
+  );
+  return `INV-${r[0].n}`;
 }
 
 function toDecimalString(val) {
@@ -293,58 +309,6 @@ router.get('/', async (req, res) => {
 });
 
 
-// GET /api/contracts/:contract_id
-router.get('/:contract_id', async (req, res) => {
-  try {
-    const contract_id = Number(req.params.contract_id);
-    if (!contract_id) return res.status(400).json({ error: 'invalid id' });
-
-    const [[c]] = await pool.query(
-      `SELECT c.*, cust.display_name
-         FROM contract c
-         JOIN customer cust ON cust.customer_id = c.customer_id
-        WHERE c.contract_id = ?`,
-      [contract_id]
-    );
-    if (!c) return res.status(404).json({ error: 'not found' });
-
-    const [items] = await pool.query(
-      `
-      SELECT
-        ci.contract_item_id, ci.vehicle_id, ci.quantity, ci.unit_price, ci.line_total,
-        v.vin, v.asking_price,
-        mk.name AS make_name, md.name AS model_name, my.year, ed.name AS edition_name
-      FROM contract_item ci
-      JOIN vehicle v   ON v.vehicle_id = ci.vehicle_id
-      LEFT JOIN edition ed    ON ed.edition_id = v.edition_id
-      LEFT JOIN model_year my ON my.model_year_id = ed.model_year_id
-      LEFT JOIN model md      ON md.model_id = my.model_id
-      LEFT JOIN make mk       ON mk.make_id = md.make_id
-      WHERE ci.contract_id = ?
-      ORDER BY ci.position ASC, ci.contract_item_id ASC
-      `,
-      [contract_id]
-    );
-
-    const [pdfs] = await pool.query(
-      `SELECT contract_pdf_id, version, filename, byte_size, sha256, created_at
-         FROM contract_pdf
-        WHERE contract_id = ?
-        ORDER BY version DESC`,
-      [contract_id]
-    );
-
-    res.json({
-      contract: c,
-      items,
-      pdfs
-    });
-  } catch (e) {
-    console.error('GET /contracts/:id', e);
-    res.status(500).json({ error: 'DB error' });
-  }
-});
-
 // Cancel contract & release vehicles
 router.post('/:contract_id/cancel', async (req, res) => {
   try {
@@ -460,7 +424,7 @@ router.post('/', async (req, res) => {
       }
 
       // MUST be provided (NOT NULL column). Replace with real auth.
-      const created_by_user_id = req.user?.user_id || 1;
+      const created_by_user_id = getCurrentUserId(req);
 
       // contract_number is NOT NULL UNIQUE; generate if blank
       const number = (contract_number && String(contract_number).trim())
@@ -696,12 +660,8 @@ router.post('/:contract_id/issue', async (req, res) => {
     const { override_reserved = false } = req.body || {};
 
     // derive created_by_user_id; adjust to your auth
-    // const createdBy = Number(
-    //   (req.user && (req.user.user_id ?? req.user.id)) ??
-    //   (req.auth && req.auth.user_id) ??
-    //   req.headers['x-user-id']
-    // ) || 0;
-    const createdBy = 999; // TEMPORARY HACK; fix your auth
+    const createdBy = getCurrentUserId(req);
+    // const createdBy = 2; // TEMPORARY HACK; fix your auth
 
     if (!contract_id) {
       return res.status(400).json({ error: 'contract_id required' });
@@ -738,7 +698,7 @@ router.post('/:contract_id/issue', async (req, res) => {
 
       // DECIMAL-safe total
       const [[tot]] = await conn.query(
-        `SELECT COALESCE(SUM(quantity * unit_price), 0) AS total
+        `SELECT COALESCE(SUM(quantity * line_total), 0) AS total
            FROM contract_item WHERE contract_id = ?`,
         [contract_id]
       );
@@ -833,11 +793,7 @@ router.post('/:contract_id/pdf', async (req, res) => {
     const contract_id = Number(req.params.contract_id);
     if (!contract_id) return res.status(400).json({ error: 'invalid id' });
 
-    const createdBy = Number(
-      (req.user && (req.user.user_id ?? req.user.id)) ??
-      (req.auth && req.auth.user_id) ??
-      req.headers['x-user-id']
-    ) || 0;
+    const createdBy = getCurrentUserId(req);
 
     const out = await withTxn(async (conn) => {
       const [[c]] = await conn.query(`SELECT * FROM contract WHERE contract_id = ? FOR UPDATE`, [contract_id]);
@@ -960,7 +916,7 @@ router.post('/:contract_id/specs-pdfs', async (req, res) => {
 
       if (!items.length) throw new Error('no items');
 
-      const created_by_user_id = req.user?.user_id || 1;
+      const created_by_user_id = getCurrentUserId(req);
 
       // Ensure spec per edition once
       const byEdition = new Map();
@@ -1306,7 +1262,7 @@ router.post('/from-offer', async (req, res) => {
       const number = await nextContractNumber(conn);
       const curr = (offer.currency || 'BGN').toUpperCase().slice(0, 3);
       const vu = null;
-      const created_by_user_id = req.user?.user_id || 1; // TODO: wire real auth
+      const created_by_user_id = getCurrentUserId(req);
 
       const [insC] = await conn.execute(
         `INSERT INTO contract
@@ -1412,6 +1368,926 @@ router.post('/from-offer', async (req, res) => {
   }
 });
 
+// GET /api/contracts/:contract_id/payments
+router.get('/:contract_id/payments', async (req, res) => {
+  try {
+    const contract_id = Number(req.params.contract_id);
+    if (!contract_id) {
+      return res.status(400).json({ error: 'invalid contract_id' });
+    }
 
+    // Вади договора, за да сме сигурни, че съществува
+    const [[ctr]] = await pool.query(
+      `SELECT contract_id, customer_id, total, currency_code, currency
+         FROM contract
+        WHERE contract_id = ?`,
+      [contract_id]
+    );
+    if (!ctr) {
+      return res.status(404).json({ error: 'contract not found' });
+    }
+
+    // Всички плащания по договора
+    const [rows] = await pool.query(
+      `
+      SELECT
+        contract_payment_id,
+        contract_id,
+        customer_id,
+        amount,
+        currency_code,
+        method,
+        paid_at,
+        reference,
+        note,
+        created_at,
+        created_by_user_id
+      FROM contract_payment
+      WHERE contract_id = ?
+      ORDER BY paid_at ASC, contract_payment_id ASC
+      `,
+      [contract_id]
+    );
+
+    // Агрегати
+    const [[agg]] = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) AS paid_total
+         FROM contract_payment
+        WHERE contract_id = ?`,
+      [contract_id]
+    );
+
+    const contractTotal = Number(ctr.total || 0);
+    const paidTotal = Number(agg.paid_total || 0);
+    const outstanding = contractTotal - paidTotal;
+
+    res.json({
+      contract_id,
+      currency_code: (ctr.currency_code || ctr.currency || 'BGN').toUpperCase().slice(0, 3),
+      contract_total: contractTotal,
+      paid_total: paidTotal,
+      outstanding_total: outstanding,
+      payments: rows
+    });
+  } catch (e) {
+    console.error('GET /contracts/:contract_id/payments', e);
+    res.status(500).json({ error: 'DB error' });
+  }
+});
+
+// POST /api/contracts/:contract_id/payments
+// body: { amount, method, paid_at?, reference?, note? }
+router.post('/:contract_id/payments', async (req, res) => {
+  try {
+    const contract_id = Number(req.params.contract_id);
+    if (!contract_id) {
+      return res.status(400).json({ error: 'contract_id required' });
+    }
+
+    const { amount, method, paid_at, reference = null, note = null } = req.body || {};
+
+    if (amount == null || amount === '') {
+      return res.status(400).json({ error: 'amount is required' });
+    }
+
+    const amountStr = toDecimalString(amount);
+    if (!amountStr) {
+      return res.status(400).json({ error: 'invalid amount' });
+    }
+    const amountNum = Number(amountStr);
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
+      return res.status(400).json({ error: 'amount must be > 0' });
+    }
+
+    const allowedMethods = ['cash', 'bank_transfer', 'card', 'leasing', 'other'];
+    if (!allowedMethods.includes(method)) {
+      return res.status(400).json({ error: `method must be one of ${allowedMethods.join(', ')}` });
+    }
+
+    let paidAtStr = null;
+    if (paid_at) {
+      paidAtStr = toMySqlDateTime(paid_at);
+      if (!paidAtStr) {
+        return res.status(400).json({ error: 'invalid paid_at' });
+      }
+    }
+
+    const createdBy = getCurrentUserId(req);
+
+    const result = await withTxn(async (conn) => {
+      // lock contract
+      const [[ctr]] = await conn.query(
+        `SELECT contract_id, customer_id, status, total, currency_code, currency
+           FROM contract
+          WHERE contract_id = ? FOR UPDATE`,
+        [contract_id]
+      );
+      if (!ctr) {
+        throw new Error('contract not found');
+      }
+
+      const status = String(ctr.status);
+      // не позволяваме плащания по draft/withdrawn/expired
+      if (!['issued', 'viewed', 'signed'].includes(status)) {
+        throw new Error(`cannot register payment for contract in status "${status}"`);
+      }
+
+      // текущо платено
+      const [[agg]] = await conn.query(
+        `SELECT COALESCE(SUM(amount), 0) AS paid_total
+           FROM contract_payment
+          WHERE contract_id = ?`,
+        [contract_id]
+      );
+
+      const contractTotal = Number(ctr.total || 0);
+      const alreadyPaid = Number(agg.paid_total || 0);
+
+      // защита срещу overpayment, ако имаме смислена total сума
+      if (contractTotal > 0 && alreadyPaid + amountNum - contractTotal > 0.005) {
+        throw new Error('Плащането надвишава общата сума по договора');
+      }
+
+      const currency_code = (ctr.currency_code || ctr.currency || 'BGN').toUpperCase().slice(0, 3);
+      const paidAtValue = paidAtStr || toMySqlDateTime(new Date().toISOString());
+
+      const [ins] = await conn.query(
+        `
+        INSERT INTO contract_payment
+          (contract_id, customer_id, amount, currency_code, method, paid_at, reference, note, created_at, created_by_user_id)
+        VALUES
+          (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+        `,
+        [
+          contract_id,
+          ctr.customer_id,
+          amountStr,
+          currency_code,
+          method,
+          paidAtValue,
+          reference || null,
+          note || null,
+          createdBy
+        ]
+      );
+
+      const [[payment]] = await conn.query(
+        `SELECT * FROM contract_payment WHERE contract_payment_id = ?`,
+        [ins.insertId]
+      );
+
+      const paidTotalAfter = alreadyPaid + amountNum;
+      const outstandingAfter = contractTotal - paidTotalAfter;
+
+      return {
+        contract_id,
+        payment,
+        totals: {
+          contract_total: contractTotal,
+          paid_total: paidTotalAfter,
+          outstanding_total: outstandingAfter
+        }
+      };
+    });
+
+    res.status(201).json(result);
+  } catch (e) {
+    console.error('POST /contracts/:contract_id/payments', e);
+    res.status(400).json({ error: e.message || 'Payment create failed' });
+  }
+});
+
+// GET /api/contracts/:contract_id/invoices
+router.get('/:contract_id/invoices', async (req, res) => {
+  try {
+    const contract_id = Number(req.params.contract_id);
+    if (!contract_id) {
+      return res.status(400).json({ error: 'contract_id required' });
+    }
+
+    const [rows] = await pool.query(
+      `
+      SELECT
+        i.invoice_id,
+        i.uuid,
+        i.invoice_number,
+        i.type,
+        i.status,
+        i.issue_date,
+        i.due_date,
+        i.total,
+        i.currency_code,
+        i.contract_payment_id,
+        p.amount AS payment_amount,
+        p.paid_at AS payment_paid_at,
+        i.created_at
+      FROM invoice i
+      LEFT JOIN contract_payment p
+        ON p.contract_payment_id = i.contract_payment_id
+      WHERE i.contract_id = ?
+      ORDER BY i.issue_date DESC, i.invoice_id DESC
+      `,
+      [contract_id]
+    );
+
+    res.json({
+      contract_id,
+      items: rows
+    });
+  } catch (e) {
+    console.error('GET /contracts/:contract_id/invoices', e);
+    res.status(500).json({ error: 'DB error' });
+  }
+});
+
+// POST /api/contracts/:contract_id/invoices
+// body: {
+//   type?: 'PROFORMA'|'INVOICE',
+//   mode?: 'FULL'|'PAYMENT',
+//   contract_payment_id?: number,
+//   issue_date?: string,
+//   due_date?: string,
+//   note_public?: string,
+//   note_internal?: string
+// }
+router.post('/:contract_id/invoices', async (req, res) => {
+  try {
+    const contract_id = Number(req.params.contract_id);
+    if (!contract_id) {
+      return res.status(400).json({ error: 'contract_id required' });
+    }
+
+    const {
+      type = 'INVOICE',
+      mode = 'FULL', // 'FULL' (по договор) или 'PAYMENT' (по плащане)
+      contract_payment_id = null,
+      issue_date = null,
+      due_date = null,
+      note_public = null,
+      note_internal = null
+    } = req.body || {};
+
+    const allowedTypes = ['PROFORMA', 'INVOICE'];
+    if (!allowedTypes.includes(type)) {
+      return res.status(400).json({ error: `type must be one of ${allowedTypes.join(', ')}` });
+    }
+
+    const allowedModes = ['FULL', 'PAYMENT'];
+    if (!allowedModes.includes(mode)) {
+      return res.status(400).json({ error: `mode must be one of ${allowedModes.join(', ')}` });
+    }
+
+    const out = await withTxn(async (conn) => {
+      // 1) Lock contract
+      const [[ctr]] = await conn.query(
+        `SELECT * FROM contract WHERE contract_id = ? FOR UPDATE`,
+        [contract_id]
+      );
+      if (!ctr) throw new Error('contract not found');
+
+      const status = String(ctr.status);
+
+      // Бизнес правило: фактура (INVOICE) само от подписан договор,
+      // проформа може и по-рано
+      if (type === 'INVOICE' && status !== 'signed') {
+        throw new Error('Може да се издава фактура само по подписан договор');
+      }
+
+      // 2) Payment (само ако сме в режим "PAYMENT")
+      let paymentRow = null;
+      if (mode === 'PAYMENT') {
+        const pid = Number(contract_payment_id);
+        if (!pid) throw new Error('contract_payment_id е задължителен при mode="PAYMENT"');
+
+        const [[p]] = await conn.query(
+          `SELECT * FROM contract_payment WHERE contract_payment_id = ? AND contract_id = ?`,
+          [pid, contract_id]
+        );
+        if (!p) {
+          throw new Error('Това плащане не е по този договор');
+        }
+
+        // По желание: не позволяваме двойно фактуриране на едно и също плащане
+        const [[existsInv]] = await conn.query(
+          `SELECT invoice_id, invoice_number
+             FROM invoice
+            WHERE contract_payment_id = ?
+            LIMIT 1`,
+          [pid]
+        );
+        if (existsInv) {
+          throw new Error(
+            `За това плащане вече има издадена фактура (${existsInv.invoice_number})`
+          );
+        }
+
+        if (Number(p.amount) <= 0) {
+          throw new Error('Сумата на плащането трябва да е > 0');
+        }
+
+        paymentRow = p;
+      }
+
+      // 3) Items от договора (за FULL режим)
+      let contractItems = [];
+      if (mode === 'FULL') {
+        const [items] = await conn.query(
+          `SELECT *
+             FROM contract_item
+            WHERE contract_id = ?
+            ORDER BY position ASC, contract_item_id ASC`,
+          [contract_id]
+        );
+        if (!items.length) {
+          throw new Error('contract has no items');
+        }
+        contractItems = items;
+      }
+
+      // 4) Buyer snapshot
+      let buyerSnapshotStr = null;
+      if (ctr.buyer_snapshot_json) {
+        if (typeof ctr.buyer_snapshot_json === 'string') {
+          buyerSnapshotStr = ctr.buyer_snapshot_json;
+        } else {
+          buyerSnapshotStr = JSON.stringify(ctr.buyer_snapshot_json);
+        }
+      } else {
+        const buyer = await loadBuyer(conn, ctr.customer_id);
+        buyerSnapshotStr = JSON.stringify(buyer);
+      }
+      if (!buyerSnapshotStr) buyerSnapshotStr = '{}';
+
+      const currencyCode = (ctr.currency_code || ctr.currency || 'BGN')
+        .toUpperCase()
+        .slice(0, 3);
+
+      const createdBy = getCurrentUserId(req);
+      const invoice_uuid   = uuidv4();
+      const invoice_number = await nextInvoiceNumber(conn);
+
+      // 5) Обща логика за дати
+      let issueDateStr;
+      if (issue_date) {
+        issueDateStr = toMySqlDateTime(issue_date);
+      } else if (mode === 'PAYMENT' && paymentRow && paymentRow.paid_at) {
+        issueDateStr = toMySqlDateTime(paymentRow.paid_at);
+      } else {
+        issueDateStr = toMySqlDateTime(new Date());
+      }
+      const dueDateStr = due_date ? toMySqlDateTime(due_date) : null;
+
+      // 6) Totals + invoice + items според mode
+      let subtotalStr, discountStr, taxStr, totalStr;
+      let itemsCount = 0;
+      let invoice_id; // ще го сетнем в двата режима
+
+      if (mode === 'FULL') {
+        // ---- Фактура за целия договор ----
+        subtotalStr = toDecimalString(ctr.subtotal)       || '0.00';
+        discountStr = toDecimalString(ctr.discount_total) || '0.00';
+        taxStr      = toDecimalString(ctr.tax_total)      || '0.00';
+        totalStr    = toDecimalString(ctr.total)          || '0.00';
+
+        const [insInv] = await conn.execute(
+          `
+          INSERT INTO invoice
+            (uuid, invoice_number,
+             contract_id, contract_payment_id, customer_id,
+             buyer_snapshot_json,
+             type, status,
+             issue_date, due_date,
+             currency_code,
+             subtotal, discount_total, tax_total, total,
+             note_public, note_internal,
+             created_by_user_id, created_at)
+          VALUES
+            (?, ?, ?, ?, ?, CAST(? AS JSON),
+             ?, ?,
+             ?, ?,
+             ?,
+             ?, ?, ?, ?,
+             ?, ?,
+             ?, NOW())
+          `,
+          [
+            invoice_uuid,
+            invoice_number,
+            contract_id,
+            // ако искаш можеш да подадеш payment и в FULL режим, но не променя сумите
+            paymentRow ? paymentRow.contract_payment_id : null,
+            ctr.customer_id,
+            buyerSnapshotStr,
+            type,
+            'issued',
+            issueDateStr,
+            dueDateStr,
+            currencyCode,
+            subtotalStr,
+            discountStr,
+            taxStr,
+            totalStr,
+            note_public || null,
+            note_internal || null,
+            createdBy
+          ]
+        );
+
+        invoice_id = insInv.insertId;
+
+        let lineNo = 1;
+        for (const ci of contractItems) {
+          const qty = Number(ci.quantity || 1);
+
+          let metaStr = null;
+          if (ci.spec_snapshot_json) {
+            if (typeof ci.spec_snapshot_json === 'string') {
+              metaStr = ci.spec_snapshot_json;
+            } else {
+              metaStr = JSON.stringify(ci.spec_snapshot_json);
+            }
+          }
+
+          await conn.execute(
+            `
+            INSERT INTO invoice_item
+              (invoice_id, contract_item_id, line_no,
+               title, subtitle,
+               quantity, unit_price,
+               discount_type, discount_value,
+               tax_rate, line_total,
+               currency_code, metadata_json, created_at)
+            VALUES
+              (?, ?, ?, ?, ?,
+               ?, ?,
+               ?, ?,
+               ?, ?,
+               ?, CAST(? AS JSON), NOW())
+            `,
+            [
+              invoice_id,
+              ci.contract_item_id,
+              lineNo++,
+              ci.title,
+              ci.subtitle,
+              qty,
+              ci.unit_price,
+              ci.discount_type,
+              ci.discount_value,
+              ci.tax_rate,
+              ci.line_total,
+              currencyCode,
+              metaStr
+            ]
+          );
+        }
+
+        itemsCount = contractItems.length;
+
+      } else {
+        // ---- Фактура по конкретно плащане ----
+        if (!paymentRow) {
+          throw new Error('paymentRow missing in PAYMENT mode');
+        }
+
+        const payAmount = Number(paymentRow.amount);
+        if (!(payAmount > 0)) {
+          throw new Error('Сумата на плащането трябва да е > 0');
+        }
+
+        // Ефективна ставка на ДДС по договора:
+        // нето = subtotal - discount_total, VAT = tax_total
+        const netContract  = Number(ctr.subtotal || 0) - Number(ctr.discount_total || 0);
+        const vatContract  = Number(ctr.tax_total || 0);
+        let effRate = 0; // напр. 0.2 за 20%
+        if (netContract > 0 && vatContract > 0) {
+          effRate = vatContract / netContract;
+        }
+
+        let netPayment  = payAmount;
+        let vatPayment  = 0;
+        if (effRate > 0) {
+          netPayment = payAmount / (1 + effRate);
+          vatPayment = payAmount - netPayment;
+        }
+
+        subtotalStr = toDecimalString(netPayment) || '0.00';
+        discountStr = '0.00';
+        taxStr      = toDecimalString(vatPayment) || '0.00';
+        totalStr    = toDecimalString(payAmount)  || '0.00';
+
+        const [insInv] = await conn.execute(
+          `
+          INSERT INTO invoice
+            (uuid, invoice_number,
+             contract_id, contract_payment_id, customer_id,
+             buyer_snapshot_json,
+             type, status,
+             issue_date, due_date,
+             currency_code,
+             subtotal, discount_total, tax_total, total,
+             note_public, note_internal,
+             created_by_user_id, created_at)
+          VALUES
+            (?, ?, ?, ?, ?, CAST(? AS JSON),
+             ?, ?,
+             ?, ?,
+             ?,
+             ?, ?, ?, ?,
+             ?, ?,
+             ?, NOW())
+          `,
+          [
+            invoice_uuid,
+            invoice_number,
+            contract_id,
+            paymentRow.contract_payment_id,
+            ctr.customer_id,
+            buyerSnapshotStr,
+            type,
+            'issued',
+            issueDateStr,
+            dueDateStr,
+            currencyCode,
+            subtotalStr,
+            discountStr,
+            taxStr,
+            totalStr,
+            note_public || null,
+            note_internal || null,
+            createdBy
+          ]
+        );
+
+        invoice_id = insInv.insertId;
+
+        const effRatePctStr =
+          effRate > 0 ? toDecimalString(effRate * 100) : null;
+
+        // Един ред: "Авансово плащане по договор ..."
+        const title = `Авансово плащане по договор ${ctr.contract_number || ctr.uuid}`;
+        const subtitleParts = [];
+        if (paymentRow.paid_at) {
+          subtitleParts.push(
+            `Дата на плащане: ${new Date(paymentRow.paid_at).toLocaleDateString('bg-BG')}`
+          );
+        }
+        if (paymentRow.method) {
+          subtitleParts.push(`Метод: ${paymentRow.method}`);
+        }
+        const subtitle = subtitleParts.join(' • ') || null;
+
+        const meta = {
+          contract_payment_id: paymentRow.contract_payment_id,
+          amount: Number(paymentRow.amount),
+          paid_at: paymentRow.paid_at,
+          method: paymentRow.method || null,
+          reference: paymentRow.reference || null
+        };
+
+        await conn.execute(
+          `
+          INSERT INTO invoice_item
+            (invoice_id, contract_item_id, line_no,
+             title, subtitle,
+             quantity, unit_price,
+             discount_type, discount_value,
+             tax_rate, line_total,
+             currency_code, metadata_json, created_at)
+          VALUES
+            (?, NULL, 1,
+             ?, ?,
+             1, ?,
+             NULL, NULL,
+             ?, ?,
+             ?, CAST(? AS JSON), NOW())
+          `,
+          [
+            invoice_id,
+            title,
+            subtitle,
+            subtotalStr,             // unit_price = нето сума
+            effRatePctStr,           // ДДС % или NULL
+            totalStr,                // line_total = бруто (платената сума)
+            currencyCode,
+            JSON.stringify(meta)
+          ]
+        );
+
+        itemsCount = 1;
+      }
+
+      // === ОБЩА ЧАСТ: генериране на PDF + запис в invoice_pdf ===
+
+      const [[invoiceRow]] = await conn.query(
+        `SELECT * FROM invoice WHERE invoice_id = ?`,
+        [invoice_id]
+      );
+      const [invItems] = await conn.query(
+        `SELECT *
+           FROM invoice_item
+          WHERE invoice_id = ?
+          ORDER BY line_no ASC, invoice_item_id ASC`,
+        [invoice_id]
+      );
+
+      let buyerObj;
+      try {
+        buyerObj = JSON.parse(buyerSnapshotStr || '{}');
+      } catch {
+        buyerObj = {};
+      }
+
+      const buffer = await renderInvoicePdfBuffer({
+        template: type,          // 'INVOICE' или 'PROFORMA'
+        invoice: invoiceRow,
+        buyer: buyerObj,
+        contract: ctr,
+        items: invItems,
+      });
+
+      const [[ver]] = await conn.query(
+        `SELECT COALESCE(MAX(version), 0) + 1 AS next_ver
+           FROM invoice_pdf
+          WHERE invoice_id = ?`,
+        [invoice_id]
+      );
+      const version = ver.next_ver;
+
+      const filename    = `invoice-${invoiceRow.invoice_number || invoiceRow.uuid}-v${String(version).padStart(3, '0')}.pdf`;
+      const contentType = 'application/pdf';
+
+      const { gcsKey, size, sha256 } = await uploadInvoicePdfBuffer({
+        invoice_id,
+        invoice_number: invoiceRow.invoice_number,
+        version,
+        buffer,
+      });
+
+      const [insPdf] = await conn.execute(
+        `
+        INSERT INTO invoice_pdf
+          (invoice_id, version, filename, content_type, byte_size, sha256, public_url, created_at, created_by_user_id, gcs_key)
+        VALUES
+          (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+        `,
+        [invoice_id, version, filename, contentType, size, sha256, null, createdBy, gcsKey]
+      );
+
+      return {
+        invoice: invoiceRow,
+        items_count: itemsCount,
+        pdf: {
+          invoice_pdf_id: insPdf.insertId,
+          version,
+          filename,
+          byte_size: size,
+          sha256,
+          gcs_key: gcsKey,
+        }
+      };
+    });
+
+    res.status(201).json(out);
+  } catch (e) {
+    console.error('POST /contracts/:contract_id/invoices', e);
+    res.status(400).json({ error: e.message || 'Create invoice failed' });
+  }
+});
+
+// GET latest invoice PDF by invoice UUID
+// Ако router-ът е закачен като app.use('/api/contracts', router),
+// пътят реално ще е: GET /api/contracts/invoices/:uuid/pdf/latest
+router.get('/invoices/:uuid/pdf/latest', async (req, res) => {
+  try {
+    const { uuid } = req.params;
+    if (!uuid) {
+      return res.status(400).json({ error: 'uuid required' });
+    }
+
+    const [[inv]] = await pool.query(
+      `SELECT invoice_id, invoice_number FROM invoice WHERE uuid = ?`,
+      [uuid]
+    );
+    if (!inv) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    const [[row]] = await pool.query(
+      `SELECT invoice_pdf_id, invoice_id, version, filename, content_type, byte_size, sha256, gcs_key
+         FROM invoice_pdf
+        WHERE invoice_id = ?
+        ORDER BY version DESC
+        LIMIT 1`,
+      [inv.invoice_id]
+    );
+    if (!row) {
+      return res.status(404).json({ error: 'No PDF yet' });
+    }
+
+    const signed = await getSignedInvoiceReadUrl(row.gcs_key, { minutes: 10 });
+
+    res.json({
+      invoice_pdf_id: row.invoice_pdf_id,
+      invoice_id: row.invoice_id,
+      invoice_number: inv.invoice_number,
+      version: row.version,
+      filename: row.filename,
+      content_type: row.content_type || 'application/pdf',
+      byte_size: row.byte_size,
+      sha256: row.sha256,
+      signedUrl: signed.signedUrl,
+      expiresAt: signed.expiresAt,
+    });
+  } catch (e) {
+    console.error('GET /contracts/invoices/:uuid/pdf/latest', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/contracts/invoices/:uuid/pdf
+// Регенерира нов PDF за съществуваща фактура (без да създава нова invoice)
+router.post('/invoices/:uuid/pdf', async (req, res) => {
+  try {
+    const { uuid } = req.params;
+    if (!uuid) return res.status(400).json({ error: 'invoice uuid required' });
+
+    const createdBy = getCurrentUserId(req);
+
+    const out = await withTxn(async (conn) => {
+      // 1) Зареждаме и заключваме фактурата
+      const [[inv]] = await conn.query(
+        `SELECT * FROM invoice WHERE uuid = ? FOR UPDATE`,
+        [uuid]
+      );
+      if (!inv) throw new Error('invoice not found');
+
+      // 2) Контрактът (за всеки случай, ако ти трябва нещо от него)
+      const [[ctr]] = await conn.query(
+        `SELECT * FROM contract WHERE contract_id = ?`,
+        [inv.contract_id]
+      );
+      if (!ctr) throw new Error('contract not found');
+
+      // 3) Редовете на фактурата
+      const [items] = await conn.query(
+        `SELECT *
+           FROM invoice_item
+          WHERE invoice_id = ?
+          ORDER BY line_no ASC, invoice_item_id ASC`,
+        [inv.invoice_id]
+      );
+      if (!items.length) throw new Error('invoice has no items');
+
+      // 4) Buyer snapshot
+      let buyer = null;
+      try {
+        if (inv.buyer_snapshot_json) {
+          if (typeof inv.buyer_snapshot_json === 'string') {
+            buyer = JSON.parse(inv.buyer_snapshot_json);
+          } else {
+            buyer = inv.buyer_snapshot_json;
+          }
+        }
+      } catch {
+        buyer = null;
+      }
+      if (!buyer) {
+        // fallback – дърпаме клиента от contract.customer_id
+        buyer = await loadBuyer(conn, ctr.customer_id);
+      }
+
+      // 5) Следваща версия на PDF
+      const [[ver]] = await conn.query(
+        `SELECT COALESCE(MAX(version), 0) + 1 AS next_ver
+           FROM invoice_pdf
+          WHERE invoice_id = ?`,
+        [inv.invoice_id]
+      );
+      const version = ver.next_ver;
+
+      //6) Вземи имена на издалия фактурата потребител
+      const [[userRow]] = await conn.query(
+        `SELECT first_name, last_name, email FROM admin
+        WHERE id=?`,
+        [createdBy]
+      );
+
+      // 7) Рендер на PDF по текущите данни + темплейта
+      const buffer = await renderInvoicePdfBuffer({
+        template: inv.type, // 'INVOICE' или 'PROFORMA'
+        invoice: inv,
+        buyer,
+        contract: ctr,
+        items,
+        user: userRow
+      });
+
+
+
+
+      const { gcsKey, size, sha256 } = await uploadInvoicePdfBuffer({
+        invoice_uuid: inv.uuid,
+        version,
+        buffer,
+      });
+
+      const filename = `invoice-${inv.invoice_number || inv.uuid}-v${String(
+        version
+      ).padStart(3, '0')}.pdf`;
+      const content_type = 'application/pdf';
+
+      const [insPdf] = await conn.query(
+        `INSERT INTO invoice_pdf
+           (invoice_id, version, filename, content_type,
+            byte_size, sha256, public_url,
+            created_at, created_by_user_id, gcs_key)
+         VALUES
+           (?, ?, ?, ?, ?, ?, NULL, NOW(), ?, ?)`,
+        [inv.invoice_id, version, filename, content_type, size, sha256, createdBy, gcsKey]
+      );
+
+      await conn.query(
+        `UPDATE invoice
+            SET latest_pdf_id = ?
+          WHERE invoice_id = ?`,
+        [insPdf.insertId, inv.invoice_id]
+      );
+
+      const signed = await getSignedInvoiceReadUrl(gcsKey, { minutes: 10 });
+
+      return {
+        invoice_id: inv.invoice_id,
+        uuid: inv.uuid,
+        version,
+        pdf: {
+          ...signed,
+          filename,
+          content_type,
+          byte_size: size,
+          sha256,
+        },
+      };
+    });
+
+    res.json(out);
+  } catch (e) {
+    console.error('POST /contracts/invoices/:uuid/pdf', e);
+    res.status(400).json({ error: e.message || 'Regenerate invoice PDF failed' });
+  }
+});
+
+
+// GET /api/contracts/:contract_id
+router.get('/:contract_id', async (req, res) => {
+  try {
+    const contract_id = Number(req.params.contract_id);
+    if (!contract_id) return res.status(400).json({ error: 'invalid id' });
+
+    const [[c]] = await pool.query(
+      `SELECT c.*, cust.display_name
+         FROM contract c
+         JOIN customer cust ON cust.customer_id = c.customer_id
+        WHERE c.contract_id = ?`,
+      [contract_id]
+    );
+    if (!c) return res.status(404).json({ error: 'not found' });
+
+    const [items] = await pool.query(
+      `
+      SELECT
+        ci.contract_item_id, ci.vehicle_id, ci.quantity, ci.unit_price, ci.line_total,
+        v.vin, v.asking_price,
+        mk.name AS make_name, md.name AS model_name, my.year, ed.name AS edition_name
+      FROM contract_item ci
+      JOIN vehicle v   ON v.vehicle_id = ci.vehicle_id
+      LEFT JOIN edition ed    ON ed.edition_id = v.edition_id
+      LEFT JOIN model_year my ON my.model_year_id = ed.model_year_id
+      LEFT JOIN model md      ON md.model_id = my.model_id
+      LEFT JOIN make mk       ON mk.make_id = md.make_id
+      WHERE ci.contract_id = ?
+      ORDER BY ci.position ASC, ci.contract_item_id ASC
+      `,
+      [contract_id]
+    );
+
+    const [pdfs] = await pool.query(
+      `SELECT contract_pdf_id, version, filename, byte_size, sha256, created_at
+         FROM contract_pdf
+        WHERE contract_id = ?
+        ORDER BY version DESC`,
+      [contract_id]
+    );
+
+    res.json({
+      contract: c,
+      items,
+      pdfs
+    });
+  } catch (e) {
+    console.error('GET /contracts/:id', e);
+    res.status(500).json({ error: 'DB error' });
+  }
+});
 
 module.exports = router;

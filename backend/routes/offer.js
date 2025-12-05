@@ -6,13 +6,16 @@ const {
   renderDraftPdf, issueOffer, reviseOffer, getSignedPdfUrl,
   withdrawOffer
 } = require('../services/offers/offerServices');
+const { getCurrentUserId } = require('../utils/getCurrentUser');
+const { get } = require('http');
 
 const router = express.Router();
 
 // Create draft
 router.post('/', async (req, res) => {
   try {
-    const offer = await createDraft({ ...(req.body || {}), admin_id: req.user?.id || null });
+    const admin_id = getCurrentUserId(req);
+    const offer = await createDraft({ ...(req.body || {}), admin_id });
     res.json({ offer });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -87,7 +90,7 @@ router.post('/:uuid/render-draft', async (req, res) => {
 // Issue (allocates number, stores 'issued' version)
 router.post('/:uuid/issue', async (req, res) => {
   try {
-    const out = await issueOffer(req.params.uuid, req.user?.id || null);
+    const out = await issueOffer(req.params.uuid, getCurrentUserId(req));
     res.json(out);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -112,7 +115,7 @@ router.get('/:uuid/pdfs/:version/signed-url', async (req, res) => {
 // Withdraw
 router.post('/:uuid/withdraw', async (req, res) => {
   try {
-    const out = await withdrawOffer(req.params.uuid, req.user?.id || null);
+    const out = await withdrawOffer(req.params.uuid, getCurrentUserId(req));
     res.json(out);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
