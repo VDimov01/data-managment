@@ -27,6 +27,15 @@ export async function searchContracts(query = "", page = 1, limit = 10) {
   return api(`/contracts/search?${params.toString()}`);
 }
 
+export async function uploadSignedContract(contractId, file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  return api(`/contracts/${contractId}/upload-signed`, {
+    method: 'POST',
+    body: fd
+  });
+}
+
 export const fetchImages = async (carId, carMaker, carModel) => {
     return api(`/car-images/${carId}^${carMaker}^${carModel}`);
   };
@@ -38,6 +47,10 @@ export async function generateVehicleQr(apiBase, vehicleId) {
 // --- Vehicle images (private) ---
 export async function listVehicleImages(apiBase, vehicleId) {
   return api(`/vehicleImages/${vehicleId}/images`);
+}
+
+export async function fetchVehicleContracts(vehicleId) {
+  return api(`/vehicles/${vehicleId}/contracts`);
 }
 
 export async function uploadVehicleImages(apiBase, vehicleId, files) {

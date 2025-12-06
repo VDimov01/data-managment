@@ -15,10 +15,20 @@ const {
 } = require('../services/contractPDF');
 
 const {
-  renderInvoicePdfBuffer,
   uploadInvoicePdfBuffer,
   getSignedInvoiceReadUrl,
 } = require('../services/invoiceServicePDF');
+
+const { uploadSignedContractPdf } = require('../services/signedContractService');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
+
+function sanitizeFilename(str) {
+  if (!str) return '';
+  // Transliterate commonly used cyrillic chars if we wanted, but GCS handles UTF-8 fine.
+  // Just replacing unsafe filesystem chars / url chars
+  return str.replace(/[^\w\u0400-\u04FF\-. ]+/g, '').replace(/\s+/g, '-');
+}
 
 
 async function withTxn(fn) {
@@ -720,14 +730,21 @@ router.post('/:contract_id/issue', async (req, res) => {
         advance_amount,
       });
 
+      // Prepare filename: Некст-Авто-Договор-{number}-{client}-vXXX.pdf
+      const clientSegment = sanitizeFilename(buyer?.display_name || buyer?.company_name || buyer?.first_name || 'Client');
+      const contractNum = contract.contract_number || contract.uuid;
+      const [seq, num] = contractNum.split('-');
+      const filename = `Некст-Авто-Договор-${num}-${clientSegment}-v${String(version).padStart(3, '0')}.pdf`;
+
       const { gcsKey, size, sha256 } = await uploadContractPdfBuffer({
         contract_uuid: contract.uuid,
         version,
         buffer,
+        filename
       });
 
       // required columns for contract_pdf
-      const filename      = `contract-${contract.contract_number || contract.uuid}-v${String(version).padStart(3, '0')}.pdf`;
+      // const filename = ... (already defined)
       const content_type  = 'application/pdf';
       const public_url    = null; // private bucket
 
@@ -818,13 +835,21 @@ router.post('/:contract_id/pdf', async (req, res) => {
         items,
         advance_amount,
       });
+
+      // Prepare filename: Некст-Авто-Договор-{number}-{client}-vXXX.pdf
+      const clientSegment = sanitizeFilename(buyer?.display_name || buyer?.company_name || buyer?.first_name || 'Client');
+      const contractNum = c.contract_number || c.uuid;
+      const [seq, num] = contractNum.split('-');
+      const filename = `Некст-Авто-Договор-${num}-${clientSegment}-v${String(version).padStart(3, '0')}.pdf`;
+
       const { gcsKey, size, sha256 } = await uploadContractPdfBuffer({
         contract_uuid: c.uuid,
         version,
         buffer,
+        filename
       });
 
-      const filename     = `contract-${c.contract_number || c.uuid}-v${String(version).padStart(3, '0')}.pdf`;
+      // const filename = ... (already defined)
       const content_type = 'application/pdf';
       const public_url   = null;
 
@@ -1153,6 +1178,130 @@ router.post('/:contract_id/sign', async (req, res) => {
   } catch (e) {
     console.error('POST /contracts/:id/sign', e);
     res.status(400).json({ error: e.message || 'Sign failed' });
+  }
+});
+
+// Upload a signed contract PDF (manual upload for legacy/offline sales)
+router.post('/:contract_id/upload-signed', upload.single('file'), async (req, res) => {
+  try {
+    const contract_id = Number(req.params.contract_id);
+    if (!contract_id) return res.status(400).json({ error: 'contract_id required' });
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const userId = getCurrentUserId(req);
+
+    const out = await withTxn(async (conn) => {
+      // 1. Lock contract
+      const [[ctr]] = await conn.query(
+        `SELECT * FROM contract WHERE contract_id = ? FOR UPDATE`,
+        [contract_id]
+      );
+      if (!ctr) throw new Error('Contract not found');
+
+      // 2. Upload to GCS
+      const { gcsKey, size, sha256, filename } = await uploadSignedContractPdf({
+        contract_uuid: ctr.uuid,
+        buffer: req.file.buffer,
+        originalName: req.file.originalname
+      });
+
+      // 3. Insert into signed_contract_pdf
+      const [insPdf] = await conn.query(
+        `INSERT INTO signed_contract_pdf
+           (contract_id, filename, content_type, byte_size, sha256, gcs_key, uploaded_by_user_id)
+         VALUES
+           (?, ?, ?, ?, ?, ?, ?)`,
+        [contract_id, filename, req.file.mimetype, size, sha256, gcsKey, userId]
+      );
+      const signedPdfId = insPdf.insertId;
+
+      // 4. Link in contract_attachment
+      // Check if one exists already? For now, we allow multiple or just insert.
+      // Uniqueness constraint in DB might block multiple 'signed_contract_pdf' types if I didn't remove it or if I made it unique.
+      // The original DDL had unique keys for attachments?
+      // "UNIQUE KEY uq_att_specs ... uq_att_handover"
+      // I didn't add a unique key for signed_contract_pdf in my migration, so multiple are allowed.
+      await conn.query(
+        `INSERT INTO contract_attachment
+           (contract_id, attachment_type, signed_contract_pdf_id, visibility, created_by_user_id)
+         VALUES
+           (?, 'signed_contract_pdf', ?, 'internal', ?)`,
+        [contract_id, signedPdfId, userId]
+      );
+
+      // 5. If contract is not yet signed, mark it as signed and SELL VEHICLES
+      if (ctr.status !== 'signed') {
+         // Load items to sell
+        const [items] = await conn.query(
+          `SELECT ci.vehicle_id, ci.unit_price, ci.currency_code, v.status as v_status
+             FROM contract_item ci
+             JOIN vehicle v ON v.vehicle_id = ci.vehicle_id
+            WHERE ci.contract_id = ? FOR UPDATE`,
+          [contract_id]
+        );
+
+        const vehiclesSold = [];
+        for (const item of items) {
+           // If already sold, skip or error? User said "upload contracts for the sold vehicles".
+           // If it's a legacy import, maybe the vehicle is available in system but physically sold.
+           // usage: "I will add the customers and the vehicles... I want to add these sells... upload some contracts"
+           // So vehicle status is likely 'Available' or 'Reserved' in DB.
+           if (item.v_status === 'Sold') {
+             // Already sold. If sold by THIS contract, fine. If another, error.
+             const [[check]] = await conn.query(`SELECT sold_by_contract_id FROM vehicle WHERE vehicle_id=?`, [item.vehicle_id]);
+             if (check && check.sold_by_contract_id !== contract_id) {
+               throw new Error(`Vehicle ${item.vehicle_id} is already sold by another contract`);
+             }
+           } else {
+             // Mark as Sold
+             const price = item.unit_price;
+             const currency = (item.currency_code || ctr.currency_code || 'BGN').toUpperCase().slice(0,3);
+             await conn.query(
+               `UPDATE vehicle
+                   SET status = 'Sold',
+                       reserved_by_contract_id = NULL,
+                       reserved_until = NULL,
+                       sold_by_contract_id = ?,
+                       sold_at = NOW(),
+                       sold_price = ?,
+                       sold_currency = ?
+                 WHERE vehicle_id = ?`,
+               [contract_id, price, currency, item.vehicle_id]
+             );
+             
+             await conn.query(
+                `INSERT INTO vehicle_status_event
+                  (vehicle_id, old_status, new_status, changed_by, note, created_at)
+                 VALUES (?, ?, 'Sold', ?, 'Legacy contract upload', NOW())`,
+                [item.vehicle_id, item.v_status, userId]
+             );
+             vehiclesSold.push(item.vehicle_id);
+           }
+        }
+
+        // Update Contract status
+        await conn.query(
+          `UPDATE contract
+              SET status = 'signed',
+                  signed_at = COALESCE(signed_at, NOW()),
+                  updated_at = NOW()
+            WHERE contract_id = ?`,
+          [contract_id]
+        );
+      }
+
+      return {
+        contract_id,
+        signed_contract_pdf_id: signedPdfId,
+        status: 'signed',
+        message: 'Contract uploaded and marked as signed'
+      };
+    });
+
+    res.json(out);
+  } catch (e) {
+    console.error('POST /contracts/:id/upload-signed', e);
+    res.status(400).json({ error: e.message || 'Upload failed' });
   }
 });
 

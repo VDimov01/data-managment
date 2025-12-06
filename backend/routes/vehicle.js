@@ -4,6 +4,7 @@ const mysql = require('mysql2/promise');
 const { getPool, withTransaction } = require('../db');
 const pool = getPool();
 const { v4: uuidv4 } = require('uuid');
+const { getSignedReadUrl } = require('../services/contractPDF');
 
 const ALLOWED_STATUS = new Set([
   'InTransit','Available','Reserved','Sold','Service','Demo'
@@ -507,6 +508,64 @@ router.delete('/:id', async (req, res) => {
     // If later you add FKs (e.g., offers/contracts) this might throw ER_ROW_IS_REFERENCED:
     // return res.status(409).json({ error: 'Vehicle is referenced by other records' });
     return res.status(500).json({ error: 'Database error' });
+  }
+  }
+);
+
+// GET /api/vehicles/:id/contracts
+router.get('/:id/contracts', async (req, res) => {
+  const vehicleId = Number(req.params.id);
+  if (!Number.isFinite(vehicleId)) return res.status(400).json({ error: 'Invalid ID' });
+
+  try {
+    const [rows] = await pool.query(`
+      SELECT
+        c.contract_id, c.contract_number, c.uuid, c.status, c.created_at,
+        ci.unit_price,
+        cp.filename AS gen_filename, cp.gcs_key AS gen_key, cp.version AS gen_ver,
+        scp.filename AS signed_filename, scp.gcs_key AS signed_key
+      FROM contract_item ci
+      JOIN contract c ON c.contract_id = ci.contract_id
+      LEFT JOIN contract_pdf cp ON cp.contract_pdf_id = c.latest_pdf_id
+      LEFT JOIN contract_attachment ca
+             ON ca.contract_id = c.contract_id
+            AND ca.attachment_type = 'signed_contract_pdf'
+      LEFT JOIN signed_contract_pdf scp ON scp.signed_contract_pdf_id = ca.signed_contract_pdf_id
+      WHERE ci.vehicle_id = ?
+      ORDER BY c.created_at DESC
+    `, [vehicleId]);
+
+    const results = [];
+    for (const r of rows) {
+      let genUrl = null;
+      let signedUrl = null;
+
+      if (r.gen_key) {
+        const s = await getSignedReadUrl(r.gen_key, { minutes: 15 });
+        genUrl = s.signedUrl;
+      }
+      if (r.signed_key) {
+        // reuse same signer, strictly it's same bucket private
+        const s = await getSignedReadUrl(r.signed_key, { minutes: 15 });
+        signedUrl = s.signedUrl;
+      }
+
+      results.push({
+        contract_id: r.contract_id,
+        contract_number: r.contract_number,
+        uuid: r.uuid,
+        status: r.status,
+        created_at: r.created_at,
+        unit_price: r.unit_price,
+        generated_pdf: r.gen_key ? { filename: r.gen_filename, url: genUrl, version: r.gen_ver } : null,
+        signed_pdf: r.signed_key ? { filename: r.signed_filename, url: signedUrl } : null,
+      });
+    }
+
+    res.json(results);
+  } catch (e) {
+    console.error('GET /vehicles/:id/contracts', e);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

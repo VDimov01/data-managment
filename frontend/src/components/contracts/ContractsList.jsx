@@ -1,7 +1,7 @@
 /** ---------- Browse tab ---------- */
 import React, { useEffect, useState } from "react";
 import AttachmentsModal from "./AttachmentsModal.jsx";
-import { api, qs } from "../../services/api"; // <-- use the shared API helper
+import { api, qs, uploadSignedContract } from "../../services/api"; // <-- use the shared API helper
 
 const statusBG = {
   draft: "Чернова",
@@ -66,77 +66,112 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
     }
   }
 
+  const fileInputRef = React.useRef(null);
+  const [uploadingId, setUploadingId] = useState(null);
+
+  const handleUploadClick = (contractId) => {
+    setUploadingId(contractId);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+      fileInputRef.current.click();
+    }
+  };
+
+  const onFileChange = async (e) => {
+    if (!e.target.files?.length || !uploadingId) return;
+    const file = e.target.files[0];
+    if (!confirm(`Сигурни ли сте, че искате да качите "${file.name}" за договор #${uploadingId}?`)) return;
+
+    try {
+      await uploadSignedContract(uploadingId, file);
+      alert("Успешно качване!");
+      await load();
+    } catch (err) {
+      alert(`Грешка при качване: ${err.message}`);
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+
+
   useEffect(() => { load(); }, [q, page]); // reload on q/page change
 
   const pages = Math.max(1, Math.ceil((total || 0) / limit));
 
-      return (
-      <div className="card">
-        <div className="card-body">
+  return (
+    <div className="card">
+      <div className="card-body">
 
-          {/* Top bar */}
-          <div className="row" style={{ alignItems: "flex-end" }}>
-            <div className="col">
-              <label className="lbl">Търси</label>
-              <input
-                className="input"
-                placeholder="Номер, клиент, UUID…"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-              />
-            </div>
-            <div className="col" style={{ maxWidth: 220 }}>
-              <button className="btn" onClick={load} disabled={loading}>
-                {loading ? "…" : "Презареди"}
-              </button>
-            </div>
+        {/* Top bar */}
+        <div className="row" style={{ alignItems: "flex-end" }}>
+          <div className="col">
+            <label className="lbl">Търси</label>
+            <input
+              className="input"
+              placeholder="Номер, клиент, UUID…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
           </div>
+          <div className="col" style={{ maxWidth: 220 }}>
+            <button className="btn" onClick={load} disabled={loading}>
+              {loading ? "…" : "Презареди"}
+            </button>
+          </div>
+        </div>
 
-          {/* Table */}
-          <div className="table-wrap" style={{ marginTop: 8 }}>
-            <table className="table">
-              <thead>
+        {/* Table */}
+        <div className="table-wrap" style={{ marginTop: 8 }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>UUID</th>
+                <th>Статус</th>
+                <th>Вид</th>
+                <th>Клиент</th>
+                <th>Общо</th>
+                <th>Артикули</th>
+                <th>Създаден</th>
+                <th style={{ width: 340 }}>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
                 <tr>
-                  <th>#</th>
-                  <th>UUID</th>
-                  <th>Статус</th>
-                  <th>Вид</th>
-                  <th>Клиент</th>
-                  <th>Общо</th>
-                  <th>Артикули</th>
-                  <th>Създаден</th>
-                  <th style={{ width: 340 }}>Действия</th>
+                  <td colSpan={9} className="text-muted center">Няма договори.</td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="text-muted center">Няма договори.</td>
-                  </tr>
-                )}
+              )}
 
-                {rows.map((r) => (
-                  <tr key={r.contract_id}>
-                    <td>{r.contract_number || r.contract_id}</td>
-                    <td><code className="text-muted mono">{r.uuid}</code></td>
-                    <td>{(statusBG[r.status] || r.status).toUpperCase()}</td>
-                    <td>{contractTypesBG[r.type] || r.type}</td>
-                    <td>{r.customer_display_name || r.customer_name || r.customer || "—"}</td>
-                    <td>{(r.currency_code || r.currency || "BGN")} {r.total ?? r.subtotal ?? "0.00"}</td>
-                    <td>{r.items_count ?? r.item_count ?? "—"}</td>
-                    <td className="text-muted">{(r.created_at || "").replace("T", " ").slice(0, 19)}</td>
-                    <td>
-                      <div className="btn-row">
-                        <button className="btn" onClick={() => onOpenLatest(r.uuid)}>Отвори</button>
-                        <button className="btn" onClick={() => setAttachmentsFor(r)}>Приложения към договора</button>
+              {rows.map((r) => (
+                <tr key={r.contract_id}>
+                  <td>{r.contract_number || r.contract_id}</td>
+                  <td><code className="text-muted mono">{r.uuid}</code></td>
+                  <td>{(statusBG[r.status] || r.status).toUpperCase()}</td>
+                  <td>{contractTypesBG[r.type] || r.type}</td>
+                  <td>{r.customer_display_name || r.customer_name || r.customer || "—"}</td>
+                  <td>{(r.currency_code || r.currency || "BGN")} {r.total ?? r.subtotal ?? "0.00"}</td>
+                  <td>{r.items_count ?? r.item_count ?? "—"}</td>
+                  <td className="text-muted">{(r.created_at || "").replace("T", " ").slice(0, 19)}</td>
+                  <td>
+                    <div className="btn-row">
+                      <button className="btn" onClick={() => onOpenLatest(r.uuid)}>Отвори</button>
+                      <button className="btn" onClick={() => setAttachmentsFor(r)}>Приложения към договора</button>
 
-                        {String(r.status).toLowerCase() === "issued" && (
-                          <button className="btn" onClick={() => handleMarkSigned(r.contract_id)}>
-                            Маркирай като подписан
-                          </button>
-                        )}
+                      {String(r.status).toLowerCase() === "issued" && (
+                        <button className="btn" onClick={() => handleMarkSigned(r.contract_id)}>
+                          Маркирай като подписан
+                        </button>
+                      )}
 
-                        {String(r.status).toLowerCase() !== "issued" &&
+                      {['draft', 'issued'].includes(String(r.status).toLowerCase()) && (
+                        <button className="btn" onClick={() => handleUploadClick(r.contract_id)}>
+                          Качи подписан
+                        </button>
+                      )}
+
+                      {String(r.status).toLowerCase() !== "issued" &&
                         String(r.status).toLowerCase() !== "withdrawn" &&
                         String(r.status).toLowerCase() !== "cancelled" &&
                         String(r.status).toLowerCase() !== "signed" && (
@@ -156,7 +191,7 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
                           </>
                         )}
 
-                        {String(r.status).toLowerCase() !== "withdrawn" &&
+                      {String(r.status).toLowerCase() !== "withdrawn" &&
                         String(r.status).toLowerCase() !== "signed" &&
                         String(r.status).toLowerCase() !== "draft" && (
                           <button
@@ -168,49 +203,57 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
                             Откажи и освободи
                           </button>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pager */}
-          {pages > 1 && (
-            <div className="panel-footer">
-              <button
-                className="page-btn"
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Предишна
-              </button>
-
-              <span className="results">Страница {page} / {pages}</span>
-
-              <button
-                className="page-btn"
-                type="button"
-                disabled={page >= pages}
-                onClick={() => setPage((p) => Math.min(pages, p + 1))}
-              >
-                Следваща
-              </button>
-            </div>
-          )}
-
-          {/* Attachments modal */}
-          {attachmentsFor && (
-            <AttachmentsModal
-              apiBase={apiBase}
-              contract={attachmentsFor}
-              onClose={() => setAttachmentsFor(null)}
-            />
-          )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+
+        {/* Pager */}
+        {pages > 1 && (
+          <div className="panel-footer">
+            <button
+              className="page-btn"
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Предишна
+            </button>
+
+            <span className="results">Страница {page} / {pages}</span>
+
+            <button
+              className="page-btn"
+              type="button"
+              disabled={page >= pages}
+              onClick={() => setPage((p) => Math.min(pages, p + 1))}
+            >
+              Следваща
+            </button>
+          </div>
+        )}
+
+        {/* Attachments modal */}
+        {attachmentsFor && (
+          <AttachmentsModal
+            apiBase={apiBase}
+            contract={attachmentsFor}
+            onClose={() => setAttachmentsFor(null)}
+          />
+        )}
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          accept="application/pdf"
+          onChange={onFileChange}
+        />
       </div>
-    );
+    </div>
+  );
 
 }

@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ContractsList from "./ContractsList.jsx";
 import { API_BASE } from "../../services/api.js";
-import {api, qs} from '../../services/api.js';
+import { api, qs } from '../../services/api.js';
 
 const statusBG = {
   "DRAFT": "Чернова"
@@ -27,9 +27,9 @@ export function buildUrl(apiBase, path, params = {}) {
 export function niceBytes(n) {
   const x = Number(n || 0);
   if (!Number.isFinite(x)) return "—";
-  const units = ["B","KB","MB","GB"];
+  const units = ["B", "KB", "MB", "GB"];
   let i = 0, v = x;
-  while (v >= 1024 && i < units.length-1) { v /= 1024; i++; }
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
   return `${v.toFixed(v >= 10 ? 0 : 1)} ${units[i]}`;
 }
 
@@ -128,8 +128,8 @@ export default function ContractsSection() {
   }
 
   useEffect(() => {
-  if (step === 3 && contract?.contract_id) loadSpecs();
-}, [step, contract?.contract_id]);
+    if (step === 3 && contract?.contract_id) loadSpecs();
+  }, [step, contract?.contract_id]);
 
   async function handleGenerateSpecs() {
     if (!contract?.contract_id) return;
@@ -206,49 +206,49 @@ export default function ContractsSection() {
   }
 
   async function handleSaveItems({ advanceAmount } = {}) {
-  if (!contract?.contract_id) return;
-  if (items.length === 0) return alert("Добавете поне едно превозно средство.");
-  if (type === "ADVANCE" && !advanceAmount) {
+    if (!contract?.contract_id) return;
+    if (items.length === 0) return alert("Добавете поне едно превозно средство.");
+    if (type === "ADVANCE" && !advanceAmount) {
       if (!confirm("Създаване на Авансов договор с 0лв авансово плащане?")) return;
     }
 
-  setSavingItems(true);
-  try {
-    const payloadItems = items.map(it => {
-      const obj = {
-        vehicle_id: it.vehicle_id,
-        quantity: 1, // always 1 now
-      };
-      if (it.unit_price !== "" && it.unit_price != null) obj.unit_price = String(it.unit_price);
-      if (it.discount_type === "amount" || it.discount_type === "percent") {
-        obj.discount_type = it.discount_type;
-        if (it.discount_value !== "" && it.discount_value != null) obj.discount_value = String(it.discount_value);
+    setSavingItems(true);
+    try {
+      const payloadItems = items.map(it => {
+        const obj = {
+          vehicle_id: it.vehicle_id,
+          quantity: 1, // always 1 now
+        };
+        if (it.unit_price !== "" && it.unit_price != null) obj.unit_price = String(it.unit_price);
+        if (it.discount_type === "amount" || it.discount_type === "percent") {
+          obj.discount_type = it.discount_type;
+          if (it.discount_value !== "" && it.discount_value != null) obj.discount_value = String(it.discount_value);
+        }
+        if (it.tax_rate !== "" && it.tax_rate != null) obj.tax_rate = String(it.tax_rate);
+        return obj;
+      });
+
+      const body = { items: payloadItems };
+
+      if (contract?.type === "ADVANCE") {
+        body.advance_amount = (advanceAmount === "" || advanceAmount == null)
+          ? null
+          : String(advanceAmount);
       }
-      if (it.tax_rate !== "" && it.tax_rate != null) obj.tax_rate = String(it.tax_rate);
-      return obj;
-    });
 
-    const body = { items: payloadItems };
+      await api(`/contracts/${contract.contract_id}/items`, {
+        method: "PUT",
+        body
+      });
 
-    if (contract?.type === "ADVANCE") {
-      body.advance_amount = (advanceAmount === "" || advanceAmount == null)
-        ? null
-        : String(advanceAmount);
+      alert("Артикулите са запазени.");
+      setStep(3);
+    } catch (e) {
+      alert(`Неуспешно запазване на артикулите: ${e.message}`);
+    } finally {
+      setSavingItems(false);
     }
-
-    await api(`/contracts/${contract.contract_id}/items`, {
-      method: "PUT",
-      body
-    });
-
-    alert("Артикулите са запазени.");
-    setStep(3);
-  } catch (e) {
-    alert(`Неуспешно запазване на артикулите: ${e.message}`);
-  } finally {
-    setSavingItems(false);
   }
-}
 
 
   async function handleRenderDraftPdf() {
@@ -291,298 +291,298 @@ export default function ContractsSection() {
   }
 
 
-async function handleCancel() {
-  if (!contract?.contract_id) return;
-  if (!confirm('Отмени договора и освободи превозните средства?')) return;
+  async function handleCancel() {
+    if (!contract?.contract_id) return;
+    if (!confirm('Отмени договора и освободи превозните средства?')) return;
 
-  setCancelling(true);
-  try {
-    const data = await api(`/contracts/${contract.contract_id}/cancel`, {
-      method: 'POST',
-      body: { force: false }, // set true if you decide to allow cancelling signed contracts
-    });
-    alert(`Отменен. Освободени ${data.released_count} превозни средства.`);
-    setContract(prev => ({ ...prev, status: 'withdrawn' }));
-  } catch (e) {
-    alert(`Отмяна неуспешна: ${e.message}`);
-  } finally {
-    setCancelling(false);
+    setCancelling(true);
+    try {
+      const data = await api(`/contracts/${contract.contract_id}/cancel`, {
+        method: 'POST',
+        body: { force: false }, // set true if you decide to allow cancelling signed contracts
+      });
+      alert(`Отменен. Освободени ${data.released_count} превозни средства.`);
+      setContract(prev => ({ ...prev, status: 'withdrawn' }));
+    } catch (e) {
+      alert(`Отмяна неуспешна: ${e.message}`);
+    } finally {
+      setCancelling(false);
+    }
   }
-}
 
-// state you already have:
-const [creatingHandover, setCreatingHandover] = useState(false);
-const [issuingAllHandover, setIssuingAllHandover] = useState(false);
+  // state you already have:
+  const [creatingHandover, setCreatingHandover] = useState(false);
+  const [issuingAllHandover, setIssuingAllHandover] = useState(false);
 
-// Create drafts for all contract items
-async function handleCreateHandoverDrafts() {
-  if (!contract?.contract_id) return;
-  setCreatingHandover(true);
-  try {
-    await api(`/handover/bulk-from-contract/${contract.contract_id}`, { method: "POST" });
-    alert("Създадени са чернови за всички линии.");
-  } catch (e) {
-    alert(`Грешка: ${e.message}`);
-  } finally {
-    setCreatingHandover(false);
+  // Create drafts for all contract items
+  async function handleCreateHandoverDrafts() {
+    if (!contract?.contract_id) return;
+    setCreatingHandover(true);
+    try {
+      await api(`/handover/bulk-from-contract/${contract.contract_id}`, { method: "POST" });
+      alert("Създадени са чернови за всички линии.");
+    } catch (e) {
+      alert(`Грешка: ${e.message}`);
+    } finally {
+      setCreatingHandover(false);
+    }
   }
-}
 
-// Issue PDFs for all handovers that are still in draft
-async function handleIssueAllHandover() {
-  if (!contract?.contract_id) return;
-  setIssuingAllHandover(true);
-  try {
-    const { items = [] } = await api(`/handover/by-contract/${contract.contract_id}`);
-    const drafts = items.filter((hr) => hr.status === "draft");
+  // Issue PDFs for all handovers that are still in draft
+  async function handleIssueAllHandover() {
+    if (!contract?.contract_id) return;
+    setIssuingAllHandover(true);
+    try {
+      const { items = [] } = await api(`/handover/by-contract/${contract.contract_id}`);
+      const drafts = items.filter((hr) => hr.status === "draft");
 
-    const results = [];
-    for (const hr of drafts) {
-      try {
-        const data = await api(`/handover/${hr.handover_record_id}/issue`, { method: "POST" });
-        results.push({ id: hr.handover_record_id, ok: true, url: data?.pdf?.signedUrl || null });
-      } catch (err) {
-        results.push({ id: hr.handover_record_id, ok: false, error: err.message });
+      const results = [];
+      for (const hr of drafts) {
+        try {
+          const data = await api(`/handover/${hr.handover_record_id}/issue`, { method: "POST" });
+          results.push({ id: hr.handover_record_id, ok: true, url: data?.pdf?.signedUrl || null });
+        } catch (err) {
+          results.push({ id: hr.handover_record_id, ok: false, error: err.message });
+        }
       }
-    }
 
-    // Open the first generated PDF to avoid popup spam; the rest can be opened from the tab
-    const firstUrl = results.find((r) => r.ok && r.url)?.url;
-    if (firstUrl) window.open(firstUrl, "_blank", "noopener,noreferrer");
+      // Open the first generated PDF to avoid popup spam; the rest can be opened from the tab
+      const firstUrl = results.find((r) => r.ok && r.url)?.url;
+      if (firstUrl) window.open(firstUrl, "_blank", "noopener,noreferrer");
 
-    const failed = results.filter((r) => !r.ok);
-    if (failed.length) {
-      alert(
-        `Готово с предупреждения: ${results.length - failed.length} успешни, ${failed.length} неуспешни.\n` +
-        failed.slice(0, 5).map((f) => `#${f.id}: ${f.error}`).join("\n")
-      );
-    } else {
-      alert("Готово.");
+      const failed = results.filter((r) => !r.ok);
+      if (failed.length) {
+        alert(
+          `Готово с предупреждения: ${results.length - failed.length} успешни, ${failed.length} неуспешни.\n` +
+          failed.slice(0, 5).map((f) => `#${f.id}: ${f.error}`).join("\n")
+        );
+      } else {
+        alert("Готово.");
+      }
+    } catch (e) {
+      alert(`Грешка: ${e.message}`);
+    } finally {
+      setIssuingAllHandover(false);
     }
-  } catch (e) {
-    alert(`Грешка: ${e.message}`);
-  } finally {
-    setIssuingAllHandover(false);
   }
-}
 
 
 
 
-      return (
-      <div className="contracts-wrap">
-        {/* Tabs */}
-        <div className="toolbar tabs-bar">
-          <div className="btn-row">
-            <button
-              type="button"
-              className={"btn btn-ghost" + (tab === "browse" ? " btn-active" : "")}
-              onClick={() => setTab("browse")}
-            >
-              Всички договори
-            </button>
-            <button
-              type="button"
-              className={"btn btn-ghost" + (tab === "create" ? " btn-active" : "")}
-              onClick={() => setTab("create")}
-            >
-              Създай нов договор
-            </button>
-          </div>
+  return (
+    <div className="contracts-wrap">
+      {/* Tabs */}
+      <div className="toolbar tabs-bar">
+        <div className="btn-row">
+          <button
+            type="button"
+            className={"btn btn-ghost" + (tab === "browse" ? " btn-active" : "")}
+            onClick={() => setTab("browse")}
+          >
+            Всички договори
+          </button>
+          <button
+            type="button"
+            className={"btn btn-ghost" + (tab === "create" ? " btn-active" : "")}
+            onClick={() => setTab("create")}
+          >
+            Създай нов договор
+          </button>
         </div>
-
-        {tab === "create" && (
-          <>
-            <h2 className="h2">Договори</h2>
-            <div className="text-muted" style={{ marginBottom: 8 }}>
-              Стъпка {step} от 3 — <em>{["Създай чернова", "Добави автомобили и цени", "Преглед и Издаване"][step - 1]}</em>
-            </div>
-
-            {/* STEP 1 */}
-            {step === 1 && (
-              <div className="card">
-                <div className="card-body">
-                  <CustomerPicker apiBase={apiBase} value={customer} onChange={setCustomer} />
-
-                  <div className="ctr-grid ctr-grid-3">
-                    <div className="field">
-                      <label className="label">Вид договор</label>
-                      <div className="btn-row seg">
-                        <button
-                          type="button"
-                          className={"btn btn-ghost" + (type === "REGULAR" ? " btn-active" : "")}
-                          onClick={() => setType("REGULAR")}
-                        >
-                          Стандартен
-                        </button>
-                        <button
-                          type="button"
-                          className={"btn btn-ghost" + (type === "REGULAR EXTENDED" ? " btn-active" : "")}
-                          onClick={() => setType("REGULAR EXTENDED")}
-                        >
-                          Стандартен (разширен)
-                        </button>
-                        <button
-                          type="button"
-                          className={"btn btn-ghost" + (type === "ADVANCE" ? " btn-active" : "")}
-                          onClick={() => setType("ADVANCE")}
-                        >
-                          Авансов
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="field">
-                      <label className="label">Валута</label>
-                      <select className="select" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                        <option value="BGN">BGN</option>
-                        <option value="EUR">EUR</option>
-                        <option value="USD">USD</option>
-                      </select>
-                    </div>
-
-                    <div className="field">
-                      <label className="label">Валиден до:</label>
-                      <input type="date" className="input" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
-                    </div>
-                  </div>
-
-                  <div className="ctr-grid">
-                    <div className="field field-col-1">
-                      <label className="label">Бележки</label>
-                      <textarea className="input" value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
-                    </div>
-                  </div>
-
-                  <div className="btn-row actions-end">
-                    <button className="btn" type="button" onClick={resetAll}>Нулиране</button>
-                    <button className="btn btn-primary" type="button" onClick={handleCreateDraft} disabled={creating}>
-                      {creating ? "Създаване..." : "Създай чернова"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 2 */}
-            {step === 2 && contract && (
-              <ItemsStep
-                apiBase={apiBase}
-                contract={contract}
-                customer={customer}
-                items={items}
-                setItems={setItems}
-                totalClient={totalClient}
-                currency={currency}
-                onBack={() => setStep(1)}
-                onSave={handleSaveItems}
-                saving={savingItems}
-              />
-            )}
-
-            {/* STEP 3 */}
-            {step === 3 && contract && (
-              <div className="card">
-                <div className="card-body">
-                  <HeaderSummary contract={contract} customer={customer} />
-
-                  <p className="text-muted">
-                    Можете да <strong>генерирате чернова на PDF</strong> (запазва статус = „чернова“) или да 
-                    <strong> издадете</strong>, което създава нова PDF версия и резервира автомобилите.
-                  </p>
-
-
-                  <div className="ctr-grid">
-                    <div className="field">
-                      <label className="label">Спецификации (PDF)</label>
-                      <div className="btn-row">
-                        <button className="btn" type="button" onClick={handleGenerateSpecs} disabled={genLoading}>
-                          {genLoading ? "Генериране..." : "Генерирай спецификации на автомобила PDF"}
-                        </button>
-                      </div>
-
-                      {specs.length === 0 ? (
-                        <div className="text-muted mt-2">Няма генерирани спецификации.</div>
-                      ) : (
-                        <div className="list mt-2">
-                          {specs.map((a) => (
-                            <div key={a.edition_specs_pdf_id} className="list-item">
-                              <div className="line-1"><strong>{a.filename}</strong> — v{a.version}</div>
-                              <div className="line-2">SHA256: {a.sha256?.slice(0, 12)}… • {Math.round((a.byte_size || 0) / 1024)} KB</div>
-                              <div className="btn-row mt-1">
-                                <a className="btn" href={a.signedUrl} target="_blank" rel="noreferrer">Отвори</a>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="btn-row mt-2">
-                        <button className="btn" type="button" onClick={handleCreateHandoverDrafts} disabled={creatingHandover}>
-                          {creatingHandover ? "Създаване…" : "Чернови протоколи (всички)"}
-                        </button>
-                        <button className="btn" type="button" onClick={handleIssueAllHandover} disabled={issuingAllHandover}>
-                          {issuingAllHandover ? "Генериране…" : "Генерирай всички протоколи"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="panel-footer actions-justify">
-                    <button
-                      className="btn btn-danger"
-                      type="button"
-                      onClick={handleCancel}
-                      disabled={cancelling || contract.status === "withdrawn" || contract.status === "draft"}
-                    >
-                      {cancelling ? "Отказване..." : "Отказ и освобождаване на автомобилите"}
-                    </button>
-
-                    <div className="btn-row">
-                      <button className="btn" type="button" onClick={() => setStep(2)}>Back</button>
-                      <button className="btn" type="button" onClick={handleRenderDraftPdf} disabled={renderingDraft}>
-                        {renderingDraft ? "Генериране..." : "Генерирай чернова(PDF)"}
-                      </button>
-                      <button className="btn btn-primary" type="button" onClick={handleIssue} disabled={issuing}>
-                        {issuing ? "Издаване..." : "Издай и генерирай PDF"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {tab === "browse" && (
-          <ContractsList
-            apiBase={apiBase}
-            onOpenLatest={async (uuid) => {
-              try {
-                const data = await api(`/contracts/${uuid}/pdf/latest`);
-                const url = data?.signedUrl || data?.pdf?.signedUrl;
-                if (url) window.open(url, "_blank", "noopener,noreferrer");
-                else alert("Няма наличен PDF за този договор.");
-              } catch (e) { alert(`Неуспешно отваряне: ${e.message}`); }
-            }}
-            onRegenerate={async (id) => {
-              try {
-                const data = await api(`/contracts/${id}/pdf`, { method: "POST" });
-                const url = data?.pdf?.signedUrl || data?.signedUrl;
-                if (url && confirm("Отвори регенерирания PDF?")) window.open(url, "_blank", "noopener,noreferrer");
-              } catch (e) { alert(`Неуспешно регенериране: ${e.message}`); }
-            }}
-            onIssue={async (id) => {
-              try {
-                const data = await api(`/contracts/${id}/issue`, { method: "POST", body: { override_reserved: false } });
-                const url = data?.pdf?.signedUrl || data?.signedUrl;
-                if (url && confirm("Отвори PDF сега?")) window.open(url, "_blank", "noopener,noreferrer");
-              } catch (e) { alert(`IНеуспешно издаване: ${e.message}`); }
-            }}
-          />
-        )}
       </div>
-    );
+
+      {tab === "create" && (
+        <>
+          <h2 className="h2">Договори</h2>
+          <div className="text-muted" style={{ marginBottom: 8 }}>
+            Стъпка {step} от 3 — <em>{["Създай чернова", "Добави автомобили и цени", "Преглед и Издаване"][step - 1]}</em>
+          </div>
+
+          {/* STEP 1 */}
+          {step === 1 && (
+            <div className="card">
+              <div className="card-body">
+                <CustomerPicker apiBase={apiBase} value={customer} onChange={setCustomer} />
+
+                <div className="ctr-grid ctr-grid-3">
+                  <div className="field">
+                    <label className="label">Вид договор</label>
+                    <div className="btn-row seg">
+                      <button
+                        type="button"
+                        className={"btn btn-ghost" + (type === "REGULAR" ? " btn-active" : "")}
+                        onClick={() => setType("REGULAR")}
+                      >
+                        Стандартен
+                      </button>
+                      <button
+                        type="button"
+                        className={"btn btn-ghost" + (type === "REGULAR EXTENDED" ? " btn-active" : "")}
+                        onClick={() => setType("REGULAR EXTENDED")}
+                      >
+                        Стандартен (разширен)
+                      </button>
+                      <button
+                        type="button"
+                        className={"btn btn-ghost" + (type === "ADVANCE" ? " btn-active" : "")}
+                        onClick={() => setType("ADVANCE")}
+                      >
+                        Авансов
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="field">
+                    <label className="label">Валута</label>
+                    <select className="select" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                      <option value="BGN">BGN</option>
+                      <option value="EUR">EUR</option>
+                      <option value="USD">USD</option>
+                    </select>
+                  </div>
+
+                  <div className="field">
+                    <label className="label">Валиден до:</label>
+                    <input type="date" className="input" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="ctr-grid">
+                  <div className="field field-col-1">
+                    <label className="label">Бележки</label>
+                    <textarea className="input" value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
+                  </div>
+                </div>
+
+                <div className="btn-row actions-end">
+                  <button className="btn" type="button" onClick={resetAll}>Нулиране</button>
+                  <button className="btn btn-primary" type="button" onClick={handleCreateDraft} disabled={creating}>
+                    {creating ? "Създаване..." : "Създай чернова"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2 */}
+          {step === 2 && contract && (
+            <ItemsStep
+              apiBase={apiBase}
+              contract={contract}
+              customer={customer}
+              items={items}
+              setItems={setItems}
+              totalClient={totalClient}
+              currency={currency}
+              onBack={() => setStep(1)}
+              onSave={handleSaveItems}
+              saving={savingItems}
+            />
+          )}
+
+          {/* STEP 3 */}
+          {step === 3 && contract && (
+            <div className="card">
+              <div className="card-body">
+                <HeaderSummary contract={contract} customer={customer} />
+
+                <p className="text-muted">
+                  Можете да <strong>генерирате чернова на PDF</strong> (запазва статус = „чернова“) или да
+                  <strong> издадете</strong>, което създава нова PDF версия и резервира автомобилите.
+                </p>
+
+
+                <div className="ctr-grid">
+                  <div className="field">
+                    <label className="label">Спецификации (PDF)</label>
+                    <div className="btn-row">
+                      <button className="btn" type="button" onClick={handleGenerateSpecs} disabled={genLoading}>
+                        {genLoading ? "Генериране..." : "Генерирай спецификации на автомобила PDF"}
+                      </button>
+                    </div>
+
+                    {specs.length === 0 ? (
+                      <div className="text-muted mt-2">Няма генерирани спецификации.</div>
+                    ) : (
+                      <div className="list mt-2">
+                        {specs.map((a) => (
+                          <div key={a.edition_specs_pdf_id} className="list-item">
+                            <div className="line-1"><strong>{a.filename}</strong> — v{a.version}</div>
+                            <div className="line-2">SHA256: {a.sha256?.slice(0, 12)}… • {Math.round((a.byte_size || 0) / 1024)} KB</div>
+                            <div className="btn-row mt-1">
+                              <a className="btn" href={a.signedUrl} target="_blank" rel="noreferrer">Отвори</a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="btn-row mt-2">
+                      <button className="btn" type="button" onClick={handleCreateHandoverDrafts} disabled={creatingHandover}>
+                        {creatingHandover ? "Създаване…" : "Чернови протоколи (всички)"}
+                      </button>
+                      <button className="btn" type="button" onClick={handleIssueAllHandover} disabled={issuingAllHandover}>
+                        {issuingAllHandover ? "Генериране…" : "Генерирай всички протоколи"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="panel-footer actions-justify">
+                  <button
+                    className="btn btn-danger"
+                    type="button"
+                    onClick={handleCancel}
+                    disabled={cancelling || contract.status === "withdrawn" || contract.status === "draft"}
+                  >
+                    {cancelling ? "Отказване..." : "Отказ и освобождаване на автомобилите"}
+                  </button>
+
+                  <div className="btn-row">
+                    <button className="btn" type="button" onClick={() => setStep(2)}>Back</button>
+                    <button className="btn" type="button" onClick={handleRenderDraftPdf} disabled={renderingDraft}>
+                      {renderingDraft ? "Генериране..." : "Генерирай чернова(PDF)"}
+                    </button>
+                    <button className="btn btn-primary" type="button" onClick={handleIssue} disabled={issuing}>
+                      {issuing ? "Издаване..." : "Издай и генерирай PDF"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === "browse" && (
+        <ContractsList
+          apiBase={apiBase}
+          onOpenLatest={async (uuid) => {
+            try {
+              const data = await api(`/contracts/${uuid}/pdf/latest`);
+              const url = data?.signedUrl || data?.pdf?.signedUrl;
+              if (url) window.open(url, "_blank", "noopener,noreferrer");
+              else alert("Няма наличен PDF за този договор.");
+            } catch (e) { alert(`Неуспешно отваряне: ${e.message}`); }
+          }}
+          onRegenerate={async (id) => {
+            try {
+              const data = await api(`/contracts/${id}/pdf`, { method: "POST" });
+              const url = data?.pdf?.signedUrl || data?.signedUrl;
+              if (url && confirm("Отвори регенерирания PDF?")) window.open(url, "_blank", "noopener,noreferrer");
+            } catch (e) { alert(`Неуспешно регенериране: ${e.message}`); }
+          }}
+          onIssue={async (id) => {
+            try {
+              const data = await api(`/contracts/${id}/issue`, { method: "POST", body: { override_reserved: false } });
+              const url = data?.pdf?.signedUrl || data?.signedUrl;
+              if (url && confirm("Отвори PDF сега?")) window.open(url, "_blank", "noopener,noreferrer");
+            } catch (e) { alert(`IНеуспешно издаване: ${e.message}`); }
+          }}
+        />
+      )}
+    </div>
+  );
 
 }
 
@@ -591,7 +591,7 @@ async function handleIssueAllHandover() {
 function HeaderSummary({ contract, customer }) {
   const status = (contract?.status || "draft").toUpperCase();
   return (
-    <div className="sum" style={{marginBottom:12}}>
+    <div className="sum" style={{ marginBottom: 12 }}>
       <div><strong>Договор:</strong> #{contract.contract_id} — {contract.uuid}</div>
       <div><strong>Статус:</strong> {statusBG[status]} ({contrType[contract.type]})</div>
       <div><strong>Клиент:</strong> {displayCustomer(customer)}</div>
@@ -629,7 +629,7 @@ function CustomerPicker({ apiBase, value, onChange }) {
       const data = await api(`/customers?${params.toString()}`);
       setList(data.customers || []);
       setTotal(Number(data.total || 0));
-      setTotalPages(Number(data.totalPages || Math.max(1, Math.ceil((data.total || 0)/limit))));
+      setTotalPages(Number(data.totalPages || Math.max(1, Math.ceil((data.total || 0) / limit))));
     } catch (e) {
       setErr(e.message || "Customer search failed");
       setList([]); setTotal(0); setTotalPages(1);
@@ -759,7 +759,7 @@ export function ItemsStep({
     return items.reduce((acc, it) => {
       const p = parseNumber(it.unit_price);
       const dr = it.discount_type === "percent" ? parseNumber(it.discount_value) : null;
-      const da = it.discount_type === "amount"  ? parseNumber(it.discount_value) : null;
+      const da = it.discount_type === "amount" ? parseNumber(it.discount_value) : null;
       const tr = parseNumber(it.tax_rate);
       const { total } = computePreviewLineTotals(1, p, it.discount_type, (dr ?? da), tr);
       return acc + total;
@@ -864,7 +864,7 @@ function VehiclePicker({ apiBase, onPick }) {
       setAll(filteredRows);
       setPage(1);
     } catch (e) {
-      alert(`Vehicle search failed: ${e.message}`);
+      alert(`Търсенето на автомобил е неуспешно: ${e.message}`);
       setAll([]);
       setPage(1);
     } finally {
@@ -984,7 +984,7 @@ function ItemsTable({ currency, items, onChange, onRemove }) {
             const d = it.display || {};
             const unit = parseNumber(it.unit_price);
             const dr = it.discount_type === "percent" ? parseNumber(it.discount_value) : null;
-            const da = it.discount_type === "amount"  ? parseNumber(it.discount_value) : null;
+            const da = it.discount_type === "amount" ? parseNumber(it.discount_value) : null;
             const tr = parseNumber(it.tax_rate);
             const { total } = computePreviewLineTotals(1, unit, it.discount_type, (dr ?? da), tr);
 

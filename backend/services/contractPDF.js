@@ -128,7 +128,7 @@ async function renderContractPdfBuffer({ type, buyer, items, advance_amount }) {
   return buf;
 }
 
-async function uploadContractPdfBuffer({ contract_uuid, version, buffer }) {
+async function uploadContractPdfBuffer({ contract_uuid, version, buffer, filename }) {
   // Coerce any typed-array to Buffer
   const bytes = Buffer.isBuffer(buffer)
     ? buffer
@@ -136,7 +136,9 @@ async function uploadContractPdfBuffer({ contract_uuid, version, buffer }) {
 
   if (!bytes) throw new Error('uploadContractPdfBuffer: expected Buffer bytes');
 
-  const gcsKey = `contracts/${contract_uuid}/v${String(version).padStart(3, '0')}.pdf`;
+  // If filename is provided, use it. Otherwise fallback to vXXX.pdf
+  const name = filename || `v${String(version).padStart(3, '0')}.pdf`;
+  const gcsKey = `contracts/${contract_uuid}/${name}`;
   const file = bucketPrivate.file(gcsKey);
 
   await file.save(bytes, {
