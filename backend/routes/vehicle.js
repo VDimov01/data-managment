@@ -5,6 +5,9 @@ const { getPool, withTransaction } = require('../db');
 const pool = getPool();
 const { v4: uuidv4 } = require('uuid');
 const { getSignedReadUrl } = require('../services/contractPDF');
+const { bucketPrivate, storage, BUCKET_PRIVATE } = require('../services/gcs');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 const ALLOWED_STATUS = new Set([
   'InTransit','Available','Reserved','Sold','Service','Demo'
@@ -565,6 +568,155 @@ router.get('/:id/contracts', async (req, res) => {
     res.json(results);
   } catch (e) {
     console.error('GET /vehicles/:id/contracts', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/vehicles/:id/coc
+router.get('/:id/coc', async (req, res) => {
+  const vehicleId = Number(req.params.id);
+  if (!Number.isFinite(vehicleId)) return res.status(400).json({ error: 'Invalid ID' });
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT coc_certificate_en, coc_certificate_bg, coc_certificate_cn FROM vehicle WHERE vehicle_id = ?`,
+      [vehicleId]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Vehicle not found' });
+    
+    const v = rows[0];
+    const result = { en: null, bg: null, cn: null };
+
+    // Generate signed URLs parallelly
+    const jobs = [];
+    if (v.coc_certificate_en) jobs.push(getSignedReadUrl(v.coc_certificate_en, { minutes: 15 }).then(s => result.en = { url: s.signedUrl, key: v.coc_certificate_en }));
+    if (v.coc_certificate_bg) jobs.push(getSignedReadUrl(v.coc_certificate_bg, { minutes: 15 }).then(s => result.bg = { url: s.signedUrl, key: v.coc_certificate_bg }));
+    if (v.coc_certificate_cn) jobs.push(getSignedReadUrl(v.coc_certificate_cn, { minutes: 15 }).then(s => result.cn = { url: s.signedUrl, key: v.coc_certificate_cn }));
+
+    await Promise.all(jobs);
+    res.json(result);
+  } catch (e) {
+    console.error('GET /vehicles/:id/coc', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/vehicles/:id/coc
+router.post('/:id/coc', upload.single('file'), async (req, res) => {
+  const vehicleId = Number(req.params.id);
+  const lang = req.body.lang; // 'en' | 'bg' | 'cn'
+  
+  if (!Number.isFinite(vehicleId)) return res.status(400).json({ error: 'Invalid ID' });
+  if (!['en', 'bg', 'cn'].includes(lang)) return res.status(400).json({ error: 'Invalid lang (en, bg, cn)' });
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  try {
+    const [rows] = await pool.query(`SELECT vin, vehicle_id FROM vehicle WHERE vehicle_id = ?`, [vehicleId]);
+    if (!rows.length) return res.status(404).json({ error: 'Vehicle not found' });
+    const v = rows[0];
+
+    // GCS Key
+    const ext = req.file.originalname.split('.').pop() || 'pdf';
+    const filename = `coc_${lang}_${Date.now()}.${ext}`;
+    const gcsKey = `vehicles/${v.vehicle_id}/coc/${filename}`;
+    
+    const file = bucketPrivate.file(gcsKey);
+    await file.save(req.file.buffer, {
+      resumable: false,
+      metadata: {
+        contentType: req.file.mimetype || 'application/pdf',
+        metadata: { vehicle_id: String(vehicleId), lang }
+      }
+    });
+
+    // Update DB
+    const colName = `coc_certificate_${lang}`;
+    // vulnerable to injection if lang wasn't validated, but we validated strictly above.
+    await pool.query(`UPDATE vehicle SET ${colName} = ? WHERE vehicle_id = ?`, [gcsKey, vehicleId]);
+
+    const signed = await getSignedReadUrl(gcsKey, { minutes: 15 });
+    res.json({ success: true, url: signed.signedUrl, key: gcsKey });
+  } catch (e) {
+    console.error('POST /vehicles/:id/coc', e);
+    res.status(500).json({ error: e.message || 'Server error' });
+  }
+});
+
+// GET /api/vehicles/:id/registration
+router.get('/:id/registration', async (req, res) => {
+  const vehicleId = Number(req.params.id);
+  if (!Number.isFinite(vehicleId)) return res.status(400).json({ error: 'Invalid ID' });
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT registration_card_file, transit_number FROM vehicle WHERE vehicle_id = ?`,
+      [vehicleId]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Vehicle not found' });
+    
+    const v = rows[0];
+    let cardUrl = null;
+    if (v.registration_card_file) {
+       const s = await getSignedReadUrl(v.registration_card_file, { minutes: 15 });
+       cardUrl = s.signedUrl;
+    }
+    
+    res.json({
+       transit_number: v.transit_number,
+       registration_card: v.registration_card_file ? { url: cardUrl, key: v.registration_card_file } : null
+    });
+  } catch (e) {
+    console.error('GET /vehicles/:id/registration', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/vehicles/:id/registration-card
+router.post('/:id/registration-card', upload.single('file'), async (req, res) => {
+  const vehicleId = Number(req.params.id);
+  if (!Number.isFinite(vehicleId)) return res.status(400).json({ error: 'Invalid ID' });
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  try {
+    const [rows] = await pool.query(`SELECT vehicle_id FROM vehicle WHERE vehicle_id = ?`, [vehicleId]);
+    if (!rows.length) return res.status(404).json({ error: 'Vehicle not found' });
+    const v = rows[0];
+
+    const ext = req.file.originalname.split('.').pop() || 'pdf';
+    const filename = `reg_card_${Date.now()}.${ext}`;
+    const gcsKey = `vehicles/${v.vehicle_id}/registration/${filename}`;
+    
+    const file = bucketPrivate.file(gcsKey);
+    await file.save(req.file.buffer, {
+      resumable: false,
+      metadata: {
+        contentType: req.file.mimetype || 'application/pdf',
+        metadata: { vehicle_id: String(vehicleId), type: 'registration_card' }
+      }
+    });
+
+    await pool.query(`UPDATE vehicle SET registration_card_file = ? WHERE vehicle_id = ?`, [gcsKey, vehicleId]);
+
+    const signed = await getSignedReadUrl(gcsKey, { minutes: 15 });
+    res.json({ success: true, url: signed.signedUrl, key: gcsKey });
+  } catch (e) {
+    console.error('POST /vehicles/:id/registration-card', e);
+    res.status(500).json({ error: e.message || 'Server error' });
+  }
+});
+
+// PUT /api/vehicles/:id/transit-number
+router.put('/:id/transit-number', async (req, res) => {
+  const vehicleId = Number(req.params.id);
+  const { transit_number } = req.body;
+  
+  if (!Number.isFinite(vehicleId)) return res.status(400).json({ error: 'Invalid ID' });
+  
+  try {
+    await pool.query(`UPDATE vehicle SET transit_number = ? WHERE vehicle_id = ?`, [transit_number || null, vehicleId]);
+    res.json({ success: true, transit_number });
+  } catch (e) {
+    console.error('PUT /vehicles/:id/transit-number', e);
     res.status(500).json({ error: 'Server error' });
   }
 });

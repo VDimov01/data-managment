@@ -54,6 +54,9 @@ function RegularContractPDF({ buyer, cars = []}) {
   const deliveryDays = 60;
   const today = new Date().toLocaleDateString("bg-BG");
 
+  const isCompany = (buyer.customer_type || "").toLowerCase() === "company";
+  const isIndividual = !isCompany;
+
   return React.createElement(
     Document,
     null,
@@ -70,11 +73,11 @@ function RegularContractPDF({ buyer, cars = []}) {
         React.createElement(View, {style: {marginTop: 10, marginBottom: 10} }),
         React.createElement(Text, null,``, boldText(`"Некст Авто“ ЕООД, с ЕИК:`), ` 208224080, гр. Стара Загора, ул. "Темида" 1, вх. Б, ап. 16, тел.: 0996600900, e-mail: sales@solaris.expert, представлявано от Пламен Иванов Генчев – `, boldText(`ПРОДАВАЧ`)),
         React.createElement(Text, null, `и`),
-        buyer.customer_type === "Individual" && React.createElement(Text, null, ``, boldText(`${buyer.display_name} с ЕГН: `), 
+        isIndividual && React.createElement(Text, null, ``, boldText(`${buyer.display_name} с ЕГН: `), 
         `${buyer.national_id} и адрес ${buyer.city || ""}, ${buyer.address_line || ""} и тел: ${buyer.phone}`, `, наричан по-долу – `, 
         boldText(`КУПУВАЧ`)),
         
-        buyer.customer_type === "Company" && React.createElement(Text, null, ``, boldText(`${buyer.display_name} с ЕИК: `), 
+        isCompany && React.createElement(Text, null, ``, boldText(`${buyer.display_name} с ЕИК: `), 
         `${buyer.vat_number} и адрес на управление ${buyer.city || ""}, ${buyer.address_line || ""}`, 
         `, представлявано от ${buyer.rep_first_name} ${buyer.rep_middle_name || ""} ${buyer.rep_last_name || ""}, наричан по-долу – `, 
         boldText(`КУПУВАЧ`)),
@@ -131,8 +134,8 @@ function RegularContractPDF({ buyer, cars = []}) {
         React.createElement(View, { style: { marginTop: 10, marginBottom: 10 } }),
         React.createElement(Text, null, "ПРОДАВАЧ: ...................................          / Пламен Генчев /"),
         React.createElement(View, { style: { marginTop: 10, marginBottom: 10 } }),
-        buyer.customer_type === "Company" && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.rep_first_name} ${buyer.rep_last_name}`) + " /"),
-        buyer.customer_type === "Individual" && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.first_name} ${buyer.last_name}`) + " /"),
+        isCompany && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.rep_first_name} ${buyer.rep_last_name}`) + " /"),
+        isIndividual && React.createElement(Text, null, "КУПУВАЧ: ...................................           / " + (`${buyer.first_name} ${buyer.last_name}`) + " /"),
       ])
     )
   );

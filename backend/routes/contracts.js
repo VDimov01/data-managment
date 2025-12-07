@@ -17,6 +17,7 @@ const {
 const {
   uploadInvoicePdfBuffer,
   getSignedInvoiceReadUrl,
+  renderInvoicePdfBuffer,
 } = require('../services/invoiceServicePDF');
 
 const { uploadSignedContractPdf } = require('../services/signedContractService');
@@ -174,8 +175,13 @@ function computeLineTotals(qty, unitPriceStr, discount_type, discount_value, tax
     disc = sub * (p / 100);
   }
   const taxableBase = Math.max(0, sub - disc);
+  // Tax is calculated for reference (and used in aggregations if needed, but not added to line_total)
   const tax = tax_rate != null ? taxableBase * (Number(toDecimalString(tax_rate)) / 100) : 0;
-  const total = taxableBase + tax;
+  
+  // User wants "Inclusive" pricing, so the total IS the base (unit * qty - discount)
+  // The tax is considered "inside" or "calculated from" this total, not added on top.
+  const total = taxableBase; 
+
   return {
     subtotal: sub,
     discount: disc,
@@ -598,7 +604,32 @@ router.put('/:contract_id/items', async (req, res) => {
       const [[tot]] = await conn.query(
         `
         SELECT
-          COALESCE(SUM(quantity * unit_price), 0) AS subtotal,
+          COALESCE(SUM(
+            (
+              (quantity * unit_price) -
+              COALESCE(
+                 CASE
+                   WHEN discount_type = 'amount'  THEN discount_value
+                   WHEN discount_type = 'percent' THEN (quantity * unit_price) * (discount_value/100)
+                   ELSE 0
+                 END, 0
+              )
+            )
+            -
+            (
+              (
+                (quantity * unit_price) -
+                COALESCE(
+                   CASE
+                     WHEN discount_type = 'amount'  THEN discount_value
+                     WHEN discount_type = 'percent' THEN (quantity * unit_price) * (discount_value/100)
+                   ELSE 0
+                   END, 0
+                )
+              ) * (COALESCE(tax_rate,0)/100)
+            )
+          ), 0) AS subtotal,
+
           COALESCE(SUM(
             CASE
               WHEN discount_type = 'amount'  THEN COALESCE(discount_value,0)
@@ -607,21 +638,26 @@ router.put('/:contract_id/items', async (req, res) => {
             END
           ), 0) AS discount_total,
           COALESCE(SUM(
-            CASE
-              WHEN tax_rate IS NOT NULL THEN
-                ((quantity * unit_price) -
-                  COALESCE(
-                    CASE
-                      WHEN discount_type = 'amount'  THEN discount_value
-                      WHEN discount_type = 'percent' THEN (quantity * unit_price) * (discount_value/100)
-                      ELSE 0
-                    END, 0
-                  )
-                ) * (tax_rate/100)
-              ELSE 0
-            END
+            ((quantity * unit_price) -
+              COALESCE(
+                CASE
+                  WHEN discount_type = 'amount'  THEN discount_value
+                  WHEN discount_type = 'percent' THEN (quantity * unit_price) * (discount_value/100)
+                  ELSE 0
+                END, 0
+              )
+            ) * (COALESCE(tax_rate,0)/100)
           ), 0) AS tax_total,
-          COALESCE(SUM(line_total), 0) AS total
+          COALESCE(SUM(
+            (quantity * unit_price) -
+            COALESCE(
+               CASE
+                 WHEN discount_type = 'amount'  THEN discount_value
+                 WHEN discount_type = 'percent' THEN (quantity * unit_price) * (discount_value/100)
+                 ELSE 0
+               END, 0
+            )
+          ), 0) AS total
         FROM contract_item
         WHERE contract_id = ?
         `,

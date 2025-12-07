@@ -40,6 +40,42 @@ export const fetchImages = async (carId, carMaker, carModel) => {
     return api(`/car-images/${carId}^${carMaker}^${carModel}`);
   };
 
+// --- Vehicle CoC ---
+export async function uploadVehicleCoC(vehicleId, lang, file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('lang', lang);
+  return api(`/vehicles/${vehicleId}/coc`, {
+    method: 'POST',
+    body: fd
+  });
+}
+
+export async function fetchVehicleCoC(vehicleId) {
+  return api(`/vehicles/${vehicleId}/coc`);
+}
+
+// --- Vehicle Registration ---
+export async function uploadVehicleRegistrationCard(vehicleId, file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  return api(`/vehicles/${vehicleId}/registration-card`, {
+    method: 'POST',
+    body: fd
+  });
+}
+
+export async function updateVehicleTransitNumber(vehicleId, transit_number) {
+  return api(`/vehicles/${vehicleId}/transit-number`, {
+    method: 'PUT',
+    body: {transit_number}
+  });
+}
+
+export async function fetchVehicleRegistration(vehicleId) {
+  return api(`/vehicles/${vehicleId}/registration`);
+}
+
 export async function generateVehicleQr(apiBase, vehicleId) {
   return api(`/qr/vehicles/${vehicleId}`, { method: 'POST' });
 }

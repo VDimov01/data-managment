@@ -41,47 +41,54 @@ function toValidUntil(expiresAt) {
 }
 
 // build the required buyer snapshot JSON from the chosen customer
+// This must match the flat structure returned by backend `loadBuyer`, 
+// so that PDF templates (InvoicePDF) can read fields directly (e.g. buyer.address_line).
 function buildBuyerSnapshot(c) {
   if (!c) return null;
-  const isCompany = String(c.type || "").toLowerCase() === "company";
+  const isCompany = String(c.type || "").toLowerCase() === "company" || String(c.customer_type || "").toLowerCase() === "company";
+
+  const typeStr = isCompany ? "Company" : "Individual";
+
   const display =
     c.display_name ||
     (isCompany ? (c.name || c.company_name) : [c.first_name, c.middle_name, c.last_name].filter(Boolean).join(" ")) ||
     `#${c.customer_id}`;
 
   return {
+    // metadata
     captured_at_utc: new Date().toISOString(),
     customer_id: c.customer_id,
-    type: c.type || (isCompany ? "company" : "individual"),
+
+    // Core fields expected by backend/PDFs
+    customer_type: typeStr,
+    company_name: c.company_name || c.name || null,
+    vat_number: c.vat_number || null,
+    tax_id: c.tax_id || null,
+
+    // Contact
+    address_line: c.address_line || null,
+    city: c.city || null,
+    country: c.country || null,
+    postal_code: c.postal_code || null,
+    email: c.email || c.email_address || null,
+    phone: c.phone || c.phone_number || null,
+    secondary_phone: c.secondary_phone || null,
+
+    // Rep (Company)
+    rep_first_name: c.rep_first_name || null,
+    rep_middle_name: c.rep_middle_name || null,
+    rep_last_name: c.rep_last_name || null,
+
+    // Individual
+    first_name: c.first_name || null,
+    middle_name: c.middle_name || null,
+    last_name: c.last_name || null,
+    national_id: c.national_id || null, // Plaintext if available in UI context
+
     display_name: display,
-    person: {
-      first_name: c.first_name || null,
-      middle_name: c.middle_name || null,
-      last_name: c.last_name || null,
-      egn: c.national_id || null,
-      vat_number: c.vat_number || null,
-    },
-    company: {
-      legal_name: c.company_name || c.name || null,
-      tax_id: c.tax_id || null,
-      vat_number: c.vat_number || null,
-      rep_first_name: c.rep_first_name || null,
-      rep_middle_name: c.rep_middle_name || null,
-      rep_last_name: c.rep_last_name || null,
-    },
-    contact: {
-      email: c.email || c.email_address || null,
-      phone: c.phone_number || c.phone || null,
-      secondary_phone: c.secondary_phone || null,
-      address: c.address_line || null,
-      city: c.city || null,
-      country: c.country || null,
-      postal_code: c.postal_code || null,
-    },
-    misc: {
-      public_uuid: c.public_uuid || null,
-      notes: c.notes || null,
-    }
+
+    // Legacy nested structure (optional, if any other part uses it, but flattening is key)
+    notes: c.notes || null,
   };
 }
 
@@ -224,7 +231,11 @@ export default function ContractsSection() {
           obj.discount_type = it.discount_type;
           if (it.discount_value !== "" && it.discount_value != null) obj.discount_value = String(it.discount_value);
         }
-        if (it.tax_rate !== "" && it.tax_rate != null) obj.tax_rate = String(it.tax_rate);
+        if (it.tax_rate !== "" && it.tax_rate != null) {
+          obj.tax_rate = String(it.tax_rate);
+        } else {
+          obj.tax_rate = "20"; // Default to 20 if not filled
+        }
         return obj;
       });
 
@@ -259,7 +270,7 @@ export default function ContractsSection() {
         method: "POST",
         body: {},
       });
-      if (data?.pdf?.signedUrl && confirm("Open draft PDF now?")) {
+      if (data?.pdf?.signedUrl && confirm("Отвори чернова PDF?")) {
         window.open(data.pdf.signedUrl, "_blank", "noopener,noreferrer");
       }
       // reflect that contract has a latest pdf
@@ -808,7 +819,7 @@ export function ItemsStep({
 
         <div className="panel-footer">
           <div className="tot-box">
-            <div className="tot-label">Client total (display only)</div>
+            <div className="tot-label">Обща сума (изчислява се от сървъра)</div>
             <div className="tot-amt">{currency} {totalClient}</div>
             <div className="tot-note">* Официалната сума се изчислява от сървъра при запис / издаване.</div>
           </div>
@@ -1045,7 +1056,7 @@ function ItemsTable({ currency, items, onChange, onRemove }) {
                 <td>
                   <PercentInput
                     className="input"
-                    value={it.tax_rate ?? ""}
+                    value={it.tax_rate ?? "20"}
                     onChange={(v) => onChange(idx, { tax_rate: v })}
                     placeholder="20"
                   />
@@ -1130,6 +1141,6 @@ function computePreviewLineTotals(qty, unit, discountType, discountValue, taxRat
     tax = base * (Number(taxRate) / 100);
   }
 
-  const total = base + tax;
+  const total = base;
   return { subtotal: sub, discount: disc, tax, total };
 }
