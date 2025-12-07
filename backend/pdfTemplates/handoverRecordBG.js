@@ -122,6 +122,7 @@ const styles = StyleSheet.create({
  */
 function HandoverRecordBG({ record = {}, seller = {}, buyer = {}, vehicle = {}, logoUri }) {
   const protocolNo = "00000000" + safe(record.number || record.handover_record_id || record.uuid || "");
+  console.log(buyer);
 
   const fullTitle = "ПРИЕМО - ПРЕДАВАТЕЛЕН ПРОТОКОЛ";
 
@@ -168,13 +169,13 @@ function HandoverRecordBG({ record = {}, seller = {}, buyer = {}, vehicle = {}, 
           React.createElement(View, { style: styles.colSpacer }),
           React.createElement(View, { style: styles.col },
             row("Купувач", buyer.display_name, styles),
-            buyer.type === "individual" ?
-              row("ЕГН / ЛНЧ", `${buyer.person.egn} ${buyer.person.vat_number ? ` / ${buyer.person.vat_number}` : ""}` || "—", styles) :
-              buyer.type === 'company' ? row("ЕИК/ДДС", `${buyer.company.tax_id} ${buyer.company.vat_number ? ` / ${buyer.company.vat_number}` : ""}` || "—", styles) : null,
+            buyer.customer_type === "Individual" ?
+              row("ЕГН / ЛНЧ", `${buyer.egn} ${buyer.tax_id ? ` / ${buyer.tax_id}` : ""}` || "—", styles) :
+              buyer.customer_type === 'Company' ? row("ЕИК/ДДС", `${buyer.vat_number} ${buyer.tax_id ? ` / ${buyer.tax_id}` : ""}` || "—", styles) : null,
               row("Град / Адрес", [buyer.city, buyer.address_line].filter(Boolean).join(", ") || "—", styles),
             row("Контакт", [buyer.email, buyer.phone].filter(Boolean).join(" ") || "—", styles),
-            buyer.type === 'company' ? 
-              row("Представител", [buyer.company.rep_first_name, buyer.company.rep_middle_name, buyer.company.rep_last_name].filter(Boolean).join(" ") || "—", styles) 
+            buyer.customer_type === 'Company' ? 
+              row("Представител", [buyer.rep_first_name, buyer.rep_middle_name, buyer.rep_last_name].filter(Boolean).join(" ") || "—", styles) 
               : null     
             ),
         )

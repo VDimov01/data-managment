@@ -516,7 +516,7 @@ function InvoicePDF({ invoice, buyer, contract = null, items = [], user, logo })
             React.createElement(
               Text,
               { style: [styles.cellRight, styles.colUnit] },
-              formatMoney(it.unit_price)
+              formatMoney(it.unit_price - (it.unit_price / 100 * (it.tax_rate || 0)))
             ),
             React.createElement(
               Text,

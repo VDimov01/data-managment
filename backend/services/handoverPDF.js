@@ -10,6 +10,7 @@ const HandoverRecordBG = require ('../pdfTemplates/handoverRecordBG.js');
 const seller = { 
     name: process.env.DEALER_NAME || 'Некст Авто ЕООД',
     tax_id: '208224080',
+    vat_number: '208224080',
     address: 'ул. Темида 1, вх. Б, ап.16',
     city: 'Стара Загора',
     country: 'България',
