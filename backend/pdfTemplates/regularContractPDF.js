@@ -1,6 +1,8 @@
 const React = require("react");
 const { Page, Text, View, Document, StyleSheet, Font } = require("@react-pdf/renderer");
 const path = require("path");
+const { amountToBGWords } = require("../utils/bulgarianAmount");
+
 
 const secret = process.env.UCN_SECRET_KEY;
 
@@ -91,7 +93,7 @@ function RegularContractPDF({ buyer, cars = []}) {
   React.createElement(Text, { key: idx, style: styles.carDescription },
     ``,boldText(`Лек автомобил`), `, марка/модел "`,
     React.createElement(Text, { style: { fontWeight: "bold" } }, `${car.maker} ${car.model} ${car.edition || ""}`),
-    ` ", Идентификационен номер на превозното средство с VIN № ${car.vin}, цвят ${car.exterior_color || "неуточнен"} / ${car.interior_color || ""}, пробег на автомобила - ${car.mileage_km} км, количество ${car.quantity}, единична цена ${(car.unit_price).toLocaleString()} лв, обща цена ${(car.unit_price * car.quantity).toLocaleString()} лв.`
+    ` ", Идентификационен номер на превозното средство с VIN № ${car.vin}, цвят ${car.exterior_color || "неуточнен"} / ${car.interior_color || ""}, пробег на автомобила - ${car.mileage_km} км, количество ${car.quantity}, единична цена ${(car.unit_price).toLocaleString()} лв / ${amountToBGWords(car.unit_price)} /, обща цена ${(car.unit_price * car.quantity).toLocaleString()} лв / ${amountToBGWords(car.unit_price * car.quantity)}.`
   )
 )
       
@@ -100,7 +102,7 @@ function RegularContractPDF({ buyer, cars = []}) {
 
       // Terms
       React.createElement(View, { style: styles.section }, [
-        React.createElement(Text, null, `1. `, boldText(`ПРОДАВАЧЪТ`), ` продава на `, boldText(`КУПУВАЧА`), ` изброените по-горе МПС-та в отлично техническо състояние и външен вид, и заедно с всички принадлежности, числящи се към автомобилите за сумата ${totalAmount.toLocaleString()} лв. (с включено ДДС), която сума продавача ще получи по банков път от купувача:`),
+        React.createElement(Text, null, `1. `, boldText(`ПРОДАВАЧЪТ`), ` продава на `, boldText(`КУПУВАЧА`), ` изброените по-горе МПС-та в отлично техническо състояние и външен вид, и заедно с всички принадлежности, числящи се към автомобилите за сумата ${totalAmount.toLocaleString()} лв. (с включено ДДС) / ${amountToBGWords(totalAmount)} /, която сума продавача ще получи по банков път от купувача:`),
         React.createElement(Text, {style: {marginLeft: 20}}, `1.1. `),
         React.createElement(Text, {style: {marginLeft: 20}}, `1.2. `),
         React.createElement(Text, {style: {marginLeft: 20}}, `1.3. `),

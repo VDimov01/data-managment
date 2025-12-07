@@ -2,6 +2,8 @@ const React = require("react");
 const { Page, Text, View, Document, StyleSheet, Font } = require("@react-pdf/renderer");
 const path = require("path");
 const crypto = require("crypto");
+const { amountToBGWords } = require("../utils/bulgarianAmount");
+
 
 const algorithm = "aes-256-cbc";
 const secret = process.env.UCN_SECRET_KEY;
@@ -85,7 +87,7 @@ function AdvanceContractPDF({ buyer, cars = [], advance_amount }) {
   React.createElement(Text, { key: idx, style: styles.carDescription },
     ``,boldText(`Лек автомобил`), `, марка/модел "`,
     React.createElement(Text, { style: { fontWeight: "bold" } }, `${car.maker} ${car.model} ${car.edition || ""}`),
-    ` ", Идентификационен номер на превозното средство с VIN № ${car.vin}, цвят ${car.exterior_color || "неуточнен"} / ${car.interior_color || ""}, пробег на автомобила - ${car.mileage_km} км, количество ${car.quantity}, единична цена ${(car.unit_price).toLocaleString()} лв, обща цена ${(car.unit_price * car.quantity).toLocaleString()} лв.`
+    ` ", Идентификационен номер на превозното средство с VIN № ${car.vin}, цвят ${car.exterior_color || "неуточнен"} / ${car.interior_color || ""}, пробег на автомобила - ${car.mileage_km} км, количество ${car.quantity}, единична цена ${(car.unit_price).toLocaleString()} лв / ${amountToBGWords(car.unit_price)} /, обща цена ${(car.unit_price * car.quantity).toLocaleString()} лв / ${amountToBGWords(car.unit_price * car.quantity)} /.`
   )
 )
       
@@ -95,8 +97,8 @@ function AdvanceContractPDF({ buyer, cars = [], advance_amount }) {
       // Terms
       React.createElement(View, { style: styles.section }, [
         React.createElement(Text, null, `1. `, boldText(`ПРОДАВАЧЪТ`), ` продава на `, boldText(`КУПУВАЧА`), ` изброените по-горе МПС-та в отлично техническо състояние и външен вид, и заедно с всички принадлежности, числящи се към автомобилите за сумата ${totalAmount.toLocaleString()} лв. (с включено ДДС), която сума продавача ще получи по банков път от купувача:`),
-        React.createElement(Text, {style: {marginLeft: 20}}, `1.1. Авансово плащане от ${advance_amount.toLocaleString()} лв при сключване на договора.`),
-        React.createElement(Text, {style: {marginLeft: 20}}, `1.2. Остатък от ${remaining.toLocaleString()} лв при предаване на автомобилите.`),
+        React.createElement(Text, {style: {marginLeft: 20}}, `1.1. Авансово плащане от ${advance_amount.toLocaleString()} лв / ${amountToBGWords(advance_amount)} / при сключване на договора.`),
+        React.createElement(Text, {style: {marginLeft: 20}}, `1.2. Остатък от ${remaining.toLocaleString()} лв / ${amountToBGWords(remaining)} / при предаване на автомобилите.`),
         React.createElement(Text, {style: {marginLeft: 20}}, `1.3. Очаквания срок за доставка е 60 дни след подписване на договора. При забававяне повече от 30 дни продавача е длъжен да върне заплатената сума авансово и да издаде кредитно известие. Продавача осигурява 5 години гаранционно обслужване на автомобила и 6 години на батерията или 150000 /сто и петдесетхиляди км./, което настъпи по-рано. Гаранцията е валидна за дефекти непредизвикани от купувача. За всички останали случаи продавача осигурява следгаранционен сервиз по цени на компонентите и тарифи на трудаофициално обявени в магазините и сервизите на същия.`),
       ]),
 
