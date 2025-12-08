@@ -1,7 +1,7 @@
 export default function CustomerList({
   rows = [],
   page, limit, total, totalPages,
-  onEdit, onDelete, onCopyLink
+  onEdit, onDelete, onCopyLink, onInfo
 }) {
   return (
     <div className="table-wrap">
@@ -38,7 +38,7 @@ export default function CustomerList({
 
                 {r.customer_type === "Company" && r.company_name && (
                   <div className="text-muted">
-                    Представител: { [r.rep_first_name, r.rep_middle_name, r.rep_last_name].filter(Boolean).join(" ") || "—" }
+                    Представител: {[r.rep_first_name, r.rep_middle_name, r.rep_last_name].filter(Boolean).join(" ") || "—"}
                   </div>
                 )}
               </td>
@@ -63,6 +63,9 @@ export default function CustomerList({
 
               <td data-th='Действия'>
                 <div className="btn-row">
+                  <button className="btn btn-ghost" type="button" onClick={() => onInfo?.(r)} title="Информация">
+                    ℹ
+                  </button>
                   <button className="btn" type="button" onClick={() => onCopyLink?.(r)}>Копирай линк</button>
                   <button className="btn" type="button" onClick={() => onEdit?.(r)}>Редактирай</button>
                   <button className="btn btn-danger" type="button" onClick={() => onDelete?.(r)}>Изтрий</button>
