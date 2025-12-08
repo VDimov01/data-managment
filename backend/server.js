@@ -11,8 +11,6 @@ const db = require('./db');
 const authRouter = require('./routes/auth');
 const publicRouter = require('./routes/public');
 
-
-const offersRoutes = require('./routes/offers');
 const shopsRoutes = require('./routes/shops');
 const carImagesRoutes = require('./routes/carImages');
 const vehicleRoutes = require('./routes/vehicle');
