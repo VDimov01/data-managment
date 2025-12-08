@@ -17,14 +17,16 @@ export const fetchShops = async () => {
   return api("/shops/new");
 }
 
-export async function searchContracts(query = "", page = 1, limit = 10) {
-  const params = new URLSearchParams({
+export async function searchContracts(query = "", page = 1, limit = 10, customerId = null) {
+  const p = {
     query: query || "",
     page: String(page),
     limit: String(limit),
-  });
+  };
+  if (customerId) p.customer_id = String(customerId);
+  const params = new URLSearchParams(p);
 
-  return api(`/contracts/search?${params.toString()}`);
+  return api(`/contracts?${params.toString()}`);
 }
 
 export async function uploadSignedContract(contractId, file) {
