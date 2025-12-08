@@ -165,10 +165,27 @@ export default function ContractsList({ apiBase, onOpenLatest, onRegenerate, onI
                         </button>
                       )}
 
-                      {['draft', 'issued'].includes(String(r.status).toLowerCase()) && (
-                        <button className="btn" onClick={() => handleUploadClick(r.contract_id)}>
-                          Качи подписан
-                        </button>
+                      {['draft', 'issued', 'signed'].includes(String(r.status).toLowerCase()) && (
+                        r.signed_pdf ? (
+                          <>
+                            <a
+                              href={r.signed_pdf.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn"
+                              title={r.signed_pdf.filename}
+                            >
+                              Отвори подписан
+                            </a>
+                            <button className="btn" onClick={() => handleUploadClick(r.contract_id)}>
+                              Промени подписан
+                            </button>
+                          </>
+                        ) : (
+                          <button className="btn" onClick={() => handleUploadClick(r.contract_id)}>
+                            Качи подписан
+                          </button>
+                        )
                       )}
 
                       {String(r.status).toLowerCase() !== "issued" &&

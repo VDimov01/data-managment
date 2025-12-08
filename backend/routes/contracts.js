@@ -288,29 +288,60 @@ router.get('/', async (req, res) => {
       params
     );
 
-    const items = rows.map(r => ({
-      contract_id: r.contract_id,
-      uuid: r.uuid,
-      contract_number: r.contract_number,
-      status: r.status,
-      type: r.type,
-      currency_code: r.currency_code,
-      valid_until: r.valid_until,
-      total: r.total,
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-      customer_id: r.customer_id,
-      customer_display_name: r.display_name,
-      customer_type: r.customer_type,
-      customer_phone: r.phone,
-      customer_email: r.email,
-      items_count: Number(r.items_count || 0),
-      vehicles: (() => {
-        try {
-          const arr = JSON.parse(r.vehicles_json || '[]');
-          return Array.isArray(arr) ? arr.filter(Boolean) : [];
-        } catch { return []; }
-      })()
+    // Fetch signed PDFs for these rows
+    const contractIds = rows.map(r => r.contract_id);
+    const signedPdfMap = new Map();
+    if (contractIds.length > 0) {
+      const [pdfs] = await pool.query(`
+        SELECT ca.contract_id, s.gcs_key, s.filename
+        FROM contract_attachment ca
+        JOIN signed_contract_pdf s ON s.signed_contract_pdf_id = ca.signed_contract_pdf_id
+        WHERE ca.contract_id IN (${contractIds.map(() => '?').join(',')})
+          AND ca.attachment_type = 'signed_contract_pdf'
+        ORDER BY ca.created_at ASC
+      `, contractIds);
+      
+      // We want the latest one. simpler to just iterate and overwrite since we ordered by ASC, 
+      // the last one in the list for a given contract_id will be the latest.
+      // Or we can query better. But map overwrite is fine for small page size.
+      for (const p of pdfs) {
+        signedPdfMap.set(p.contract_id, p);
+      }
+    }
+
+    const items = await Promise.all(rows.map(async (r) => {
+      let signedPdfObj = null;
+      const p = signedPdfMap.get(r.contract_id);
+      if (p) {
+         const s = await getSignedReadUrl(p.gcs_key, { minutes: 20 });
+         signedPdfObj = { url: s.signedUrl, filename: p.filename };
+      }
+
+      return {
+        contract_id: r.contract_id,
+        uuid: r.uuid,
+        contract_number: r.contract_number,
+        status: r.status,
+        type: r.type,
+        currency_code: r.currency_code,
+        valid_until: r.valid_until,
+        total: r.total,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+        customer_id: r.customer_id,
+        customer_display_name: r.display_name,
+        customer_type: r.customer_type,
+        customer_phone: r.phone,
+        customer_email: r.email,
+        items_count: Number(r.items_count || 0),
+        signed_pdf: signedPdfObj, 
+        vehicles: (() => {
+          try {
+            const arr = JSON.parse(r.vehicles_json || '[]');
+            return Array.isArray(arr) ? arr.filter(Boolean) : [];
+          } catch { return []; }
+        })()
+      };
     }));
 
     res.json({
