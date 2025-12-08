@@ -1,0 +1,144 @@
+/* frontend/public/css/customerDetailsModal.css */
+
+.cdm-root {
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+    gap: 16px;
+}
+
+/* Tabs - mimic am-tabs */
+.cdm-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+}
+
+.cdm-tab {
+    border: none;
+    background: transparent;
+    padding: 8px 12px;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.cdm-tab:hover {
+    background: var(--row-hover-bg);
+    color: var(--text);
+}
+
+.cdm-tab.active {
+    background: var(--control-bg);
+    /* matches am-tab.is-active approx */
+    color: var(--text);
+}
+
+/* Scrollable Body */
+.cdm-scroll {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-right: 4px;
+    /* avoid scrollbar overlap */
+}
+
+/* Info Grid */
+.cdm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.cdm-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cdm-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.cdm-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    word-break: break-word;
+}
+
+.cdm-full {
+    grid-column: 1 / -1;
+}
+
+.cdm-notes {
+    background: color-mix(in oklab, var(--primary), white 90%);
+    border: 1px solid color-mix(in oklab, var(--primary), white 70%);
+    padding: 12px;
+    border-radius: 8px;
+    color: var(--text);
+    white-space: pre-wrap;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+[data-theme="dark"] .cdm-notes {
+    background: color-mix(in oklab, var(--primary), black 80%);
+    border-color: color-mix(in oklab, var(--primary), black 70%);
+}
+
+
+/* Handling Tables/Lists using card style to match attachmentsModal somewhat, 
+   but keeping Table structure for density if preferred, 
+   OR just styling the table container nicely. */
+
+.cdm-loading {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.cdm-empty {
+    padding: 30px;
+    text-align: center;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+}
+
+/* Badges */
+.cdm-badge-draft {
+    background: var(--control-bg);
+    color: var(--text-muted);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    border: 1px solid var(--border);
+}
+
+.cdm-badge-signed,
+.cdm-badge-issued {
+    background: color-mix(in oklab, var(--primary), white 85%);
+    color: var(--primary-900);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    border: 1px solid color-mix(in oklab, var(--primary), white 70%);
+}
+
+.cdm-actions {
+    display: flex;
+    gap: 8px;
+}
