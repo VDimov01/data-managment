@@ -111,6 +111,19 @@ router.get('/:uuid/pdfs/:version/signed-url', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// Latest PDF signed URL (auto-resolve version)
+router.get('/:uuid/pdf/latest', async (req, res) => {
+  try {
+    const data = await getOfferByUUID(req.params.uuid);
+    if (!data || !data.latest_pdf) {
+      return res.status(404).json({ error: 'No PDF found' });
+    }
+    const version = data.latest_pdf.version_no;
+    const url = await getSignedPdfUrl(req.params.uuid, version, { minutes: Number(req.query.minutes || 10) });
+    res.json(url);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 // Withdraw
 router.post('/:uuid/withdraw', async (req, res) => {
   try {

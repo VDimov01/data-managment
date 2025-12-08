@@ -222,6 +222,13 @@ router.get('/', async (req, res) => {
       where.push(`c.status = ?`);
       params.push(status);
     }
+    // Filter by customer_id if provided
+    const customer_id = parseInt(req.query.customer_id, 10);
+    if (customer_id && !isNaN(customer_id)) {
+      where.push(`c.customer_id = ?`);
+      params.push(customer_id);
+    }
+    
     if (q) {
       where.push(`(
         c.contract_number LIKE ? OR
