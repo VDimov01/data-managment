@@ -7,6 +7,7 @@ const React = require('react');
 const { ensureEditionSpecsPdf, getSignedUrl } = require('../services/specsPDF');
 const { decryptNationalId } = require('../services/cryptoCust.js');
 const { getCurrentUserId } = require('../utils/getCurrentUser');
+const { translateStatus, translateAllowedPaymentMethods } = require('../utils/translate');
 
 const {
   renderContractPdfBuffer,
@@ -1683,7 +1684,7 @@ router.post('/:contract_id/payments', async (req, res) => {
 
     const allowedMethods = ['cash', 'bank_transfer', 'card', 'leasing', 'other'];
     if (!allowedMethods.includes(method)) {
-      return res.status(400).json({ error: `method must be one of ${allowedMethods.join(', ')}` });
+      return res.status(400).json({ error: `Трябва да бъде избран един от следните методи: ${translateAllowedPaymentMethods(allowedMethods)}` });
     }
 
     let paidAtStr = null;
@@ -1705,13 +1706,13 @@ router.post('/:contract_id/payments', async (req, res) => {
         [contract_id]
       );
       if (!ctr) {
-        throw new Error('contract not found');
+        throw new Error('Договорът не е намерен!');
       }
 
       const status = String(ctr.status);
       // не позволяваме плащания по draft/withdrawn/expired
       if (!['issued', 'viewed', 'signed'].includes(status)) {
-        throw new Error(`cannot register payment for contract in status "${status}"`);
+        throw new Error(`Не може да запишете плащане за договор в статус "${translateStatus(status)}"`);
       }
 
       // текущо платено
