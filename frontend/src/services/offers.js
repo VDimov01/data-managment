@@ -3,8 +3,8 @@ import { api, qs } from './api';
 
 export const Offers = {
   // list offers
-  async list({ term, status, limit = 25, offset = 0 } = {}) {
-    return api(`/offers${qs({ term, status, limit, offset })}`);
+  async list({ term, status, limit = 25, offset = 0, clientUuid } = {}) {
+    return api(`/offers${qs({ term, status, limit, offset, client_uuid: clientUuid })}`);
   },
 
   // create draft
