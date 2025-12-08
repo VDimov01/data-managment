@@ -115,7 +115,11 @@ export default function StorageSection() {
         if (shop !== shopId) return false;
         setShopName(shops.filter(s => s.shop_id.toString() === shopId)[0]?.name || "");
       }
-      if (status && st !== status) return false;
+      if (status) {
+        if (st !== status) return false;
+      } else {
+        if (st === 'Demo') return false;
+      }
       if (min != null && Number.isFinite(min)) {
         if (!(price != null && Number.isFinite(price) && price >= min)) return false;
       }
