@@ -8,6 +8,7 @@ export const STATUS_TO_BG = {
   expired:   "Изтекла",
   withdrawn: "Оттеглена",
   converted: "Конвертирана",
+  signed: "Подписан",
 };
 
 export function statusToBG(status) {
