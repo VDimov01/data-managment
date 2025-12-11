@@ -4,6 +4,7 @@ import {
     fetchVehicleContracts, fetchVehicleCoC, uploadVehicleCoC, fetchVehicleRegistration,
     uploadVehicleRegistrationCard, updateVehicleTransitNumber
 } from '../../services/api';
+import { statusToBG } from '../../utils/i18n';
 
 export default function VehicleDocumentsModal({ open, onClose, vehicle }) {
     const [contracts, setContracts] = useState([]);
@@ -12,6 +13,13 @@ export default function VehicleDocumentsModal({ open, onClose, vehicle }) {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('contracts'); // 'contracts' | 'coc' | 'registration'
     const [error, setError] = useState(null);
+
+    const getBadgeClass = (status) => {
+        const s = (status || '').toLowerCase();
+        if (['signed', 'converted', 'issued'].includes(s)) return 'cdm-badge-active';
+        if (['withdrawn', 'expired', 'cancelled'].includes(s)) return 'cdm-badge-withdrawn';
+        return 'cdm-badge-draft';
+    };
 
     const loadData = () => {
         if (!vehicle) return;
@@ -153,7 +161,7 @@ export default function VehicleDocumentsModal({ open, onClose, vehicle }) {
                                                 <div className="text-muted small">{c.uuid}</div>
                                             </td>
                                             <td>{new Date(c.created_at).toLocaleDateString()}</td>
-                                            <td>{c.status}</td>
+                                            <td><span className={getBadgeClass(c.status)}>{statusToBG(c.status)}</span></td>
                                             <td>
                                                 <div className="btn-row">
                                                     {c.generated_pdf && (

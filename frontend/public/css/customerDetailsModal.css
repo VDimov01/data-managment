@@ -128,14 +128,40 @@
     border: 1px solid var(--border);
 }
 
-.cdm-badge-signed,
-.cdm-badge-issued {
+.cdm-badge-active {
     background: color-mix(in oklab, var(--primary), white 85%);
     color: var(--primary-900);
     padding: 2px 8px;
     border-radius: 12px;
     font-size: 11px;
     border: 1px solid color-mix(in oklab, var(--primary), white 70%);
+}
+
+[data-theme="dark"] .cdm-badge-active {
+    background: color-mix(in oklab, var(--primary), black 60%);
+    color: var(--primary);
+    border-color: color-mix(in oklab, var(--primary), black 40%);
+    font-weight: 600;
+}
+
+.cdm-badge-withdrawn,
+.cdm-badge-expired,
+.cdm-badge-cancelled {
+    background: color-mix(in oklab, var(--danger), white 85%);
+    color: var(--danger-900);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    border: 1px solid color-mix(in oklab, var(--danger), white 70%);
+}
+
+[data-theme="dark"] .cdm-badge-withdrawn,
+[data-theme="dark"] .cdm-badge-expired,
+[data-theme="dark"] .cdm-badge-cancelled {
+    background: color-mix(in oklab, var(--danger), black 60%);
+    color: var(--danger);
+    border-color: color-mix(in oklab, var(--danger), black 40%);
+    font-weight: 600;
 }
 
 .cdm-actions {

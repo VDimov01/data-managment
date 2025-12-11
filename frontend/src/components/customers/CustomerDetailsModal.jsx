@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Offers } from "../../services/offers";
 import { searchContracts, api, API_BASE } from "../../services/api";
+import { statusToBG } from "../../utils/i18n";
 
 export default function CustomerDetailsModal({ customer }) {
     const [activeTab, setActiveTab] = useState("info");
@@ -88,6 +89,13 @@ export default function CustomerDetailsModal({ customer }) {
         }
     };
 
+    const getBadgeClass = (status) => {
+        const s = (status || '').toLowerCase();
+        if (['signed', 'converted', 'issued'].includes(s)) return 'cdm-badge-active';
+        if (['withdrawn', 'expired', 'cancelled'].includes(s)) return 'cdm-badge-withdrawn';
+        return 'cdm-badge-draft';
+    };
+
     const InfoTab = () => (
         <div className="cdm-grid">
             <div className="cdm-group">
@@ -159,7 +167,7 @@ export default function CustomerDetailsModal({ customer }) {
                                     <td className="mono" title={o.uuid}>
                                         {o.offer_uuid.slice(0, 8)}...
                                     </td>
-                                    <td><span className="cdm-badge-draft">Draft</span></td>
+                                    <td><span className={getBadgeClass(o.status)}>{statusToBG(o.status)}</span></td>
                                     <td>
                                         <button className="btn btn-sm" onClick={() => handleOpenOffer(o)}>
                                             Преглед
@@ -196,11 +204,11 @@ export default function CustomerDetailsModal({ customer }) {
                                     <td className="mono">{c.contract_number}</td>
                                     <td>{new Date(c.created_at).toLocaleDateString("bg-BG")}</td>
                                     <td>{c.total} {c.currency_code}</td>
-                                    <td><span className={`cdm-badge-${c.status === 'signed' ? 'signed' : 'draft'}`}>{c.status}</span></td>
+                                    <td><span className={getBadgeClass(c.status)}>{statusToBG(c.status)}</span></td>
                                     <td>
                                         <div className="cdm-actions">
                                             <button className="btn btn-sm" onClick={() => handleOpenContractDraft(c)}>
-                                                Досие
+                                                Преглед
                                             </button>
                                             {c.signed_pdf?.url && (
                                                 <button className="btn btn-sm btn-success" onClick={() => handleOpenSignedContract(c)}>
