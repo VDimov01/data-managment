@@ -3,12 +3,17 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "engines": { "node": "22.20.0" },
+  "engines": {
+    "node": "22.20.0"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "build": "echo 'no build step for backend'"
+    "build": "echo 'no build step for backend'",
+    "migrate:create": "db-migrate create --config database.js",
+    "migrate:up": "db-migrate up --config database.js",
+    "migrate:down": "db-migrate down --config database.js"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +25,8 @@
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "db-migrate": "^0.11.14",
+    "db-migrate-mysql": "^3.0.0",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
